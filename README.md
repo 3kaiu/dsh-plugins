@@ -10,13 +10,20 @@ DeepSeek Harness plugins for the **OpenCode Zen free tier**:
 ## Features
 
 - **Resilient free-tier operation**
-  - On `429`, the adapter downgrades reasoning effort (`max/high → low`) and retries
-    in-flight once before giving up.
-  - After exhaustion, a cooldown fast-fail surfaces a clear message and the bundled
-    `retryPolicy` lets the harness `llm-retry` layer wait out the cooldown and
-    retry the whole turn instead of failing.
-- **Quota & caching telemetry** — per-process usage, cache-hit rate, and rate-limit
-  history persisted to `~/.dsh/storages/llm-opencode-zen-usage.json` with debounced writes.
+  - On `429`, the adapter records a per-session cooldown and surfaces a clear,
+    human-readable message instead of blindly retrying (downgrading effort would
+    not lift a provider-side limit and only wastes a request).
+  - The bundled `retryPolicy` lets the harness `llm-retry` layer wait out the
+    cooldown and retry the whole turn instead of failing.
+  - Per-session cooldown isolation: a new session is never blocked by another
+    session's cooldown.
+- **Quota & caching telemetry** — per-process usage, cache-hit rate, and per-session
+  rate-limit cooldowns persisted to `~/.dsh/storages/llm-opencode-zen-usage.json`
+  with debounced writes (cooldowns flush immediately).
+- **Lazy usage fallback** — input/output token estimation only runs when the provider
+  omits usage, avoiding a full-history scan on every request.
+- **Transport retry jitter** — in-flight retries back off 250–500ms instead of
+  hammering the same failure.
 - **Stable KV-cache prefix** — tools are emitted in a stable order so more requests
   land on the provider's prompt cache (free-tier cache reads are the cheapest tokens).
 - **Tool-call JSON repair** — truncated/malformed tool arguments are repaired

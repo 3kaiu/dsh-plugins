@@ -7,6 +7,8 @@ const PACKAGE = "@deepseek-ai/dsh";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const HISTORY_LIMIT = 20;
 const REGISTRY_URL = "https://registry.npmjs.org/@deepseek-ai%2Fdsh/latest";
+const FETCH_TIMEOUT_MS = 10000;
+const WARM_NPX_TIMEOUT_MS = 120000;
 
 const dshHome = () => (process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh"));
 const stateFile = () => join(dshHome(), "state", "dsh-update.json");
@@ -27,22 +29,31 @@ function writeState(state) {
 }
 
 function warmNpxCache(version) {
-  try {
-    const child = spawn("npx", ["--yes", `${PACKAGE}@${version}`, "--version"], {
-      stdio: "ignore",
-      detached: true,
-    });
-    child.unref();
-  } catch {}
+  const child = spawn("npx", ["--yes", `${PACKAGE}@${version}`, "--version"], {
+    stdio: "ignore",
+    detached: true,
+  });
+  // spawn 失败（npx 不在 PATH 等）会在子进程上触发异步 'error' 事件，
+  // try/catch 捕获不到，必须显式监听，否则会崩溃整个 dsh 进程。
+  child.on("error", () => {});
+  child.unref();
+  const kill = setTimeout(() => child.kill(), WARM_NPX_TIMEOUT_MS);
+  child.on("exit", () => clearTimeout(kill));
 }
 
 async function checkLatest(ctx) {
   let latest;
   try {
-    const response = await fetch(REGISTRY_URL);
-    if (!response.ok) throw new Error(`registry responded ${response.status}`);
-    const body = await response.json();
-    latest = body.version;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetch(REGISTRY_URL, { signal: controller.signal });
+      if (!response.ok) throw new Error(`registry responded ${response.status}`);
+      const body = await response.json();
+      latest = body.version;
+    } finally {
+      clearTimeout(timer);
+    }
   } catch (error) {
     ctx.logger.warn(`[dsh-updater] version check failed: ${error.message}`);
     return;
@@ -78,6 +89,7 @@ function apply(ctx) {
   );
   void checkLatest(ctx);
   const interval = setInterval(() => void checkLatest(ctx), CHECK_INTERVAL_MS);
+  interval.unref();
   ctx.effect(() => clearInterval(interval));
 }
 

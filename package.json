@@ -9,7 +9,8 @@
   ],
   "exports": {
     ".": "./dist/llm-opencode-zen.js",
-    "./updater": "./dist/harness-updater.js"
+    "./updater": "./dist/harness-updater.js",
+    "./layout-infer": "./dist/layout-infer.js"
   },
   "scripts": {
     "build": "node build.mjs",
@@ -21,6 +22,7 @@
     "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
     "@deepseek-ai/schemastery": "3.18.1",
     "eventsource-parser": "3.1.1"
   },

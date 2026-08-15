@@ -41,7 +41,7 @@ class QuotaTracker {
   totalCacheReadTokens = 0;
   totalReasoningTokens = 0;
   rateLimited = 0;
-  cooldownUntil = 0;
+  sessionCooldowns = {};
   projectId = `proj_${randomBytes(12).toString("base64url")}`;
   lastPersistAt = 0;
   constructor(file, now = () => Date.now()) {
@@ -55,7 +55,11 @@ class QuotaTracker {
       this.totalCacheReadTokens = data.totalCacheReadTokens ?? 0;
       this.totalReasoningTokens = data.totalReasoningTokens ?? 0;
       this.rateLimited = data.rateLimited ?? 0;
-      this.cooldownUntil = data.cooldownUntil ?? 0;
+      this.sessionCooldowns = data.sessionCooldowns ?? {};
+      if (typeof this.sessionCooldowns !== "object" || this.sessionCooldowns === null)
+        this.sessionCooldowns = {};
+      if (typeof data.cooldownUntil === "number" && data.cooldownUntil > 0)
+        this.sessionCooldowns["default"] = Math.max(this.sessionCooldowns["default"] ?? 0, data.cooldownUntil);
       this.projectId = data.projectId ?? this.projectId;
     } catch {}
   }
@@ -67,13 +71,27 @@ class QuotaTracker {
     if (usage.reasoningTokens !== void 0) this.totalReasoningTokens += usage.reasoningTokens;
     this.persist();
   }
-  recordLimit(retryAfterMs) {
+  recordLimit(retryAfterMs, sessionId) {
     this.rateLimited += 1;
-    this.cooldownUntil = this.now() + (retryAfterMs ?? DEFAULT_COOLDOWN_MS);
-    this.persist();
+    this.sessionCooldowns[this.sessionBucket(sessionId)] =
+      this.now() + (retryAfterMs ?? DEFAULT_COOLDOWN_MS);
+    this.pruneCooldowns();
+    this.persist(true);
   }
-  cooldownRemainingMs() {
-    return Math.max(0, this.cooldownUntil - this.now());
+  cooldownRemainingMs(sessionId) {
+    this.pruneCooldowns();
+    const until = this.sessionCooldowns[this.sessionBucket(sessionId)] ?? 0;
+    return Math.max(0, until - this.now());
+  }
+  sessionBucket(sessionId) {
+    if (sessionId === void 0 || sessionId === null) return "default";
+    return sessionKeyFromId(sessionId);
+  }
+  pruneCooldowns() {
+    const now = this.now();
+    for (const key of Object.keys(this.sessionCooldowns)) {
+      if (this.sessionCooldowns[key] <= now) delete this.sessionCooldowns[key];
+    }
   }
   cacheHitRate() {
     const billed = this.totalInputTokens + this.totalCacheReadTokens;
@@ -88,13 +106,13 @@ class QuotaTracker {
       totalReasoningTokens: this.totalReasoningTokens,
       cacheHitRate: this.cacheHitRate(),
       rateLimited: this.rateLimited,
-      cooldownUntil: this.cooldownUntil,
+      sessionCooldowns: this.sessionCooldowns,
       projectId: this.projectId,
       updatedAt: new Date(this.now()).toISOString(),
     };
   }
-  persist() {
-    if (this.now() - this.lastPersistAt < PERSIST_DEBOUNCE_MS) return;
+  persist(force = false) {
+    if (!force && this.now() - this.lastPersistAt < PERSIST_DEBOUNCE_MS) return;
     try {
       mkdirSync(dirname(this.file), { recursive: true });
       writeFileSync(this.file, `${JSON.stringify(this.snapshot(), null, 2)}\n`);
@@ -150,9 +168,7 @@ function resolveThinking(options, defaults) {
 }
 
 function flattenText(blocks) {
-  let text = "";
-  for (const block of blocks) if (block.type === "text") text += block.text;
-  return text;
+  return blocks.filter((b) => b.type === "text").map((b) => b.text).join("");
 }
 
 function assertTextOnly(blocks) {
@@ -161,20 +177,13 @@ function assertTextOnly(blocks) {
 }
 
 function serializeAssistant(message) {
-  let text = "";
-  let reasoning = "";
-  const toolCalls = [];
-  for (const block of message.content) {
-    if (block.type === "text") text += block.text;
-    else if (block.type === "reasoning") reasoning += block.text;
-    else if (block.type === "tool-call") {
-      toolCalls.push({
-        id: block.id,
-        type: "function",
-        function: { name: block.name, arguments: block.arguments },
-      });
-    }
-  }
+  const text = flattenText(message.content);
+  const reasoning = message.content.filter((b) => b.type === "reasoning").map((b) => b.text).join("");
+  const toolCalls = message.content.filter((b) => b.type === "tool-call").map((b) => ({
+    id: b.id,
+    type: "function",
+    function: { name: b.name, arguments: b.arguments },
+  }));
   return {
     role: "assistant",
     content: text,
@@ -195,13 +204,10 @@ function serializeMessages(messages) {
       wire.push(serializeAssistant(message));
       continue;
     }
-    let text = "";
-    const toolResults = [];
-    for (const block of message.content) {
-      if (block.type === "text") text += block.text;
-      else if (block.type === "tool-result") toolResults.push(block);
-    }
-    if (text.length > 0 || toolResults.length === 0) wire.push({ role: "user", content: text });
+    const toolResults = message.content.filter((b) => b.type === "tool-result");
+    const text = flattenText(message.content);
+    if (text.length > 0 || toolResults.length === 0)
+      wire.push({ role: "user", content: text });
     for (const result of toolResults)
       wire.push({
         role: "tool",
@@ -214,16 +220,14 @@ function serializeMessages(messages) {
 
 function serializeTools(tools) {
   if (tools === void 0 || tools.length === 0) return void 0;
-  return [...tools]
-    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-    .map((tool) => ({
-      type: "function",
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters,
-      },
-    }));
+  return tools.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    },
+  }));
 }
 
 function buildWireRequest(messages, options, tools, reasoning) {
@@ -420,56 +424,41 @@ function estimateUsage(inputText, outputText, reasoningText) {
 }
 
 function closeBlock(block) {
-  const text = block.parts.length === 1 ? block.parts[0] : block.parts.join("");
   switch (block.kind) {
-    case "text": return { type: "text", text };
-    case "reasoning": return { type: "reasoning", text };
+    case "text": return { type: "text", text: block.text };
+    case "reasoning": return { type: "reasoning", text: block.text };
     case "tool-call": return {
       type: "tool-call",
       id: CallId(block.callId ?? ""),
       name: block.name ?? "",
-      arguments: text,
+      arguments: block.text,
     };
   }
 }
 
-function countText(text, acc) {
-  let cjk = 0;
-  for (const ch of text) {
-    if (isCjkChar(ch)) cjk += 1;
-  }
-  acc.len += text.length;
-  acc.cjk += cjk;
-  return acc;
-}
-
-function usageFromCounts(inputText, output, reasoning) {
-  const input = typeof inputText === "string" ? countText(inputText, { len: 0, cjk: 0 }) : inputText;
-  const usage = {
-    inputTokens: input.cjk + Math.floor((input.len - input.cjk) / 4),
-    outputTokens: output.cjk + Math.floor((output.len - output.cjk) / 4),
-  };
-  const reasoningTokens = reasoning.cjk + Math.floor((reasoning.len - reasoning.cjk) / 4);
-  if (reasoningTokens > 0) usage.reasoningTokens = Math.min(reasoningTokens, usage.outputTokens);
-  return usage;
-}
-
 async function* translate(events, context = {}) {
-  const { inputText = "" } = context;
+  const { estimateInput = null } = context;
   let nextIndex = 0;
   let textBlock;
   let reasoningBlock;
   const toolBlocks = new Map();
   const order = [];
-  const output = { len: 0, cjk: 0 };
-  const reasoning = { len: 0, cjk: 0 };
   let pendingFinish;
   let pendingUsage;
 
   const open = (kind) => {
-    const block = { index: nextIndex++, kind, parts: [] };
+    const block = { index: nextIndex++, kind, text: "" };
     order.push(block);
     return block;
+  };
+
+  const estimate = () => {
+    const inputText = estimateInput !== null ? estimateInput() : "";
+    let outputText = textBlock?.text ?? "";
+    for (const block of order)
+      if (block.kind === "tool-call") outputText += block.text;
+    const reasoningText = reasoningBlock?.text ?? "";
+    return estimateUsage(inputText, outputText, reasoningText);
   };
 
   for await (const payload of events) {
@@ -477,10 +466,9 @@ async function* translate(events, context = {}) {
       let malformed = false;
       for (const block of order) {
         if (block.kind === "tool-call") {
-          const joined = block.parts.length === 1 ? block.parts[0] : block.parts.join("");
-          const repair = repairToolArguments(joined);
+          const repair = repairToolArguments(block.text);
           if (repair.ok) {
-            if (repair.text !== joined) block.parts = [repair.text];
+            if (repair.text !== block.text) block.text = repair.text;
           } else {
             malformed = true;
           }
@@ -489,7 +477,7 @@ async function* translate(events, context = {}) {
       }
       yield {
         type: "usage",
-        usage: pendingUsage ?? usageFromCounts(inputText, output, reasoning),
+        usage: pendingUsage ?? estimate(),
       };
       let reason = pendingFinish ?? { kind: "stop" };
       if (malformed) {
@@ -520,15 +508,14 @@ async function* translate(events, context = {}) {
     for (const choice of chunk.choices ?? []) {
       const delta = choice.delta;
 
-      const reasoningDelta = delta?.reasoning_content;
-      if (typeof reasoningDelta === "string" && reasoningDelta.length > 0) {
+      const reasoning = delta?.reasoning_content;
+      if (typeof reasoning === "string" && reasoning.length > 0) {
         if (!reasoningBlock) {
           reasoningBlock = open("reasoning");
           yield { type: "block-start", index: reasoningBlock.index, blockType: "reasoning" };
         }
-        reasoningBlock.parts.push(reasoningDelta);
-        countText(reasoningDelta, reasoning);
-        yield { type: "reasoning-delta", index: reasoningBlock.index, text: reasoningDelta };
+        reasoningBlock.text += reasoning;
+        yield { type: "reasoning-delta", index: reasoningBlock.index, text: reasoning };
       }
 
       const content = delta?.content;
@@ -537,8 +524,7 @@ async function* translate(events, context = {}) {
           textBlock = open("text");
           yield { type: "block-start", index: textBlock.index, blockType: "text" };
         }
-        textBlock.parts.push(content);
-        countText(content, output);
+        textBlock.text += content;
         yield { type: "text-delta", index: textBlock.index, text: content };
       }
 
@@ -552,10 +538,7 @@ async function* translate(events, context = {}) {
         if (call.id !== void 0 && call.id !== null) block.callId = call.id;
         if (call.function?.name !== void 0 && call.function?.name !== null) block.name = call.function.name;
         const fragment = call.function?.arguments ?? "";
-        if (fragment.length > 0) {
-          block.parts.push(fragment);
-          countText(fragment, output);
-        }
+        block.text += fragment;
         yield {
           type: "tool-call-delta",
           index: block.index,
@@ -587,6 +570,26 @@ function providerRetryAfterMs(header) {
   return void 0;
 }
 
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return "稍后";
+  const totalSeconds = Math.ceil(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days} 天`);
+  if (hours > 0) parts.push(`${hours} 小时`);
+  if (minutes > 0) parts.push(`${minutes} 分钟`);
+  if (seconds > 0 && parts.length === 0) parts.push(`${seconds} 秒`);
+  return parts.length > 0 ? parts.join(" ") : "1 分钟以内";
+}
+
+function rateLimitMessage(ms) {
+  const wait = formatDuration(ms);
+  return `OpenCode Zen 免费额度已用尽，当前处于限流状态，约 ${wait} 后可恢复使用；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
+}
+
 function requestId(headers) {
   const value = headers.get("x-request-id") ?? headers.get("x-opencode-request-id");
   return value === null || value.length === 0 ? void 0 : ProviderRequestId(value);
@@ -601,10 +604,16 @@ function httpErrorCode(status, error) {
   return "PROVIDER_ERROR";
 }
 
+// Real OpenCode client headers captured from mitmproxy traffic against https://opencode.ai/zen/v1
+// User-Agent: opencode/${version} ai-sdk/provider-utils/${version} runtime/${runtime}
+// The free model is authenticated with the literal token "public".
 const OPENCODE_UA = "opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14";
 
 function sessionKeyFromId(sessionId) {
-  if (sessionId === void 0) return `ses_${randomBytes(12).toString("base64url")}`;
+  // 无 sessionId 时使用基于 projectId 的稳定 key：保证请求头与冷却 bucket
+  // 一致（sessionBucket 对 undefined 返回 "default"），并让服务端视角的会话稳定。
+  if (sessionId === void 0)
+    return `ses_${createHash("sha256").update(`default:${quota.projectId}`).digest("base64url").slice(0, 16)}`;
   return `ses_${createHash("sha256").update(String(sessionId)).digest("base64url").slice(0, 16)}`;
 }
 
@@ -619,15 +628,11 @@ function opencodeHeaders(sessionId) {
 }
 
 function estimateInputText(messages) {
-  const acc = { len: 0, cjk: 0 };
-  for (const message of messages) {
-    if (typeof message.content === "string") countText(message.content, acc);
-    if (typeof message.reasoning_content === "string") countText(message.reasoning_content, acc);
-    for (const call of message.tool_calls ?? []) {
-      if (typeof call.function?.arguments === "string") countText(call.function.arguments, acc);
-    }
-  }
-  return acc;
+  return messages.map((message) => [
+    typeof message.content === "string" ? message.content : "",
+    message.reasoning_content ?? "",
+    ...(message.tool_calls ?? []).map((call) => call.function?.arguments ?? ""),
+  ].join("")).join("\n");
 }
 
 function modelInfo(provider, model) {
@@ -661,7 +666,8 @@ class OpenCodeZenAdapter extends LlmAdapter {
     const connection = this.config.options();
     const configured = connection.models.find((entry) => entry.id === model);
     const contextWindow = configured?.contextWindow ?? connection.defaultContextWindow;
-
+    
+    // Build reasoning efforts if thinking is enabled
     let reasoning;
     if (connection.defaults.thinking !== "disabled") {
       reasoning = {
@@ -679,7 +685,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
         defaultEffort: "off",
       };
     }
-
+    
     return Promise.resolve({
       ...configured === void 0 ? {
         provider,
@@ -693,7 +699,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
     });
   }
 
-  async *requestStream(options, connection, apiKey, payload, watchdog, effort, inputText) {
+  async *requestStream(options, connection, apiKey, payload, watchdog, effort, estimateInput) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
@@ -722,7 +728,11 @@ class OpenCodeZenAdapter extends LlmAdapter {
         if (providerError?.message) message = providerError.message;
       } catch {}
       const retryAfter = providerRetryAfterMs(response.headers.get("retry-after"));
-      throw new LlmError(message, httpErrorCode(response.status, providerError), {
+      const code = httpErrorCode(response.status, providerError);
+      if (response.status === 429) {
+        message = `OpenCode Zen 免费额度限流（HTTP 429）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter)} 后可重试` : ""}；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
+      }
+      throw new LlmError(message, code, {
         status: response.status,
         ...retryAfter !== void 0 ? { providerRetryAfterMs: retryAfter } : {},
         ...requestId(response.headers) !== void 0 ? { requestId: requestId(response.headers) } : {},
@@ -733,7 +743,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
       throw new LlmError("OpenCode Zen API returned no response body", "EMPTY_RESPONSE");
 
     const chunks = parseSse(response.body, () => { watchdog.pulse(); });
-    yield* translate(chunks, { inputText });
+    yield* translate(chunks, { estimateInput });
   }
 
   async *stream(options) {
@@ -743,11 +753,10 @@ class OpenCodeZenAdapter extends LlmAdapter {
       apiKeyEnv: settings.apiKeyEnv,
     };
 
-    const cooldownMs = quota.cooldownRemainingMs();
+    const cooldownMs = quota.cooldownRemainingMs(options.sessionId);
     if (cooldownMs > 0) {
       throw new LlmError(
-        `OpenCode Zen free quota is cooling down; retry in about ${Math.ceil(cooldownMs / 1000)}s, `
-          + `or set ${DEFAULT_API_KEY_ENV} for higher limits`,
+        rateLimitMessage(cooldownMs),
         "RATE_LIMITED",
         { providerRetryAfterMs: cooldownMs },
       );
@@ -762,7 +771,6 @@ class OpenCodeZenAdapter extends LlmAdapter {
       ];
       const tools = serializeTools(options.tools);
       let effort = resolveThinking(options, settings.defaults);
-      const inputText = estimateInputText(messages);
 
       const consumer = new AbortController();
       const upstream = options.signal === void 0
@@ -781,7 +789,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
             payload,
             watchdog,
             effort,
-            inputText,
+            () => estimateInputText(messages),
           )[Symbol.asyncIterator]();
 
           try {
@@ -794,7 +802,6 @@ class OpenCodeZenAdapter extends LlmAdapter {
               yield result.value;
             }
             if (lastUsage) quota.recordUsage(lastUsage);
-            quota.persist();
             return;
           } catch (error) {
             if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== void 0) {
@@ -809,15 +816,17 @@ class OpenCodeZenAdapter extends LlmAdapter {
             }
             const code = error instanceof LlmError ? error.code : "TRANSPORT";
             if (code === "RATE_LIMITED") {
-              const lower = effort === "max" || effort === "high" ? "low" : "off";
-              if (lower !== effort && attempt + 1 < MAX_REQUEST_ATTEMPTS) {
-                effort = lower;
-                continue;
-              }
-              quota.recordLimit(error.failure?.providerRetryAfterMs);
+              // 429 = 服务端判定该 IP/项目已限流，降 effort 重试不会解除限流，
+              // 反而白打一次请求并可能加重限流。直接记录冷却并抛出。
+              quota.recordLimit(error.failure?.providerRetryAfterMs, options.sessionId);
               throw error;
             }
-            if (!emitted && (code === "TRANSPORT" || code === "STREAM_CLOSED")) continue;
+            if (!emitted && (code === "TRANSPORT" || code === "STREAM_CLOSED")) {
+              // 内层即时重试容易连续命中同一故障，加一个带抖动的短退避。
+              await new Promise((resolve) =>
+                setTimeout(resolve, 250 + Math.random() * 250));
+              continue;
+            }
             throw error;
           } finally {
             if (iterator.return !== void 0) {
@@ -977,6 +986,7 @@ function apply(ctx, config) {
       if (ambient !== void 0 && ambient.value.length > 0)
         return assertUsableApiKey(ambient.value, "llm-opencode-zen", ref);
     }
+    // OpenCode Zen free models authenticate with the literal token "public"
     return "public";
   };
 
