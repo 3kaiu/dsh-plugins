@@ -102,7 +102,7 @@ if (asst2.reasoning_content !== "需要调用工具")
   throw new Error(`工具调用场景应回传 reasoning_content, got: ${JSON.stringify(asst2)}`);
 console.log("✓ 工具调用场景正确回传 reasoning_content");
 
-// 场景3: 无推理的消息不应带 reasoning_content 字段
+// 场景3: 无推理且无工具调用的消息不应带 reasoning_content 字段
 await (async () => {
   for await (const _ of adapter.stream({
     messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
@@ -112,5 +112,27 @@ await (async () => {
 if (capturedBody.messages.some((m) => m.role === "assistant" && m.reasoning_content !== undefined))
   throw new Error("无推理消息不应带 reasoning_content");
 console.log("✓ 无推理消息不带 reasoning_content");
+
+// 场景4: 纯 tool-call 无 reasoning 的消息必须带空 reasoning_content (服务端 thinking 模式要求)
+await (async () => {
+  for await (const _ of adapter.stream({
+    messages: [
+      { role: "user", content: [{ type: "text", text: "hi" }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool-call", id: "c1", name: "bash", arguments: "{}", toolCallId: "c1" },
+        ],
+      },
+      { role: "tool", toolCallId: "c1", content: [{ type: "text", text: "out" }] },
+      { role: "user", content: [{ type: "text", text: "go" }] },
+    ],
+    sessionId: "t-tc-no-reasoning",
+  })) {}
+})();
+const asstTc = capturedBody.messages.filter((m) => m.role === "assistant");
+if (!asstTc.every((a) => (a.tool_calls ? "reasoning_content" in a : true)))
+  throw new Error(`纯 tool-call 消息应带 reasoning_content 字段, got: ${JSON.stringify(asstTc)}`);
+console.log("✓ 纯 tool-call 消息带 reasoning_content 字段");
 
 console.log("全部通过 ✓");
