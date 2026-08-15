@@ -220,7 +220,7 @@ function serializeAssistant(message) {
   return {
     role: "assistant",
     content: text,
-    ...(toolCalls.length > 0 && reasoning.length > 0 ? { reasoning_content: reasoning } : {}),
+    ...(reasoning.length > 0 ? { reasoning_content: reasoning } : {}),
     ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
   };
 }
