@@ -41,7 +41,10 @@ class QuotaTracker {
   totalCacheReadTokens = 0;
   totalReasoningTokens = 0;
   rateLimited = 0;
+  quotaExceeded = 0;
   sessionCooldowns = {};
+  requestTimes = {};
+  pacing = { enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 };
   projectId = `proj_${randomBytes(12).toString("base64url")}`;
   lastPersistAt = 0;
   constructor(file, now = () => Date.now()) {
@@ -55,6 +58,7 @@ class QuotaTracker {
       this.totalCacheReadTokens = data.totalCacheReadTokens ?? 0;
       this.totalReasoningTokens = data.totalReasoningTokens ?? 0;
       this.rateLimited = data.rateLimited ?? 0;
+      this.quotaExceeded = data.quotaExceeded ?? 0;
       this.sessionCooldowns = data.sessionCooldowns ?? {};
       if (typeof this.sessionCooldowns !== "object" || this.sessionCooldowns === null)
         this.sessionCooldowns = {};
@@ -62,6 +66,34 @@ class QuotaTracker {
         this.sessionCooldowns["default"] = Math.max(this.sessionCooldowns["default"] ?? 0, data.cooldownUntil);
       this.projectId = data.projectId ?? this.projectId;
     } catch {}
+  }
+  configurePacing(pacing) {
+    if (pacing !== void 0 && pacing !== null) this.pacing = pacing;
+  }
+  markRequest(sessionId) {
+    const bucket = this.sessionBucket(sessionId);
+    const now = this.now();
+    const window = Math.max(this.pacing.windowMs * 2, 1000);
+    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
+    times.push(now);
+    this.requestTimes[bucket] = times;
+  }
+  // 返回发送前需要等待的毫秒数（0 = 立即发送）。
+  // 目的：在触发服务端 402/429 之前主动放慢节奏（滚动窗口预算）。
+  pacingDelayMs(sessionId) {
+    if (!this.pacing.enabled) return 0;
+    const bucket = this.sessionBucket(sessionId);
+    const now = this.now();
+    const window = Math.max(this.pacing.windowMs, 1000);
+    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
+    if (times.length < this.pacing.maxRequests) return 0;
+    const oldest = Math.min(...times);
+    const wait = Math.min(oldest + window - now, this.pacing.maxHoldMs);
+    return Math.max(0, wait);
+  }
+  recordQuotaExceeded() {
+    this.quotaExceeded += 1;
+    this.persist(true);
   }
   recordUsage(usage) {
     this.requests += 1;
@@ -106,6 +138,7 @@ class QuotaTracker {
       totalReasoningTokens: this.totalReasoningTokens,
       cacheHitRate: this.cacheHitRate(),
       rateLimited: this.rateLimited,
+      quotaExceeded: this.quotaExceeded,
       sessionCooldowns: this.sessionCooldowns,
       projectId: this.projectId,
       updatedAt: new Date(this.now()).toISOString(),
@@ -592,11 +625,12 @@ function rateLimitMessage(ms) {
 
 function requestId(headers) {
   const value = headers.get("x-request-id") ?? headers.get("x-opencode-request-id");
-  return value === null || value.length === 0 ? void 0 : ProviderRequestId(value);
+  return value === null || value === void 0 || value.length === 0 ? void 0 : ProviderRequestId(value);
 }
 
 function httpErrorCode(status, error) {
   if (status === 401 || status === 403) return "AUTH";
+  if (status === 402) return QUOTA_EXCEEDED_CODE;
   if (status === 429) return "RATE_LIMITED";
   if (status >= 500) return "PROVIDER_ERROR";
   if (isContextWindowExceededError(error)) return CONTEXT_WINDOW_EXCEEDED_CODE;
@@ -700,6 +734,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
   }
 
   async *requestStream(options, connection, apiKey, payload, watchdog, effort, estimateInput) {
+    quota.markRequest(options.sessionId);
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
@@ -723,14 +758,26 @@ class OpenCodeZenAdapter extends LlmAdapter {
     if (!response.ok) {
       let message = `OpenCode Zen API error (HTTP ${response.status})`;
       let providerError;
+      let rawBody = "";
       try {
-        providerError = (await response.json()).error;
-        if (providerError?.message) message = providerError.message;
+        rawBody = await response.text();
       } catch {}
+      try {
+        const parsed = JSON.parse(rawBody);
+        providerError = parsed?.error;
+        if (providerError?.message) message = providerError.message;
+        else if (parsed?.message) message = parsed.message;
+      } catch {
+        // 非 JSON 响应体（如 HTML 错误页/纯文本）：透出原文，避免信息被吞
+        const trimmed = rawBody.trim();
+        if (trimmed.length > 0) message = trimmed.slice(0, 300);
+      }
       const retryAfter = providerRetryAfterMs(response.headers.get("retry-after"));
       const code = httpErrorCode(response.status, providerError);
       if (response.status === 429) {
         message = `OpenCode Zen 免费额度限流（HTTP 429）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter)} 后可重试` : ""}；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
+      } else if (response.status === 402) {
+        message = `OpenCode Zen 免费额度已耗尽（HTTP 402）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter)} 后可恢复` : ""}；可设置环境变量 ${DEFAULT_API_KEY_ENV} 使用付费额度，或等待免费额度每日重置`;
       }
       throw new LlmError(message, code, {
         status: response.status,
@@ -760,6 +807,13 @@ class OpenCodeZenAdapter extends LlmAdapter {
         "RATE_LIMITED",
         { providerRetryAfterMs: cooldownMs },
       );
+    }
+
+    // 主动限速：滚动窗口预算，未触发服务端 402/429 前先放缓节奏。
+    // 观察到服务端约每 3 次成功请求后按窗口限流，此处用请求计数窗口压节奏。
+    const pacingMs = quota.pacingDelayMs(options.sessionId);
+    if (pacingMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, pacingMs));
     }
 
     await this.semaphore.acquire(options.signal);
@@ -821,6 +875,13 @@ class OpenCodeZenAdapter extends LlmAdapter {
               quota.recordLimit(error.failure?.providerRetryAfterMs, options.sessionId);
               throw error;
             }
+            if (code === QUOTA_EXCEEDED_CODE) {
+              // 402 = 免费额度耗尽（Payment Required）。同样记录冷却避免连续白打，
+              // 让外层 retryPolicy 等待冷却后重试整轮。
+              quota.recordLimit(error.failure?.providerRetryAfterMs, options.sessionId);
+              quota.recordQuotaExceeded();
+              throw error;
+            }
             if (!emitted && (code === "TRANSPORT" || code === "STREAM_CLOSED")) {
               // 内层即时重试容易连续命中同一故障，加一个带抖动的短退避。
               await new Promise((resolve) =>
@@ -869,13 +930,20 @@ const DEFAULT_MODELS = [
 const DEFAULT_RETRY_POLICY = {
   mode: "normal",
   maxRetries: 2,
-  retryableCodes: ["RATE_LIMITED", "TIMEOUT", "TRANSPORT", "STREAM_CLOSED", EMPTY_RESPONSE_CODE],
+  retryableCodes: ["RATE_LIMITED", QUOTA_EXCEEDED_CODE, "TIMEOUT", "TRANSPORT", "STREAM_CLOSED", EMPTY_RESPONSE_CODE],
   backoff: {
     initialDelayMs: 1000,
     maxDelayMs: DEFAULT_COOLDOWN_MS,
     jitterRatio: 0.1,
   },
 };
+
+const PacingSchema = z.object({
+  enabled: z.boolean().default(true),
+  maxRequests: z.number().step(1).min(1).default(3),
+  windowMs: z.number().min(1000).max(MAX_TIMER_DELAY_MS).default(20000),
+  maxHoldMs: z.number().min(0).max(MAX_TIMER_DELAY_MS).default(15000),
+});
 
 const catalogModel = z.object({
   id: z.string().required(),
@@ -895,6 +963,7 @@ const Config = z.object({
   models: z.array(catalogModel).default(DEFAULT_MODELS),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
   maxConcurrentStreams: z.number().step(1).min(1).default(DEFAULT_MAX_CONCURRENT_STREAMS),
+  pacing: PacingSchema.default({ enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 }),
   retryPolicy: RetryPolicySchema.default(DEFAULT_RETRY_POLICY),
 });
 
@@ -936,6 +1005,13 @@ function resolveAdapterOptions(config, environment) {
   const maxConcurrentStreams = config.maxConcurrentStreams ?? DEFAULT_MAX_CONCURRENT_STREAMS;
   if (!Number.isInteger(maxConcurrentStreams) || maxConcurrentStreams <= 0)
     throw new Error("llm-opencode-zen: maxConcurrentStreams must be a positive integer");
+  const pacing = config.pacing ?? { enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 };
+  if (!Number.isInteger(pacing.maxRequests) || pacing.maxRequests <= 0)
+    throw new Error("llm-opencode-zen: pacing.maxRequests must be a positive integer");
+  if (!Number.isFinite(pacing.windowMs) || pacing.windowMs <= 0 || pacing.windowMs > MAX_TIMER_DELAY_MS)
+    throw new Error(`llm-opencode-zen: pacing.windowMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+  if (!Number.isFinite(pacing.maxHoldMs) || pacing.maxHoldMs < 0 || pacing.maxHoldMs > MAX_TIMER_DELAY_MS)
+    throw new Error(`llm-opencode-zen: pacing.maxHoldMs must be a finite number in [0, ${MAX_TIMER_DELAY_MS}]`);
   return {
     apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
     baseURL: config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? PUBLIC_BASE_URL,
@@ -948,6 +1024,7 @@ function resolveAdapterOptions(config, environment) {
     models: resolveModels(config.models),
     streamIdleTimeoutMs,
     maxConcurrentStreams,
+    pacing,
     retryPolicy: resolveRetryPolicy(config.retryPolicy ?? DEFAULT_RETRY_POLICY, "llm-opencode-zen: retryPolicy"),
   };
 }
@@ -994,6 +1071,8 @@ function apply(ctx, config) {
     options,
     resolveApiKey,
   }, new Semaphore(options().maxConcurrentStreams));
+
+  quota.configurePacing(options().pacing);
 
   ctx.llm.registerConfigurableProviders([
     {

@@ -13,8 +13,17 @@ DeepSeek Harness plugins for the **OpenCode Zen free tier**:
   - On `429`, the adapter records a per-session cooldown and surfaces a clear,
     human-readable message instead of blindly retrying (downgrading effort would
     not lift a provider-side limit and only wastes a request).
+  - On `402` (Payment Required — free quota exhausted), it is classified as
+    `QUOTA`, recorded in the same per-session cooldown, counted in telemetry,
+    and retried by the harness after the cooldown elapses. Non-JSON error bodies
+    (HTML/plain-text pages) are surfaced verbatim instead of being swallowed.
+  - **Proactive pacing** — a rolling per-session request budget (default
+    `maxRequests: 3` per `windowMs: 20s`, hold capped at `maxHoldMs: 15s`) slows
+    the adapter down *before* the provider's limit is hit, instead of only
+    reacting after a 429/402. This converts most limit hits into short waits.
   - The bundled `retryPolicy` lets the harness `llm-retry` layer wait out the
-    cooldown and retry the whole turn instead of failing.
+    cooldown and retry the whole turn instead of failing (`RATE_LIMITED` and
+    `QUOTA` are both retryable).
   - Per-session cooldown isolation: a new session is never blocked by another
     session's cooldown.
 - **Quota & caching telemetry** — per-process usage, cache-hit rate, and per-session
@@ -60,7 +69,8 @@ The `llm-opencode-zen` settings section lives under `llm-opencode-zen:` in your
 | `reasoningEffort` | — | `off` / `low` / `high` / `max` |
 | `maxConcurrentStreams` | `2` | in-flight stream cap |
 | `streamIdleTimeoutMs` | `300000` | stalled-stream timeout |
-| `retryPolicy` | bundled | `RATE_LIMITED`/`TIMEOUT`/`TRANSPORT`/`STREAM_CLOSED` retryable, 60s max delay |
+| `pacing` | `{enabled:true, maxRequests:3, windowMs:20000, maxHoldMs:15000}` | rolling per-session request budget; waits before the provider limit is hit |
+| `retryPolicy` | bundled | `RATE_LIMITED`/`QUOTA`/`TIMEOUT`/`TRANSPORT`/`STREAM_CLOSED` retryable, 60s max delay |
 | `models` | `deepseek-v4-flash-free` | model catalog (context window, max tokens) |
 
 ## Development
