@@ -74,6 +74,8 @@ jobs:
 
       - name: 开 PR(人工 merge,不自动合)
         if: ${{ inputs.open_pr }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "dsh-agent"
           git config user.email "dsh-agent@users.noreply.github.com"
