@@ -1,0 +1,146 @@
+name: maintenance
+# 维护闭环(06 篇 §5):每日扫描 incidents → top-1 → Agent 修复 → 契约闸门 → PR → 人工 merge
+# cron 使用 UTC:Asia/Shanghai 02:00 = 18:00 UTC(前一日)
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      incidentId:
+        description: 指定事项 ID(缺省取 status top-1)
+        required: false
+        type: string
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+concurrency:
+  group: maintenance
+env:
+  GH_TOKEN: ${{ github.token }}
+  DSH_MAINT_REPO: ${{ github.workspace }}
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: env
+        run: echo "DSH_HOME=$RUNNER_TEMP/dsh-home" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: deps
+        run: |
+          npm i -g @deepseek-ai/dsh@0.1.0-rc.6 pnpm@9.15.0
+          pnpm install --frozen-lockfile
+          (cd packages/llm-opencode-zen && node build.mjs)
+          (cd packages/dsh-runtime-events && node build.mjs)
+      - name: select incident
+        id: select
+        run: |
+          ID="${{ github.event.inputs.incidentId }}"
+          if [ -z "$ID" ]; then
+            ID=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.data.incidents[0]?.id ?? "")}catch{console.log("")}})')
+          fi
+          echo "incident_id=$ID" >> "$GITHUB_OUTPUT"
+          echo "选择事项: $ID"
+      - name: issue lookup + guards
+        id: issue
+        run: |
+          ID="${{ steps.select.outputs.incident_id }}"
+          if [ -z "$ID" ]; then echo "无待办事项,退出"; exit 0; fi
+          NUM=$(gh issue list --state open --label maintenance --search "$ID" --json number --jq '.[0].number // empty')
+          echo "issue_number=$NUM" >> "$GITHUB_OUTPUT"
+          if [ -z "$NUM" ]; then echo "事项 $ID 无对应 open issue,跳过"; exit 0; fi
+          LABELS=$(gh issue view "$NUM" --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -q 'needs-human'; then echo "needs-human 标记,跳过"; exit 0; fi
+          ATTEMPTS=$(echo "$LABELS" | grep -c '^auto-attempt-' || true)
+          echo "attempts=$ATTEMPTS" >> "$GITHUB_OUTPUT"
+          if [ "$ATTEMPTS" -ge 3 ]; then
+            echo "已达 3 次尝试上限 → needs-human"
+            gh issue edit "$NUM" --add-label needs-human
+            exit 0
+          fi
+          echo "issue #$NUM attempts=$ATTEMPTS 开始修复"
+      - name: provision headless profile
+        run: |
+          dsh --profile headless --help >/dev/null 2>&1
+          cd "$DSH_HOME/profiles/headless"
+          pnpm add -w "file:${GITHUB_WORKSPACE}/packages/llm-opencode-zen" "file:${GITHUB_WORKSPACE}/packages/dsh-runtime-events" >/dev/null 2>&1
+          node -e '
+            const fs = require("fs");
+            const p = "package.json";
+            const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+            const b = pkg.dsh.profile.bundles;
+            for (const n of ["@3kaiu/dsh-llm-opencode-zen", "@3kaiu/dsh-runtime-events"]) if (!b.includes(n)) b.push(n);
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+            console.log("bundles:", b.join(", "));
+          '
+          printf 'agent-default-model:\n  provider: opencode-zen\n  model: deepseek-v4-flash-free\n' > "$DSH_HOME/settings.yaml"
+      - name: agent run
+        id: agent
+        run: |
+          ID="${{ steps.select.outputs.incident_id }}"
+          NUM="${{ steps.issue.outputs.issue_number }}"
+          BODY=$(gh issue view "$NUM" --json body --jq .body)
+          CTX=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs inspect "$ID" --json)
+          TASK=$(node -e 'console.log(JSON.stringify(
+            "你是 DSH 维护 Agent。修复事项 " + process.argv[1] + "。\n\n" +
+            "Issue #" + process.argv[2] + " 内容:\n" + process.argv[3] + "\n\n" +
+            "事项现场(inspect):\n" + process.argv[4] + "\n\n" +
+            "流程(严格执行):\n" +
+            "1) node packages/dsh-maintenance-core/bin/dsh-maint.mjs reproduce " + process.argv[1] + " --json —— 确认缺陷可复现(exit 0);\n" +
+            "2) 最小修复,只改 contract allow 路径(packages/** docs/** 等),禁止改 package.json / .github/workflows/release.yml;\n" +
+            "3) 若事项 testCommand 为空或已过时,把它更新为能验证修复的回归命令(在 .dsh/incidents/<id>.json 里);\n" +
+            "4) reproduce 应转为不可复现,test 应通过;\n" +
+            "5) 结束时输出三行:CHANGED_FILES: <逗号分隔>\nTEST_RESULT: <pass|fail 及输出摘要>\nSUMMARY: <修复摘要>"
+          , process.argv[1], process.argv[2], process.argv[3], process.argv[4]))' "$ID" "$NUM" "$BODY" "$CTX")
+          dsh --profile headless "$TASK" | tee /tmp/agent-output.txt
+          test -s /tmp/agent-output.txt
+          grep -q 'SUMMARY:' /tmp/agent-output.txt && echo "agent 完成,含 SUMMARY"
+      - name: verify gate (contract)
+        id: verify
+        run: |
+          git add -A 2>/dev/null || true
+          DSH_MAINT_DIFF_BASE=origin/main node packages/dsh-maintenance-core/bin/dsh-maint.mjs verify contract --json > /tmp/verify.json
+          node -e '
+            const j = JSON.parse(require("fs").readFileSync("/tmp/verify.json", "utf8"));
+            console.log(JSON.stringify(j.data.checks, null, 1));
+            if (!j.ok) process.exit(1);
+          '
+      - name: commit + PR
+        id: pr
+        run: |
+          ID="${{ steps.select.outputs.incident_id }}"
+          NUM="${{ steps.issue.outputs.issue_number }}"
+          if git diff --quiet origin/main -- .; then echo "无变更,跳过 PR"; exit 0; fi
+          BR="maintenance/${ID}-$(date -u +%Y%m%d-%H%M%S)"
+          git checkout -b "$BR"
+          git commit -am "maintenance(${ID}): agent fix" 2>/dev/null || echo "工作树已干净(Agent 可能已自行提交)"
+          git push origin "$BR"
+          BODY=$(tail -c 2000 /tmp/agent-output.txt)
+          gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\n%s' "$ID" "$BODY")" 2>&1 | tee /tmp/pr-link.txt || true
+          PR=$(cat /tmp/pr-link.txt | grep -o 'https://github.com/[^ ]*pull/[0-9]*' | head -1)
+          echo "pr_url=$PR" >> "$GITHUB_OUTPUT"
+      - name: comment issue
+        if: always()
+        run: |
+          ID="${{ steps.select.outputs.incident_id }}"
+          NUM="${{ steps.issue.outputs.issue_number }}"
+          PR="${{ steps.pr.outputs.pr_url }}"
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body "维护运行 $(date -u +%Y-%m-%dT%H:%MZ) — PR: ${PR:-未创建} — 详情见 Actions run $GITHUB_RUN_ID"
+          fi
+      - name: attempt label
+        if: failure()
+        run: |
+          NUM="${{ steps.issue.outputs.issue_number }}"
+          ATTEMPTS="${{ steps.issue.outputs.attempts }}"
+          if [ -n "$NUM" ] && [ -n "$ATTEMPTS" ]; then
+            N=$((ATTEMPTS + 1))
+            gh issue edit "$NUM" --add-label "auto-attempt-$N"
+            if [ "$N" -ge 3 ]; then gh issue edit "$NUM" --add-label needs-human; fi
+          fi

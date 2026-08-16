@@ -34,6 +34,8 @@ importers:
         specifier: ^5.4.11
         version: 5.4.21
 
+  packages/dsh-maintenance-core: {}
+
   packages/dsh-runtime-events:
     dependencies:
       '@deepseek-ai/dsh-settings':
