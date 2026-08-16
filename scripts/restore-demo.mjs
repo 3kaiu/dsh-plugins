@@ -128,13 +128,14 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
   // flex 流预测: 找出 absolute 子元素(装饰层等)
   const outOfFlowKids = fi.flexDirection ? findOutOfFlow(fi, ls, kids) : new Set();
   const oid = node.id;
+  const isText = node.type === "TEXT";
   const exp = {
     x: round(absX + (ls.relativeX ?? 0)),
     y: round(absY + (ls.relativeY ?? 0)),
     w: round(ls.width ?? 0),
     h: round(ls.height ?? 0),
   };
-  expected.push({ oid, ...exp, r: ls.rotate ?? 0 });
+  expected.push({ oid, ...exp, r: ls.rotate ?? 0, t: isText });
 
   const css = [];
   css.push("box-sizing:border-box");
@@ -160,7 +161,9 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
   const forceAbs = ls.rotate || outOfFlow || (parentOutOfFlow && parentOutOfFlow.has(oid)) || (!nativeFlex && inferred?.position === "absolute");
   if (forceAbs) {
     css.push(`position:absolute;left:${ls.relativeX ?? 0}px;top:${ls.relativeY ?? 0}px`);
-    css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+    if (!isText) {
+      css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+    }
   } else if (nativeFlex) {
     const dir = fi.flexDirection === "row" ? "row" : "column";
     css.push(`display:flex;flex-direction:${dir}`);
@@ -180,7 +183,9 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
     if (parentAbs) {
       // 拍平上下文: 一律 absolute 精确落位(不做几何 flex 反推 — 单子元素歧义会导致堆叠错乱)
       css.push(`position:absolute;left:${ls.relativeX ?? 0}px;top:${ls.relativeY ?? 0}px`);
-      css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+      if (!isText) {
+        css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+      }
     } else if (kids.length > 0) {
       if (inferred?.position === "flex") {
         css.push(`display:flex;flex-direction:${inferred.flexDirection}`);
@@ -198,7 +203,12 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
       // 叶子: 仅拍平上下文(parentAbs)需绝对定位, 否则由父 flex 布局流动
       if (parentAbs) {
         css.push(`position:absolute;left:${ls.relativeX ?? 0}px;top:${ls.relativeY ?? 0}px`);
-        css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+        if (!isText) {
+          css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+        }
+      } else if (isText) {
+        // 文本只有字号: 高度由内容决定; 宽度仅多行(pre-wrap)需要列宽
+        // (单行 nowrap 不设宽度, 避免内容被裁切)
       } else {
         if (ls.width != null) css.push(`width:${ls.width}px`);
         if (ls.height != null) css.push(`height:${ls.height}px`);
@@ -217,9 +227,9 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
     css.push(fontCss(node));
     css.push(`color:${color}`);
     if (node.textAlign && node.textAlign !== "left") css.push(`text-align:${node.textAlign}`);
-    if (ls.width != null) css.push(`width:${ls.width}px`);
     const multi = node.textMode !== "single-line";
-    css.push(multi ? "white-space:pre-wrap" : "white-space:nowrap;overflow:hidden");
+    if (multi && ls.width != null) css.push(`width:${ls.width}px`);
+    css.push(multi ? "white-space:pre-wrap" : "white-space:nowrap");
     inner = escapeHtml(text);
   } else if (node.type === "PATH") {
     inner = svgOf(node, styles);
@@ -288,8 +298,8 @@ const measureScript = `
   const avgD = (k) => all.reduce((s, o) => s + err(o[k]), 0) / (all.length || 1);
   const rot = out.filter(o => (rows.find(r => r.oid === o.oid) || {}).r).length;
   const plain = all.filter(o => !(rows.find(r => r.oid === o.oid) || {}).r);
-  const over2 = plain.filter(o => err(o.dx) > 2 || err(o.dy) > 2 || err(o.dw) > 2 || err(o.dh) > 2);
-  const hit = plain.filter(o => err(o.dx) <= 1 && err(o.dy) <= 1 && err(o.dw) <= 1 && err(o.dh) <= 1).length;
+  const over2 = plain.filter(o => (rows.find(r => r.oid === o.oid) || {}).t ? (err(o.dx) > 2 || err(o.dy) > 2) : (err(o.dx) > 2 || err(o.dy) > 2 || err(o.dw) > 2 || err(o.dh) > 2));
+  const hit = plain.filter(o => (rows.find(r => r.oid === o.oid) || {}).t ? (err(o.dx) <= 1 && err(o.dy) <= 1) : (err(o.dx) <= 1 && err(o.dy) <= 1 && err(o.dw) <= 1 && err(o.dh) <= 1)).length;
   const avgP = (k) => plain.reduce((s, o) => s + err(o[k]), 0) / (plain.length || 1);
   const report = {
     total: all.length,
