@@ -1,0 +1,89 @@
+name: agent-loop
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 无头 Agent 的任务(单行;默认:自检插件测试 + 写运行记录)
+        required: false
+        default: "在本仓库根目录:1) 运行 node packages/llm-opencode-zen/test/rate-limit.test.mjs 并确认它通过;2) 把一行追加到 docs/architecture/AGENT-LOOP.md,内容为竖线分隔的今天日期与 pass;3) 最后一行输出 VERDICT: pass"
+      open_pr:
+        description: 用 Agent 产物开 PR(人工 merge,不自动合)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: agent-loop
+  cancel-in-progress: false
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DSH_HOME: ${{ runner.temp }}/dsh-home
+      OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: 安装官方 dsh 与 pnpm(版本钉死)
+        run: npm i -g @deepseek-ai/dsh@0.1.0-rc.6 pnpm@9.15.0
+
+      - name: 构建插件(未发布 npm,从仓库构建)
+        run: |
+          pnpm install --frozen-lockfile
+          node packages/llm-opencode-zen/build.mjs
+
+      - name: 装进 headless profile(与本地验证配方一致)
+        run: |
+          dsh --profile headless --help >/dev/null
+          cd "$DSH_HOME/profiles/headless"
+          pnpm add -w "file:${GITHUB_WORKSPACE}/packages/llm-opencode-zen"
+          node -e '
+            const fs = require("fs");
+            const p = "package.json";
+            const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+            const b = pkg.dsh.profile.bundles;
+            if (!b.includes("@3kaiu/dsh-llm-opencode-zen")) b.push("@3kaiu/dsh-llm-opencode-zen");
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+            console.log("bundles:", b.join(", "));
+          '
+
+      - name: 默认模型指向 opencode-zen(免费层,零凭证)
+        run: |
+          printf 'agent-default-model:\n  provider: opencode-zen\n  model: deepseek-v4-flash-free\n' > "$DSH_HOME/settings.yaml"
+
+      - name: 无头 Agent 执行任务(预算:单任务,20min 上限)
+        run: |
+          dsh --profile headless "${{ github.event.inputs.task }}" | tee /tmp/agent-output.txt
+          test -s /tmp/agent-output.txt && echo "[agent-loop] 输出非空 OK"
+
+      - name: 校验 Agent 产物
+        run: |
+          if test -f docs/architecture/AGENT-LOOP.md; then tail -3 docs/architecture/AGENT-LOOP.md; else echo "[agent-loop] Agent 未写记录文件(检查工具沙箱)"; fi
+
+      - name: 开 PR(人工 merge,不自动合)
+        if: ${{ inputs.open_pr }}
+        run: |
+          git config user.name "dsh-agent"
+          git config user.email "dsh-agent@users.noreply.github.com"
+          BR="agent-loop/$(date -u +%Y%m%d-%H%M%S)"
+          git checkout -b "$BR"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "[agent-loop] 无变更,跳过 PR"
+            exit 0
+          fi
+          git commit -m "agent-loop: 自动运行记录 $(date -u +%Y-%m-%d)"
+          git push origin "$BR"
+          gh pr create --base main --head "$BR" \
+            --title "agent-loop 自动记录 $(date -u +%Y-%m-%d)" \
+            --body "由 agent-loop 工作流自动生成,请人工审查后合并。Agent 输出见工作流日志 step 日志。"
