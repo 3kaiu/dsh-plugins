@@ -72,7 +72,7 @@ jobs:
         run: |
           if test -f docs/architecture/AGENT-LOOP.md; then tail -3 docs/architecture/AGENT-LOOP.md; else echo "[agent-loop] Agent 未写记录文件(检查工具沙箱)"; fi
 
-      - name: 开 PR(人工 merge,不自动合)
+      - name: 开 PR(人工 merge,不自动合;被设置拦则打印链接,不失败)
         if: ${{ inputs.open_pr }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,4 +90,6 @@ jobs:
           git push origin "$BR"
           gh pr create --base main --head "$BR" \
             --title "agent-loop 自动记录 $(date -u +%Y-%m-%d)" \
-            --body "由 agent-loop 工作流自动生成,请人工审查后合并。Agent 输出见工作流日志 step 日志。"
+            --body "由 agent-loop 工作流自动生成,请人工审查后合并。Agent 输出见工作流日志 step 日志。" \
+            && echo "[agent-loop] PR 已自动创建" \
+            || { echo "[agent-loop] 仓库设置禁止 Actions 开 PR,请手动创建:"; echo "  https://github.com/3kaiu/dsh-plugins/pull/new/$BR"; }
