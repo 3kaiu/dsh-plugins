@@ -46,10 +46,11 @@ function fontCss(node) {
   if (f.family) css.push(`font-family:${JSON.stringify(f.family)}`);
   if (f.size != null) css.push(`font-size:${f.size}px`);
   if (f.weight) css.push(`font-weight:${f.weight}`);
-  // lineHeight: "180" = 180%(百分数); "24px" = px; auto/none -> 忽略
+  // lineHeight: "180" = 180%(百分数); "24px" = px; auto/-1/none/0 -> 忽略(浏览器 normal)
   if (f.lineHeight != null) {
     const lh = String(f.lineHeight);
-    if (lh !== "auto" && lh !== "none" && lh !== "0") css.push(`line-height:${lh.endsWith("px") ? lh : lh + "%"}`);
+    const num = parseFloat(lh);
+    if (lh !== "auto" && lh !== "none" && lh !== "0" && !(num <= 0)) css.push(`line-height:${lh.endsWith("px") ? lh : lh + "%"}`);
   }
   // letterSpacing: "-0.3px" -> px; auto/none -> 忽略
   if (f.letterSpacing != null) {
@@ -233,11 +234,11 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
   }
   if (ls.rotate) css.push(`transform:rotate(${ls.rotate}deg)`);
 
-  return `<div data-oid="${oid}" data-parent="${parentOid || ""}" style="${css.join(";")}">${inner}</div>`;
+  return `<div data-oid="${oid}" data-parent="${parentOid || ""}" style="${escapeHtml(css.join(";"))}">${inner}</div>`;
 }
 
 function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 const root = dsl.nodes[0];
@@ -262,7 +263,24 @@ const measureScript = `
     const dy = rect.top - artRect.top - r.y;
     const dw = rect.width - r.w;
     const dh = rect.height - r.h;
-    out.push({ oid: r.oid, dx: +dx.toFixed(2), dy: +dy.toFixed(2), dw: +dw.toFixed(2), dh: +dh.toFixed(2) });
+    // 文本行数检测: 叶子文本节点用 Range 取每行边界
+    let lines = null;
+    if (el.children.length === 0 && el.textContent && el.textContent.trim().length > 0) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rs = range.getClientRects();
+      const rows = [];
+      for (const r of rs) rows.push({ t: Math.round(r.top), b: Math.round(r.bottom), l: Math.round(r.left), rt: Math.round(r.right), w: Math.round(r.width) });
+      // 按 top 分组为行
+      const groups = [];
+      for (const row of rows) {
+        let g = groups.find(g => Math.abs(g.t - row.t) <= 2);
+        if (!g) { g = { t: row.t, b: row.b, l: row.l, rt: row.rt, w: 0, n: 0 }; groups.push(g); }
+        g.l = Math.min(g.l, row.l); g.rt = Math.max(g.rt, row.rt); g.n += 1;
+      }
+      lines = groups.map(g => ({ t: g.t, b: g.b, l: g.l, rt: g.rt, w: g.rt - g.l }));
+    }
+    out.push({ oid: r.oid, dx: +dx.toFixed(2), dy: +dy.toFixed(2), dw: +dw.toFixed(2), dh: +dh.toFixed(2), lines });
   }
   const err = (v) => Math.abs(v);
   const all = out.filter(o => !o.missing);
@@ -307,6 +325,7 @@ const measureScript = `
       rct: [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)],
       par: [Math.round(prect.left), Math.round(prect.top), Math.round(prect.width), Math.round(prect.height)],
       exp: [r.x, r.y, r.w, r.h],
+      lines: (out.find(o => o.oid === r.oid) || {}).lines || null,
     });
   }
   const lhit = loc.filter(o => Math.abs(o.dx) <= 1 && Math.abs(o.dy) <= 1 && Math.abs(o.dw) <= 1 && Math.abs(o.dh) <= 1).length;
