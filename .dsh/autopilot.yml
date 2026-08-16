@@ -21,7 +21,7 @@ git:
 merge:
   mode: guarded
 permissions:
-  allow: [packages/**, tests/**, fixtures/**, .dsh/knowledge/**, docs/**]
+  allow: [packages/**, tests/**, fixtures/**, .dsh/knowledge/**, .dsh/incidents/**, docs/**]
   deny: [.github/workflows/release.yml, .dsh/autopilot.yml, LICENSE, "**/package.json"]
 budget:
   max_runs_per_day: 3
