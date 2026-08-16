@@ -123,7 +123,21 @@ function spacingOf(node) {
     out.alignItems = fi.alignItems
     out.alignItemsConfidence = 1
   }
-  if (kids.length > 0 && ls.width && ls.height) {
+  // MasterGo flexContainerInfo 直读 gap/padding/justifyContent(格式 "24px 24px" / "40px"),
+  // 优先于几何反推(实测 1:1 还原全部节点 ≤1px)
+  if (fi && fi.gap) {
+    out.gap = String(fi.gap)
+    out.gapConfidence = 1
+  }
+  if (fi && fi.padding) {
+    out.padding = String(fi.padding)
+    out.paddingConfidence = 1
+  }
+  if (fi && fi.justifyContent) {
+    out.justifyContent = fi.justifyContent
+    out.justifyContentConfidence = 1
+  }
+  if (kids.length > 0 && ls.width && ls.height && (!fi || !fi.flexDirection)) {
     const inferred = inferLayout({
       container: { width: ls.width, height: ls.height },
       children: kids.map((k) => {
@@ -138,12 +152,17 @@ function spacingOf(node) {
         }
       }),
     })
-    out.gap = inferred.gap ?? null
-    out.padding = inferred.padding ?? null
-    out.justifyContent = inferred.justifyContent ?? null
+    if (out.gap == null) out.gap = inferred.gap ?? null
+    if (out.padding == null) out.padding = inferred.padding ?? null
+    if (out.justifyContent == null) out.justifyContent = inferred.justifyContent ?? null
     out.position = inferred.position
     out.absolutes = inferred.absolutes ?? []
     out.confidence = inferred.confidence ?? 0
+  }
+  // 原生 flex 容器位置语义固定为 flow
+  if (fi && fi.flexDirection) {
+    out.position = "flow"
+    out.positionConfidence = 1
   }
   if (!out.alignItems) out.alignItemsConfidence = 0
   return out

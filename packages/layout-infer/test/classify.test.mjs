@@ -157,3 +157,23 @@ test("classifyDsl: 低置信度容器进 unresolved, assets.inlineSvg 含 svg �
   assert.equal(unresolved[0].name, "root");
   assert.equal(stats.total, 3);
 });
+
+test("spacingOf: 直读 flexContainerInfo gap/padding/justifyContent 优先于几何反推", async () => {
+  const { spacingOf } = await import("../src/classify.js");
+  const node = {
+    type: "FRAME",
+    layoutStyle: { width: 580, height: 329, relativeX: 0, relativeY: 738 },
+    flexContainerInfo: { flexDirection: "column", alignItems: "center", mainSizing: "auto", crossSizing: "fixed", gap: "24px 24px", padding: "40px" },
+    children: [
+      { id: "a", layoutStyle: { width: 500, height: 177, relativeX: 40, relativeY: 112 } },
+    ],
+  };
+  const s = spacingOf(node);
+  assert.equal(s.gap, "24px 24px");
+  assert.equal(s.gapConfidence, 1);
+  assert.equal(s.padding, "40px");
+  assert.equal(s.paddingConfidence, 1);
+  assert.equal(s.alignItems, "center");
+  assert.equal(s.position, "flow");
+  assert.equal(s.positionConfidence, 1);
+});
