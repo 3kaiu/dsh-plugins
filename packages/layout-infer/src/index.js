@@ -4,6 +4,7 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { inferLayout } from "@3kaiu/dsh-plugin-kit";
 import { annotate } from "./annotate.js";
+import { classifyDsl } from "./classify.js";
 
 const name = "dsh-layout-infer";
 
@@ -73,6 +74,26 @@ function apply(ctx) {
         const tree = annotate(Array.isArray(args.nodes) ? args.nodes : [], stats);
         return { stats, tree };
       },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "classify_design",
+      description:
+        "对设计稿 DSL 做还原决策分类,回答『哪些要用图、哪些用代码实现、哪些由内容撑开、哪些固定尺寸、哪些靠 padding/gap、哪些靠 top/bottom 定位』。每节点输出 kind(container/text/icon/image/shape/spacer)、sizing(main/cross = auto 撑开 | fixed 固定,优先直读 MasterGo 原生 flexContainerInfo.mainSizing/crossSizing 与 textMode)、position(flow 流式 | absolute 绝对定位)、spacing(alignItems 直读 + gap/padding 几何反推),均带 confidence 与 reason;另输出 assets:inlineSvg(可内联的图标路径清单)、images(需导出的切图清单)、texts(文本清单)。\n\n输入为 MasterGo magic-mcp 的 mcp__getDsl 返回的 {styles, nodes, components}(styles 中 paint_xx.value 可为色值/渐变/url),也可传纯几何节点树(此时原生信号缺失,置信度降低)。",
+      parameters: {
+        dsl: {
+          type: "json",
+          required: true,
+          description: "MasterGo DSL({styles:{paint_755:xxx:{value:[...]},font_xxx:{value:{...}},...}, nodes:[...], components:[]}) 或纯几何节点树数组",
+        },
+      },
+      output: {
+        schema: { type: "json" },
+        render: renderJson,
+      },
+      execute: (args) => classifyDsl(args.dsl),
     }),
   );
 }

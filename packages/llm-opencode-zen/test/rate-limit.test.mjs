@@ -1,5 +1,10 @@
 // 402/429 限流回归测试: 验证配额耗尽(QUOTA)与限流(RATE_LIMITED)路径的冷却与文案
-import { OpenCodeZenAdapter, quota, resolveAdapterOptions } from "../dist/index.js";
+// 注意: quota 是持久化单例(默认落在 ~/.dsh/storages/),测试必须用临时文件隔离,
+// 否则上一次运行的冷却残留会污染下一次(慢速运行触发防抖写入时会泄漏)。
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+process.env.DSH_QUOTA_FILE = join(tmpdir(), `dsh-quota-test-${process.pid}-${Date.now()}.json`);
+const { OpenCodeZenAdapter, quota, resolveAdapterOptions } = await import("../dist/index.js");
 
 const opts = {
   models: [],

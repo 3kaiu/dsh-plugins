@@ -27,7 +27,9 @@ import { EventSourceParserStream } from "eventsource-parser/stream";
 
 //#region telemetry
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
-const QUOTA_FILE = join(DSH_HOME, "storages", "llm-opencode-zen-usage.json");
+// DSH_QUOTA_FILE 可覆盖 usage 文件路径(测试隔离 / 多实例部署)
+const QUOTA_FILE =
+  process.env.DSH_QUOTA_FILE?.length > 0 ? process.env.DSH_QUOTA_FILE : join(DSH_HOME, "storages", "llm-opencode-zen-usage.json");
 
 const quota = new QuotaTracker(QUOTA_FILE);
 
