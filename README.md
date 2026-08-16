@@ -1,4 +1,4 @@
-# dsh-opencode-zen
+# dsh-plugins
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件 monorepo:
 三个互相独立的插件 + 一个公共能力包,基于 pnpm workspace,与官方仓库
@@ -50,9 +50,9 @@ git tag v0.2.0 && git push origin v0.2.0
 安装 tarball(用户侧,无需构建授权、无需 npm):
 
 ```sh
-dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
 ```
 
 tarball 内已含构建产物(`dist/` + `cordis.patch.yml`),运行时依赖

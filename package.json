@@ -1,8 +1,8 @@
 {
-  "name": "dsh-opencode-zen-monorepo",
+  "name": "dsh-plugins-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "Monorepo for DeepSeek Harness plugins: OpenCode Zen LLM adapter, harness updater, layout inference.",
+  "description": "Monorepo of DeepSeek Harness plugins: OpenCode Zen LLM adapter, harness updater, layout inference.",
   "type": "module",
   "scripts": {
     "build": "pnpm -r --if-present build",
