@@ -153,3 +153,32 @@ events/seq=5,家族文件 session.jsonl + tool.jsonl + all.jsonl:
 真实可用,WS/事件库消费侧随 Console 实现;五族协议对 harness 侧实现者即本插件,
 对 github/console 侧消费方以 JSONL 为准(09 篇 §2 事件库规格)。
 
+## 7. 附:GitHub 维护闭环实测(Phase 1 第四件,2026-08-16)
+
+目标:一个真实 failure 走完「事件 → issue → Agent 修复 → 闸门 → PR → 人工 merge」。
+本次用确定性演示事项 INC-20260817-001(packages/dsh-runtime-events 缺 README,
+reproduce 退出 0=缺陷可复现,testCommand 校验 README 内容)实测闭环 4 轮:
+
+| 轮次 | 结果 | 问题与修复 |
+| --- | --- | --- |
+| run 1 | agent 2 分钟完成修复(建 README、reproduce 转不可复现、test 过、contract 合规),但 **dsh headless 完成后不退出**,挂到 job 30min 超时被取消,变更随 runner 销毁 | 本地复现证明非必然(本地 1 分钟正常退出)——疑似免费网关在最终消息后触发无输出的 LLM 重试循环。修复:**agent 步骤套 timeout 600s 护栏**,agent 工作已完成即视为成功继续(124 处理) |
+| run 2 | 护栏生效(dsh_rc=124 后继续);verify 通过;但 **PR 未创建**:「No commits between main and branch」 | 根因:verify 步 git add -A 静默失败(2>/dev/null 吞错,疑 agent git 遗留 index.lock),commit -am 无物可提交,push 空分支,pr create 又被兜底吞掉。修复:commit+PR 步重写(显式 add、无暂存变更走「agent 已自行提交」分支、PR 失败显式报错);verify 闸门升级为机器验证(reproduce 转不可复现 + test 通过,不再只看 diff 形状) |
+| run 3 | 闸门(含机器验证)通过;commit 失败 | 根因:**runner 未配置 git identity**(Author identity unknown)。修复:commit 前 git config user.name/email(bot 身份) |
+| run 4 | **全绿**:select → guards → provision → agent(2-3min 工作 + 600s 护栏)→ verify gate(contract 1/15 文件、83/500 行 + reproduce 不可复现 + test 通过)→ commit → **PR #4 创建** → issue #3 回评 | — |
+
+关键实证:
+
+- **六工具**(dsh-maint status/inspect/reproduce/test/replay/verify)真实可用;
+  inspect 输出进 agent 任务上下文,reproduce/test 被 agent 与闸门双侧使用。
+- **contract 闸门**双向生效:agent 遵守 allow 路径;闸门机器验证防「假完成」。
+- **attempt 标签机制**生效:run 3 失败后 issue #3 自动挂 auto-attempt-1(上限 3 → needs-human)。
+- **已知限制**(Phase 2 处理):
+  1) bot(GITHUB_TOKEN)建的 PR 不触发 ci.yml 检查(GitHub 安全规则)——维护 PR 的闸门
+     即 maintenance 工作流内的 verify gate;ci.yml 仍是人工 PR 的闸门;
+  2) 修复被人工 merge 后,该事项不再可复现,下次运行会「无变更跳过」——需自动关闭
+     fixed 事项(Phase 2 的 regression 闭环);
+  3) headless 完成后的挂起属官方运行时行为(0 fork 不修),靠 timeout 护栏兜底。
+- 基础设施清单(maintenance.yml):选 top-1(dsh-maint status)、issue 守卫
+  (needs-human/attempts)、headless profile 配方(pnpm add -w + bundles reconcile +
+  settings)、agent 任务模板、verify gate、commit+PR、issue 回评、attempt 标签。
+
