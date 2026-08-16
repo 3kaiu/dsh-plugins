@@ -1,0 +1,13 @@
+{
+  "name": "@3kaiu/dsh-maintenance-core",
+  "version": "0.1.0",
+  "description": "DSH maintenance core: six maintenance tools (status/inspect/reproduce/test/replay/verify) + contract + budget for the GitHub-hosted maintenance loop (docs/06, docs/09 §4).",
+  "type": "module",
+  "bin": { "dsh-maint": "bin/dsh-maint.mjs" },
+  "exports": { ".": "./lib/index.mjs" },
+  "files": [ "bin", "lib" ],
+  "scripts": { "test": "node test/maintenance.test.mjs" },
+  "engines": { "node": ">=20" },
+  "keywords": [ "dsh", "maintenance", "autopilot", "contract", "incidents" ],
+  "license": "MIT"
+}

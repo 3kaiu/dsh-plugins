@@ -1,0 +1,17 @@
+{
+  "id": "INC-20260817-001",
+  "title": "packages/dsh-runtime-events 缺少 README",
+  "severity": "LOW",
+  "frequency": 1,
+  "taxonomy": "DOC_MISSING",
+  "status": "open",
+  "firstSeenAt": "2026-08-17T00:00:00.000Z",
+  "lastSeenAt": "2026-08-17T00:00:00.000Z",
+  "traceRef": ".dsh/state/traces/inc-001.jsonl",
+  "reproduce": {
+    "command": "node -e \"process.exit(require('fs').existsSync('packages/dsh-runtime-events/README.md') ? 1 : 0)\"",
+    "workdir": "."
+  },
+  "testCommand": "node -e \"const fs=require('fs');const t=fs.readFileSync('packages/dsh-runtime-events/README.md','utf8');if(!t.includes('@3kaiu/dsh-runtime-events')||!t.includes('五族')){process.exit(1)}console.log('README ok')\"",
+  "knowledge": "docs/architecture/11-poc-results.md §6 记录了事件桥规格与验证方式"
+}
