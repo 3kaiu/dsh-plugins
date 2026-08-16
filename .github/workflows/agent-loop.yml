@@ -42,7 +42,7 @@ jobs:
       - name: 构建插件(未发布 npm,从仓库构建)
         run: |
           pnpm install --frozen-lockfile
-          node packages/llm-opencode-zen/build.mjs
+          cd packages/llm-opencode-zen && node build.mjs
 
       - name: 装进 headless profile(与本地验证配方一致)
         run: |
