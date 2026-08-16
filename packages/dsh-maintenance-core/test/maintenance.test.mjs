@@ -87,4 +87,57 @@ console.log("# 六工具冒烟(仓库内)")
   ok("status/inspect/reproduce/verify 契约冒烟");
 }
 
+console.log("# evidence 证据核验(假完成拦截)");
+{
+  const { execSync } = await import("node:child_process");
+  const repo = mkdtempSync(join(tmpdir(), "ev-repo-"));
+  const incDir = join(repo, ".dsh", "incidents");
+  mkdirSync(incDir, { recursive: true });
+  writeFileSync(join(incDir, "inc-001.json"), JSON.stringify({
+    id: "INC-TEST-001", title: "x.txt 应存在且含 FIXED", severity: "LOW", frequency: 1,
+    taxonomy: "FAKE", status: "open",
+    reproduce: { command: "node -e \"process.exit(require('fs').existsSync('x.txt') ? 1 : 0)\"", workdir: "." },
+    testCommand: "node -e \"const t=require('fs').readFileSync('x.txt','utf8');if(!t.includes('FIXED'))process.exit(1);console.log('ok')\""
+  }));
+  execSync("git init -q && git add -A && git commit -qm base", { cwd: repo });
+  const runEv = (claim) => JSON.parse(execSync(
+    "node /Users/seeu/dev/dsh-opencode-zen/packages/dsh-maintenance-core/bin/dsh-maint.mjs verify evidence --claim " + claim + " --incident INC-TEST-001 --json",
+    { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo, DSH_MAINT_DIFF_BASE: "HEAD" } }));
+  const claimOf = (o) => { const p = join(repo, "claim.json"); writeFileSync(p, JSON.stringify(o)); return p; };
+
+  // A: 谎报完成(声明改了,实际没改)
+  const a = runEv(claimOf({ incidentId: "INC-TEST-001", changedFiles: ["x.txt"], summary: "修好了" }));
+  assert.equal(a.ok, false);
+  const aCheck = (n) => a.data.checks.find((c) => c.name === n).result;
+  assert.equal(aCheck("claimed_files_in_diff"), "fail");
+  assert.equal(aCheck("reproduce_not_reproducible"), "fail");
+  assert.equal(aCheck("test_passed"), "fail");
+  ok("A 谎报完成 → 拦截(声明文件不在 diff + 缺陷仍可复现 + 测试失败)");
+
+  // B: 改了文件但缺陷仍在(改错文件 y.txt,x.txt 缺失)
+  writeFileSync(join(repo, "y.txt"), "hello");
+  execSync("git add y.txt", { cwd: repo });
+  const b = runEv(claimOf({ incidentId: "INC-TEST-001", changedFiles: ["y.txt"], summary: "改了 y.txt" }));
+  assert.equal(b.ok, false);
+  assert.equal(b.data.checks.find((c) => c.name === "reproduce_not_reproducible").result, "fail");
+  ok("B 改错文件 → 拦截(reproduce 仍可复现)");
+  // 清理 B 的 y.txt,避免残留在后续 diff(未声明文件检查)
+  execSync("git reset -q HEAD -- y.txt && rm y.txt", { cwd: repo });
+
+  // C: 改了目标文件但测试没过(内容缺 FIXED)
+  writeFileSync(join(repo, "x.txt"), "not fixed");
+  execSync("git add x.txt", { cwd: repo });
+  const c = runEv(claimOf({ incidentId: "INC-TEST-001", changedFiles: ["x.txt"], summary: "已创建 x.txt" }));
+  assert.equal(c.ok, false);
+  assert.equal(c.data.checks.find((x) => x.name === "test_passed").result, "fail");
+  ok("C 测试未过 → 拦截");
+
+  // D: 真实修复(内容含 FIXED)→ 放行
+  writeFileSync(join(repo, "x.txt"), "FIXED done");
+  execSync("git add x.txt", { cwd: repo });
+  const d = runEv(claimOf({ incidentId: "INC-TEST-001", changedFiles: ["x.txt"], summary: "x.txt 已含 FIXED,reproduce 转不可复现,test 通过" }));
+  assert.equal(d.ok, true);
+  ok("D 真实修复 → 放行(全部核验 pass)");
+}
+
 console.log("\npassed", passed, "checks");
