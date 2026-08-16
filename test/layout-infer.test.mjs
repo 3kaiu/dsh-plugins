@@ -1,10 +1,13 @@
 // dsh-layout-infer 插件核心逻辑测试
 // 用纯堆叠稿(408:9584)数据验证 annotate_layout / infer_layout 行为与已验证结果一致
+// fixture 已提交在 test/fixtures/(mg-pure-sec-*.json,真实设计稿 30 个 section)
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { annotate } from "../src/layout-infer/annotate.js";
 import { inferLayout } from "../src/layout-infer/core.js";
 
-const PREFIX = "/tmp/mg-pure-sec-";
+const PREFIX = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "mg-pure-sec-");
 
 // 1. 整树标注: 30 个 section 全部标注
 const all = { total: 0, containers: 0, flex: 0, absolute: 0 };

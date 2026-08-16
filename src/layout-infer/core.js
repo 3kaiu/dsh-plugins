@@ -16,20 +16,33 @@
 const TOL = 2 // 像素容差(整数坐标设计稿)
 const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 
-/** 众数: 出现次数最多的值;无众数返回 null */
+/** 众数: 出现次数最多的值;无唯一众数返回 null
+ *
+ *  语义约定:
+ *  - 空数组 → null
+ *  - 单元素 → 该元素本身(平凡众数,调用方依赖此行为输出唯一 gap)
+ *  - 多元素 → 唯一最大值且出现次数 >= 2 才返回;平票(如 [10,20] 或
+ *    [10,10,20,20])或无重复(如 [10,20,30])一律返回 null,
+ *    避免把「第一个碰到的值」误当众数。
+ */
 function mode(values) {
-  if (!values.length) return null
+  if (values.length === 0) return null
+  if (values.length === 1) return values[0]
   const counts = new Map()
   for (const v of values) counts.set(v, (counts.get(v) || 0) + 1)
   let best = null
   let bestCount = 0
+  let unique = true
   for (const [v, c] of counts) {
     if (c > bestCount) {
       best = v
       bestCount = c
+      unique = true
+    } else if (c === bestCount) {
+      unique = false
     }
   }
-  return best
+  return bestCount >= 2 && unique ? best : null
 }
 
 function round1(v) {
@@ -121,15 +134,19 @@ function inferLayout({ container, children }) {
   }
 
   // 行/列判定: 支持「边缘对齐」「中心对齐」两种信号
-  // 列布局的子元素可宽度不同(左/居中对齐);行布局的子元素可高度不同(顶/居中对齐)
+  // 列布局的子元素可宽度不同(左/居中/右对齐);行布局的子元素可高度不同(顶/居中/底对齐)
   const topAligned = Math.max(...ys) - minY <= TOL
   const leftAligned = Math.max(...xs) - minX <= TOL
+  const minBY = Math.min(...stable.map((k) => k.y + k.height))
+  const minRX = Math.min(...stable.map((k) => k.x + k.width))
+  const bottomAligned = maxBY - minBY <= TOL
+  const rightAligned = maxRX - minRX <= TOL
   const centerXAligned = rangeX <= TOL
   const centerYAligned = rangeY <= TOL
   const spreadX = maxRX - minX
   const spreadY = maxBY - minY
-  const rowSig = (topAligned || centerYAligned) && spreadX > TOL
-  const colSig = (leftAligned || centerXAligned) && spreadY > TOL
+  const rowSig = (topAligned || centerYAligned || bottomAligned) && spreadX > TOL
+  const colSig = (leftAligned || centerXAligned || rightAligned) && spreadY > TOL
 
   let isRow = false
   let isColumn = false
@@ -163,8 +180,17 @@ function inferLayout({ container, children }) {
   let gap = mode(gaps)
   let justifyContent = null
 
-  // space-between 检测: 主轴方向存在一个明显大分隔(远超其他间隙) → 两端分簇
-  if (sorted.length >= 3 && gaps.length >= 2) {
+  // 主轴对齐: 起始边对齐 = flex-start(默认 null);结束边对齐 = flex-end;
+  // 中心对齐 = center。三者互斥(同时成立意味着元素重合,已被行列信号排除)。
+  const mainStartAligned = main === 'row' ? leftAligned : topAligned
+  const mainCenterAligned = main === 'row' ? centerXAligned : centerYAligned
+  const mainEndAligned = main === 'row' ? rightAligned : bottomAligned
+  if (mainEndAligned && !mainStartAligned) justifyContent = 'flex-end'
+  else if (mainCenterAligned && !mainStartAligned) justifyContent = 'center'
+
+  // space-between 检测: 主轴方向存在一个明显大分隔(远超其他间隙) → 两端分簇;
+  // 仅在主轴无对齐信号时判定(结束边/中心对齐时主轴位置已确定,不适用)
+  if (justifyContent === null && sorted.length >= 3 && gaps.length >= 2) {
     const maxG = Math.max(...gaps)
     const others = gaps.filter((g) => g < maxG - 0.01)
     const secondG = others.length ? Math.max(...others) : 0
@@ -259,7 +285,11 @@ function maybeDowngrade(result, cw, ch, stable, absolutes) {
   return result
 }
 
-/** 模拟 flex 反写后的子元素位置(CSS flex 布局算法) */
+/** 模拟 flex 反写后的子元素位置(CSS flex 布局算法)
+ *
+ *  与 CSS 对齐:主轴/交叉轴的偏移都相对 content box 计算
+ *  (content box = 容器尺寸 − 两侧 padding),而不是相对 border box。
+ */
 function simulateFlex(container, inferred, kids) {
   const dir = inferred.flexDirection === 'row' ? 'row' : 'column'
   const pad = inferred.padding || [0, 0, 0, 0]
@@ -271,73 +301,101 @@ function simulateFlex(container, inferred, kids) {
   const padMainStart = dir === 'row' ? pad[3] : pad[0]
   const padMainEnd = dir === 'row' ? pad[1] : pad[2]
   const padCrossStart = dir === 'row' ? pad[0] : pad[3]
+  const padCrossEnd = dir === 'row' ? pad[2] : pad[1]
+  const mainContent = mainSize - padMainStart - padMainEnd
+  const crossContent = crossSize - padCrossStart - padCrossEnd
   const sorted = [...kids].sort((a, b) => (dir === 'row' ? a.x - b.x : a.y - b.y))
 
   if (inferred.justifyContent === 'space-between') {
     const totalMain = sorted.reduce((s, k) => s + (k[mainDim] || 0), 0)
-    const totalGap = mainSize - padMainStart - padMainEnd - totalMain
+    const totalGap = mainContent - totalMain
     const slot = totalGap / Math.max(1, sorted.length - 1)
     return sorted.map((k, i) => {
       const mainPos = padMainStart + sorted.slice(0, i).reduce((s, kk) => s + (kk[mainDim] || 0), 0) + slot * i
-      return placeIn(dir, k, mainPos, crossSize, padCrossStart, inferred)
+      return placeIn(dir, k, mainPos, crossContent, padCrossStart, inferred)
     })
   }
 
   const content = sorted.reduce((s, k) => s + (k[mainDim] || 0), 0) + gap * (sorted.length - 1)
   let offset = padMainStart
-  if (inferred.justifyContent === 'center') offset = (mainSize - content) / 2 + padMainStart - padMainEnd
+  if (inferred.justifyContent === 'center') offset = padMainStart + (mainContent - content) / 2
   const res = []
   let cursor = offset
   for (const k of sorted) {
-    res.push(placeIn(dir, k, cursor, crossSize, padCrossStart, inferred))
+    res.push(placeIn(dir, k, cursor, crossContent, padCrossStart, inferred))
     cursor += (k[mainDim] || 0) + gap
   }
   return res
 }
 
-function placeIn(dir, k, mainPos, crossSize, padCrossStart, inferred) {
+/** 单个子元素的交叉轴定位(CSS 语义: 相对 content box) */
+function placeIn(dir, k, mainPos, crossContent, padCrossStart, inferred) {
   const crossDim = dir === 'row' ? 'height' : 'width'
+  const size = k[crossDim] || 0
   let crossPos = padCrossStart
-  if (inferred.alignItems === 'center') crossPos = (crossSize - (k[crossDim] || 0)) / 2
-  else if (inferred.alignItems === 'flex-end') crossPos = crossSize - padCrossStart - (k[crossDim] || 0)
+  if (inferred.alignItems === 'center') crossPos = padCrossStart + (crossContent - size) / 2
+  else if (inferred.alignItems === 'end' || inferred.alignItems === 'flex-end')
+    crossPos = padCrossStart + (crossContent - size)
   if (dir === 'row') return { x: mainPos, y: crossPos }
   return { x: crossPos, y: mainPos }
 }
 
-/** 交叉轴对齐推断 */
+/** 交叉轴对齐推断
+ *
+ *  规则(按优先级):
+ *  1. 所有子元素中心点一致 → center
+ *  2. 所有起始边一致(top/left,高度或宽度可以不同)→ start
+ *  3. 所有结束边一致(bottom/right)→ end
+ *  4. 无法确定 → 保守 start(绝不输出 stretch:
+ *     子元素尺寸不齐 ≠ 拉伸,设计稿里显式尺寸差异是常态,
+ *     误标 stretch 会诱导还原方写出错误布局)。
+ */
 function inferCrossAlign(stable, isRow, tol) {
-  const crossCenter = stable.map((k) => (isRow ? k.y + k.height / 2 : k.x + k.width / 2))
-  const crossTop = stable.map((k) => (isRow ? k.y : k.x))
+  const crossStart = stable.map((k) => (isRow ? k.y : k.x))
   const crossSize = stable.map((k) => (isRow ? k.height : k.width))
-  const spread = Math.max(...crossCenter) - Math.min(...crossCenter)
-  if (spread <= tol) return 'center'
-  const minEdge = Math.min(...crossTop)
-  const maxEdge = Math.max(...crossTop.map((t, i) => t + crossSize[i]))
-  if (maxEdge - minEdge <= tol && Math.abs(minEdge - Math.min(...crossCenter)) > tol) return 'start'
-  if (maxEdge - minEdge > tol * 2) return 'stretch'
+  const crossEnd = crossStart.map((s, i) => s + crossSize[i])
+  const crossCenter = crossStart.map((s, i) => s + crossSize[i] / 2)
+  const spreadCenter = Math.max(...crossCenter) - Math.min(...crossCenter)
+  if (spreadCenter <= tol) return 'center'
+  if (Math.max(...crossStart) - Math.min(...crossStart) <= tol) return 'start'
+  if (Math.max(...crossEnd) - Math.min(...crossEnd) <= tol) return 'end'
   return 'start'
+}
+
+/** 沿一个轴做容差聚类: 位置(或与前簇末端的间距)在 tol 内归入同一簇
+ *
+ *  替代 Math.round 分组 key 的方案:浮点坐标(如 99.6 / 100.2)不再
+ *  因四舍五入被拆成两行或误并成一行;只要相邻元素间距 <= tol 即同簇。
+ */
+function clusterByAxis(items, posOf, sizeOf, tol) {
+  const sorted = [...items].sort((a, b) => posOf(a) - posOf(b))
+  const clusters = []
+  for (const k of sorted) {
+    const pos = posOf(k)
+    const end = pos + sizeOf(k)
+    const last = clusters[clusters.length - 1]
+    if (last !== void 0 && pos - last.maxEnd <= tol) {
+      last.items.push(k)
+      last.maxEnd = Math.max(last.maxEnd, end)
+    } else {
+      clusters.push({ items: [k], maxEnd: end })
+    }
+  }
+  return clusters
 }
 
 /** 网格推断: 规整行列矩阵 → flexWrap wrap */
 function inferGrid(children, tol) {
-  const rows = new Map()
-  const cols = new Map()
-  for (const k of children) {
-    const r = Math.round(k.y)
-    const c = Math.round(k.x)
-    if (!rows.has(r)) rows.set(r, [])
-    rows.get(r).push(k)
-    if (!cols.has(c)) cols.set(c, [])
-    cols.get(c).push(k)
-  }
-  if (rows.size < 2 || cols.size < 2) return null
+  const rows = clusterByAxis(children, (k) => k.y, (k) => k.height, tol)
+  const cols = clusterByAxis(children, (k) => k.x, (k) => k.width, tol)
+  if (rows.length < 2 || cols.length < 2) return null
   // 所有行高一致 & 所有列宽一致
-  const heights = [...rows.values()].map((arr) => Math.max(...arr.map((k) => k.height)))
-  const widths = [...cols.values()].map((arr) => Math.max(...arr.map((k) => k.width)))
+  const heights = rows.map((r) => Math.max(...r.items.map((k) => k.height)))
+  const widths = cols.map((c) => Math.max(...c.items.map((k) => k.width)))
   if (Math.max(...heights) - Math.min(...heights) > tol) return null
   if (Math.max(...widths) - Math.min(...widths) > tol) return null
   // 每个 cell 单节点
-  const expected = rows.size * cols.size
+  const expected = rows.length * cols.length
   if (children.length !== expected) return null
   return {
     flexDirection: 'row',
@@ -350,5 +408,5 @@ function inferGrid(children, tol) {
   }
 }
 
-export { inferLayout, mode, round1 }
+export { inferLayout, mode, round1, simulateFlex, clusterByAxis }
 if (typeof globalThis !== 'undefined') globalThis.layoutInfer = { inferLayout, mode, round1 }

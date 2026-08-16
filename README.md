@@ -77,7 +77,19 @@ The `llm-opencode-zen` settings section lives under `llm-opencode-zen:` in your
 
 ```sh
 npm run build   # esbuild minify -> dist/
+npm test        # build + all test suites (layout infer, plugin registration, rate limit, reasoning)
 ```
+
+Test suites:
+
+- `test/core-extra.test.mjs` — layout-infer kernel edge cases (mode semantics, flex
+  simulation formulas, cross-axis alignment, grid tolerance clustering, downgrades);
+  fully self-contained.
+- `test/layout-infer.test.mjs` — regression against 30 real design sections from a
+  production pure-stack draft (408:9584), fixtures committed under `test/fixtures/`.
+- `test/plugin-register.test.mjs` — tool registration smoke test against `dist/`.
+- `test/rate-limit.test.mjs`, `test/reasoning-echo.test.mjs` — LLM adapter quota and
+  reasoning-echo regression (offline, mocked fetch).
 
 Runtime deps (`@deepseek-ai/dsh-llm`, `dsh-credentials`, `dsh-settings`, `dsh-timeout`,
 `dsh-launch-environment`, `schemastery`, `eventsource-parser`) are external and resolve

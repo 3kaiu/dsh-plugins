@@ -14,7 +14,8 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "install:local": "node build.mjs && node install.mjs"
+    "install:local": "node build.mjs && node install.mjs",
+    "test": "node build.mjs && node test/core-extra.test.mjs && node test/layout-infer.test.mjs && node test/plugin-register.test.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
