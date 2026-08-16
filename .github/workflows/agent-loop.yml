@@ -25,10 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      DSH_HOME: ${{ runner.temp }}/dsh-home
       OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: 注入 DSH_HOME(RUNNER_TEMP,隔离于 ~/.dsh)
+        run: echo "DSH_HOME=$RUNNER_TEMP/dsh-home" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
