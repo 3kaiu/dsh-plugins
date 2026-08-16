@@ -9,7 +9,8 @@
     "./quota-tracker": "./src/quota-tracker.js",
     "./semaphore": "./src/semaphore.js",
     "./layout-core": "./src/layout-core.js",
-    "./test-utils": "./src/test-utils.js"
+    "./test-utils": "./src/test-utils.js",
+    "./dsl-clean": "./src/dsl-clean.js"
   },
   "files": [
     "src"

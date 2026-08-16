@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs"
+    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs && node test/stacked-restore.test.mjs && node test/dsl-clean.test.mjs"
   },
   "dsh": {
     "bundle": {

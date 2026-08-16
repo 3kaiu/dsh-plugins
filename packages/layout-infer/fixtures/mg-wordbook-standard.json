@@ -1,0 +1,647 @@
+{
+  "meta": {
+    "canvas": {
+      "width": 375,
+      "height": 812
+    },
+    "rootName": "容器 173939",
+    "source": ""
+  },
+  "styles": {},
+  "root": {
+    "type": "FRAME",
+    "id": "synthetic:root",
+    "name": "容器 173939",
+    "layoutStyle": {
+      "width": 375,
+      "height": 812,
+      "relativeX": 0,
+      "relativeY": 0
+    },
+    "children": [
+      {
+        "type": "LAYER",
+        "id": "755:06435",
+        "name": "hero-background",
+        "layoutStyle": {
+          "width": 375,
+          "height": 159,
+          "relativeX": 0,
+          "relativeY": 0
+        },
+        "_color": "linear-gradient(180deg, #7F7CFF 0%, #79A8FF 100%)"
+      },
+      {
+        "type": "FRAME",
+        "id": "755:06362",
+        "name": "learn-card",
+        "layoutStyle": {
+          "width": 343,
+          "height": 132,
+          "relativeX": 16,
+          "relativeY": 200
+        },
+        "effect": "box-shadow",
+        "children": []
+      },
+      {
+        "type": "FRAME",
+        "id": "755:06448",
+        "name": "content-tabs",
+        "layoutStyle": {
+          "width": 170,
+          "height": 42,
+          "relativeX": 102,
+          "relativeY": 676
+        },
+        "effect": "box-shadow",
+        "children": []
+      },
+      {
+        "type": "FRAME",
+        "id": "755:06339",
+        "name": "sticker-card",
+        "layoutStyle": {
+          "width": 343,
+          "height": 196,
+          "relativeX": 16,
+          "relativeY": 422
+        },
+        "effect": "box-shadow",
+        "children": [
+          {
+            "type": "GROUP",
+            "id": "755:06267",
+            "name": "组 174138",
+            "layoutStyle": {
+              "width": 97.9,
+              "height": 101.8,
+              "relativeX": 44.6,
+              "relativeY": 40.2,
+              "rotate": -4.2
+            },
+            "role": "sticker"
+          },
+          {
+            "type": "GROUP",
+            "id": "755:06275",
+            "name": "组 174146",
+            "layoutStyle": {
+              "width": 95.1,
+              "height": 79.3,
+              "relativeX": 3,
+              "relativeY": 111
+            }
+          },
+          {
+            "type": "GROUP",
+            "id": "755:06441",
+            "name": "组 174140",
+            "layoutStyle": {
+              "width": 60.8,
+              "height": 54.3,
+              "relativeX": 98.4,
+              "relativeY": 136.7,
+              "rotate": -7.7
+            },
+            "role": "sticker"
+          },
+          {
+            "type": "GROUP",
+            "id": "755:06284",
+            "name": "组 174141",
+            "layoutStyle": {
+              "width": 80,
+              "height": 77.2,
+              "relativeX": 167.4,
+              "relativeY": 113.6,
+              "rotate": -0.6
+            },
+            "role": "sticker"
+          }
+        ]
+      },
+      {
+        "type": "FRAME",
+        "id": "755:06408",
+        "name": "status-bar",
+        "layoutStyle": {
+          "width": 375,
+          "height": 44,
+          "relativeX": 0,
+          "relativeY": 0
+        },
+        "children": []
+      },
+      {
+        "type": "FRAME",
+        "id": "755:06314",
+        "name": "nav-bar",
+        "layoutStyle": {
+          "width": 375,
+          "height": 44,
+          "relativeX": 0,
+          "relativeY": 44
+        },
+        "children": []
+      },
+      {
+        "type": "FRAME",
+        "id": "synthetic:hero:755:06300",
+        "name": "hero",
+        "layoutStyle": {
+          "width": 106,
+          "height": 86,
+          "relativeX": 134,
+          "relativeY": 90
+        },
+        "children": [
+          {
+            "type": "FRAME",
+            "id": "synthetic:column-group:755:06300",
+            "name": "column-group",
+            "layoutStyle": {
+              "width": 106,
+              "height": 86,
+              "relativeX": 0,
+              "relativeY": 0
+            },
+            "children": [
+              {
+                "type": "TEXT",
+                "id": "755:06300",
+                "name": "0",
+                "layoutStyle": {
+                  "width": 31,
+                  "height": 70,
+                  "relativeX": 38,
+                  "relativeY": 0
+                },
+                "rowTexts": [
+                  {
+                    "text": "0",
+                    "parentType": "TEXT",
+                    "parentName": "0"
+                  }
+                ],
+                "text": "0"
+              },
+              {
+                "type": "FRAME",
+                "id": "755:06333",
+                "name": "心碎",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 20,
+                  "relativeX": 0,
+                  "relativeY": 66
+                }
+              },
+              {
+                "type": "GROUP",
+                "id": "755:06294",
+                "name": "组 174130",
+                "layoutStyle": {
+                  "width": 84,
+                  "height": 20,
+                  "relativeX": 22,
+                  "relativeY": 66
+                },
+                "rowTexts": [
+                  {
+                    "text": "连续打卡词书",
+                    "parentType": "GROUP",
+                    "parentName": "组 174130"
+                  }
+                ],
+                "text": "连续打卡词书"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "FRAME",
+        "id": "synthetic:stats-row:755:06436",
+        "name": "stats-row",
+        "layoutStyle": {
+          "width": 343,
+          "height": 58,
+          "relativeX": 16,
+          "relativeY": 352
+        },
+        "children": [
+          {
+            "type": "FRAME",
+            "id": "synthetic:column-group:755:06436",
+            "name": "stats-item",
+            "layoutStyle": {
+              "width": 136,
+              "height": 58,
+              "relativeX": 0,
+              "relativeY": 0
+            },
+            "children": [
+              {
+                "type": "TEXT",
+                "id": "755:06436",
+                "name": "学会的词",
+                "layoutStyle": {
+                  "width": 56,
+                  "height": 20,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "rowTexts": [
+                  {
+                    "text": "学会的词",
+                    "parentType": "TEXT",
+                    "parentName": "学会的词"
+                  }
+                ],
+                "text": "学会的词"
+              },
+              {
+                "type": "GROUP",
+                "id": "755:06478",
+                "name": "组 172939",
+                "layoutStyle": {
+                  "width": 60,
+                  "height": 30,
+                  "relativeX": 0,
+                  "relativeY": 28
+                },
+                "rowTexts": [
+                  {
+                    "text": "今日",
+                    "parentType": "GROUP",
+                    "parentName": "组 172939"
+                  }
+                ],
+                "text": "今日"
+              },
+              {
+                "type": "GROUP",
+                "id": "755:06305",
+                "name": "组 172938",
+                "layoutStyle": {
+                  "width": 68,
+                  "height": 30,
+                  "relativeX": 68,
+                  "relativeY": 28
+                },
+                "rowTexts": [
+                  {
+                    "text": "近7日",
+                    "parentType": "GROUP",
+                    "parentName": "组 172938"
+                  }
+                ],
+                "text": "近7日"
+              }
+            ]
+          },
+          {
+            "type": "FRAME",
+            "id": "755:06472",
+            "name": "容器 173774",
+            "layoutStyle": {
+              "width": 16,
+              "height": 16,
+              "relativeX": 327,
+              "relativeY": 35
+            }
+          }
+        ]
+      },
+      {
+        "type": "FRAME",
+        "id": "synthetic:tab-bar:755:06485/408:9717",
+        "name": "tab-bar",
+        "layoutStyle": {
+          "width": 375,
+          "height": 82,
+          "relativeX": 0,
+          "relativeY": 730
+        },
+        "children": [
+          {
+            "type": "PATH",
+            "id": "755:06485/408:9717",
+            "name": "矩形",
+            "layoutStyle": {
+              "width": 375,
+              "height": 82,
+              "relativeX": 0,
+              "relativeY": 0
+            },
+            "_color": "#FFFFFF",
+            "effect": "backdrop-blur",
+            "role": "tab-bar-bg"
+          },
+          {
+            "type": "FRAME",
+            "id": "synthetic:tab-item:755:06485/408:9691",
+            "name": "tab-item-学习",
+            "layoutStyle": {
+              "width": 24,
+              "height": 38,
+              "relativeX": 248,
+              "relativeY": 10
+            },
+            "flexContainerInfo": {
+              "flexDirection": "column",
+              "mainSizing": "auto",
+              "crossSizing": "fixed",
+              "justifyContent": "flex-start",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "FRAME",
+                "id": "755:06485/408:9691",
+                "name": "容器 173797",
+                "layoutStyle": {
+                  "width": 24,
+                  "height": 24,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "role": "tab-icon"
+              },
+              {
+                "type": "TEXT",
+                "id": "755:06485/408:9634",
+                "name": "学习",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 14,
+                  "relativeX": 2,
+                  "relativeY": 24
+                },
+                "rowTexts": [
+                  {
+                    "text": "学习",
+                    "parentType": "TEXT",
+                    "parentName": "学习"
+                  }
+                ],
+                "text": "学习",
+                "role": "tab-label"
+              }
+            ]
+          },
+          {
+            "type": "FRAME",
+            "id": "synthetic:tab-item:755:06485/408:9673",
+            "name": "tab-item-我的",
+            "layoutStyle": {
+              "width": 24,
+              "height": 38,
+              "relativeX": 321,
+              "relativeY": 10
+            },
+            "flexContainerInfo": {
+              "flexDirection": "column",
+              "mainSizing": "auto",
+              "crossSizing": "fixed",
+              "justifyContent": "flex-start",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "FRAME",
+                "id": "755:06485/408:9673",
+                "name": "容器 173798",
+                "layoutStyle": {
+                  "width": 24,
+                  "height": 24,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "role": "tab-icon"
+              },
+              {
+                "type": "TEXT",
+                "id": "755:06485/408:9638",
+                "name": "我的",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 14,
+                  "relativeX": 2,
+                  "relativeY": 24
+                },
+                "rowTexts": [
+                  {
+                    "text": "我的",
+                    "parentType": "TEXT",
+                    "parentName": "我的"
+                  }
+                ],
+                "text": "我的",
+                "role": "tab-label"
+              }
+            ]
+          },
+          {
+            "type": "FRAME",
+            "id": "synthetic:tab-item:755:06485/408:9661",
+            "name": "tab-item-首页",
+            "layoutStyle": {
+              "width": 24,
+              "height": 38,
+              "relativeX": 103,
+              "relativeY": 10
+            },
+            "flexContainerInfo": {
+              "flexDirection": "column",
+              "mainSizing": "auto",
+              "crossSizing": "fixed",
+              "justifyContent": "flex-start",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "FRAME",
+                "id": "755:06485/408:9661",
+                "name": "容器 173796",
+                "layoutStyle": {
+                  "width": 24,
+                  "height": 24,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "role": "tab-icon"
+              },
+              {
+                "type": "TEXT",
+                "id": "755:06485/408:9646",
+                "name": "首页",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 14,
+                  "relativeX": 2,
+                  "relativeY": 24
+                },
+                "rowTexts": [
+                  {
+                    "text": "首页",
+                    "parentType": "TEXT",
+                    "parentName": "首页"
+                  }
+                ],
+                "text": "首页",
+                "role": "tab-label"
+              }
+            ]
+          },
+          {
+            "type": "FRAME",
+            "id": "synthetic:tab-item:755:06485/408:9650",
+            "name": "tab-item-场景",
+            "layoutStyle": {
+              "width": 24,
+              "height": 38,
+              "relativeX": 176,
+              "relativeY": 10
+            },
+            "flexContainerInfo": {
+              "flexDirection": "column",
+              "mainSizing": "auto",
+              "crossSizing": "fixed",
+              "justifyContent": "flex-start",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "FRAME",
+                "id": "755:06485/408:9650",
+                "name": "容器 173799",
+                "layoutStyle": {
+                  "width": 24,
+                  "height": 24,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "role": "tab-icon"
+              },
+              {
+                "type": "TEXT",
+                "id": "755:06485/408:9630",
+                "name": "场景",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 14,
+                  "relativeX": 2,
+                  "relativeY": 24
+                },
+                "rowTexts": [
+                  {
+                    "text": "场景",
+                    "parentType": "TEXT",
+                    "parentName": "场景"
+                  }
+                ],
+                "text": "场景",
+                "role": "tab-label"
+              }
+            ]
+          },
+          {
+            "type": "FRAME",
+            "id": "synthetic:tab-item:755:06485/408:9703",
+            "name": "tab-item-对话",
+            "layoutStyle": {
+              "width": 24,
+              "height": 38,
+              "relativeX": 30,
+              "relativeY": 10
+            },
+            "flexContainerInfo": {
+              "flexDirection": "column",
+              "mainSizing": "auto",
+              "crossSizing": "fixed",
+              "justifyContent": "flex-start",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "FRAME",
+                "id": "755:06485/408:9703",
+                "name": "容器 173794",
+                "layoutStyle": {
+                  "width": 24,
+                  "height": 24,
+                  "relativeX": 0,
+                  "relativeY": 0
+                },
+                "role": "tab-icon"
+              },
+              {
+                "type": "TEXT",
+                "id": "755:06485/408:9642",
+                "name": "对话",
+                "layoutStyle": {
+                  "width": 20,
+                  "height": 14,
+                  "relativeX": 2,
+                  "relativeY": 24
+                },
+                "rowTexts": [
+                  {
+                    "text": "对话",
+                    "parentType": "TEXT",
+                    "parentName": "对话"
+                  }
+                ],
+                "text": "对话",
+                "role": "tab-label"
+              }
+            ]
+          },
+          {
+            "type": "INSTANCE",
+            "id": "755:06485/408:02510",
+            "name": "Bars / Home Indicator / iPhone / Light - Portrait",
+            "layoutStyle": {
+              "width": 134,
+              "height": 34,
+              "relativeX": 121,
+              "relativeY": 48
+            }
+          }
+        ]
+      },
+      {
+        "type": "TEXT",
+        "id": "755:06430",
+        "name": "阿祖搞定常用高频词",
+        "layoutStyle": {
+          "width": 108,
+          "height": 17,
+          "relativeX": 461,
+          "relativeY": 174
+        },
+        "rowTexts": [
+          {
+            "text": "阿祖搞定常用高频词",
+            "parentType": "TEXT",
+            "parentName": "阿祖搞定常用高频词"
+          }
+        ],
+        "text": "阿祖搞定常用高频词"
+      }
+    ],
+    "_color": "#F6F7FB",
+    "fill": "paint_root:background"
+  },
+  "stats": {
+    "total": 30,
+    "offCanvas": 1,
+    "background": 1,
+    "sticker": 0,
+    "container": 3,
+    "band": 5
+  },
+  "warnings": []
+}

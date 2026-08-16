@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词书 - 首页</title>
+<style>
+  :root {
+    /* 画布背景: splitContainer 词书 #F6F7FB (token: paint_368:00871) */
+    --bg-page: #F6F7FB;
+    /* Hero 渐变: 矩形 148435 (token: paint_40:0140) */
+    --grad-hero: linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%);
+    /* 主文本 #111E38 (token: paint_326:08300) */
+    --text-primary: #111E38;
+    /* 次级文本 #5D636D (token: paint_326:04496) */
+    --text-secondary: #5D636D;
+    /* 三级文本 #8F96A4 (token: paint_103:14801 / paint_2:128) */
+    --text-tertiary: #8F96A4;
+    /* 四级文本 #838A99 (token: paint_40:0402) */
+    --text-quaternary: #838A99;
+    /* 弱文本 #B6BDCA (token: paint_40:0117) */
+    --text-muted: #B6BDCA;
+    /* TabBar 未选中 #D1D1D1 (token: paint_103:14666) */
+    --text-tabbar-inactive: #D1D1D1;
+    /* 品牌橙 #F1950A (token: paint_326:04331) */
+    --brand-orange: #F1950A;
+    /* 按钮字 #240F00 (token: paint_189:5818) */
+    --btn-text: #240F00;
+    /* 学习卡图底 #E5DAE5 (token: paint_326:04313) */
+    --card-img-bg: #E5DAE5;
+    /* 去学习按钮: inset 0 -2.5px #FF984E (token: effect_103:15006) */
+    --shadow-btn: inset 0px -2.5px 0px 0px #FF984E;
+    /* 0 大字阴影: 0 2.82px 15.79px #C7CDE4 (token: effect_326:04472) */
+    --shadow-zero: 0px 2.82px 15.79px 0px #C7CDE4;
+    /* TabBar 背景: backdrop blur 5px + #FFFFFF (token: effect_2:374 / paint_103:14690) */
+    --tabbar-bg: rgba(255, 255, 255, 0.85);
+    /* 贴纸文本描边 #FFFFFF (token: paint_622:00418) */
+    --sticker-stroke: #FFFFFF;
+    /* 贴纸小字阴影 (token: effect_326:04304) */
+    --shadow-sticker: 0px 0px 3px 0px #D4D4D4;
+    /* 字体 */
+    --font-num: 'JoonFont', 'PingFang SC', sans-serif;
+    --font-body: 'PingFang SC', 'PingFang HK', -apple-system, sans-serif;
+    --font-sticker: 'ポプらむ☆キウイ', 'PingFang SC', cursive;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-body); background: #fff; }
+
+  .page {
+    position: relative;
+    width: 375px;
+    min-height: 812px;
+    background: var(--bg-page); /* token: paint_368:00871 */
+    overflow: hidden;
+    margin: 0 auto;
+  }
+
+  /* ===== 1. Hero 渐变背景层 (section 0) ===== */
+  .hero-grad {
+    position: absolute;
+    left: 0; top: 0;
+    width: 375px; height: 159px;
+    background: var(--grad-hero); /* token: paint_40:0140 */
+    pointer-events: none;
+  }
+  .off-canvas-text {
+    position: absolute;
+    left: 461px; top: 174px;
+    width: 108px; height: 17px;
+    font-size: 12px;
+    color: #979797; /* token: paint_368:01073 */
+    line-height: 17px;
+  }
+
+  /* ===== 2. 状态栏 (section 1) ===== */
+  .status-bar {
+    position: absolute;
+    left: 0; top: 0;
+    width: 375px; height: 44px;
+  }
+  .status-time {
+    position: absolute;
+    left: 31px; top: 12px;
+    width: 34px; height: 21px;
+    font-size: 15px; font-weight: 500;
+    color: #000000; /* token: paint_506:19993 */
+    text-align: center; line-height: 21px;
+  }
+  .status-cellular {
+    position: absolute;
+    left: 294px; top: 17px;
+    width: 17px; height: 10.67px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .status-cellular i {
+    display: block;
+    width: 3px; border-radius: 1px;
+    background: #000; /* token: paint_506:19993 */
+    opacity: 0.9;
+  }
+  .status-cellular i:nth-child(1) { height: 4px; opacity: 0.4; }
+  .status-cellular i:nth-child(2) { height: 6px; opacity: 0.55; }
+  .status-cellular i:nth-child(3) { height: 8px; opacity: 0.7; }
+  .status-cellular i:nth-child(4) { height: 10.67px; }
+  .status-wifi {
+    position: absolute;
+    left: 316px; top: 17px;
+    width: 15.33px; height: 11px;
+  }
+  .status-battery {
+    position: absolute;
+    left: 336px; top: 16px;
+    width: 25px; height: 12px;
+  }
+  .status-battery .border {
+    position: absolute;
+    left: 0.33px; top: 0.33px;
+    width: 22px; height: 11.33px;
+    border: 1px solid #000; /* token: paint_506:19993 */
+    border-radius: 2.67px;
+    opacity: 0.35;
+  }
+  .status-battery .cap {
+    position: absolute;
+    left: 23.33px; top: 4px;
+    width: 1.33px; height: 4px;
+    background: #000; opacity: 0.4;
+    border-radius: 0 1px 1px 0;
+  }
+  .status-battery .capacity {
+    position: absolute;
+    left: 2.33px; top: 2.33px;
+    width: 18px; height: 7.33px;
+    background: #000; /* token: paint_506:19993 */
+    border-radius: 1.33px;
+  }
+
+  /* ===== 3. 导航栏 (section 11) ===== */
+  .nav-bar {
+    position: absolute;
+    left: 0; top: 44px;
+    width: 375px; height: 44px;
+  }
+  .nav-title {
+    position: absolute;
+    left: 20px; top: 8px;
+    font-size: 20px; font-weight: 500;
+    color: #000000; /* token: paint_506:19993 */
+    line-height: 28px;
+  }
+  .nav-switch-btn {
+    position: absolute;
+    left: 271px; top: 6px;
+    width: 88px; height: 32px;
+  }
+  .nav-switch-btn .btn-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 88px; height: 32px;
+  }
+  .nav-switch-btn .label {
+    position: absolute;
+    left: 34px; top: 6px;
+    font-size: 14px; font-weight: 500;
+    color: #3E495F; /* token: paint_40:0186 */
+    line-height: 20px;
+  }
+
+  /* ===== 4. Hero 统计区 (sections 3/4/5) ===== */
+  .zero {
+    position: absolute;
+    left: 172px; top: 90px;
+    width: 31px; height: 70px;
+    font-family: var(--font-num);
+    font-size: 70px; line-height: 70px;
+    color: var(--text-primary); /* token: paint_326:08300 */
+    -webkit-text-stroke: 4px #FFFFFF; /* token: paint_622:00418 */
+    text-shadow: var(--shadow-zero); /* token: effect_326:04472 */
+  }
+  .broken-heart {
+    position: absolute;
+    left: 134px; top: 156px;
+    width: 20px; height: 20px;
+  }
+  .continuous-days {
+    position: absolute;
+    left: 156px; top: 156px;
+    width: 84px; height: 20px;
+    font-size: 14px;
+    color: var(--text-secondary); /* token: paint_326:04496 */
+    line-height: 20px;
+  }
+
+  /* ===== 5. 学习卡 (section 6) ===== */
+  .learn-card {
+    position: absolute;
+    left: 16px; top: 200px;
+    width: 343px; height: 132px;
+  }
+  .learn-card .card-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 343px; height: 132px;
+  }
+  .learn-card .cover {
+    position: absolute;
+    left: 20px; top: 20px;
+    width: 72px; height: 88px;
+    background: var(--card-img-bg); /* token: paint_326:04313 */
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .learn-card .cover img {
+    position: absolute;
+    left: -36px; top: -14px;
+    width: 144px; height: 219px;
+  }
+  .learn-card .content {
+    position: absolute;
+    left: 104px; top: 20px;
+    width: 223px; height: 88px;
+  }
+  .learn-title {
+    position: absolute;
+    left: 0; top: 0;
+    width: 144px; height: 25px;
+    font-size: 18px; font-weight: 500;
+    color: var(--text-primary); /* token: paint_326:08300 */
+    line-height: 25px;
+  }
+  .badge-title {
+    position: absolute;
+    left: 0; top: 31px;
+    width: 86px; height: 20px;
+  }
+  .badge-title .badge-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 86px; height: 20px;
+  }
+  .badge-title .label {
+    position: absolute;
+    left: 8px; top: 3px;
+    font-size: 10px; font-weight: 500;
+    color: var(--brand-orange); /* token: paint_326:04331 */
+    line-height: 14px;
+  }
+  .learn-sub {
+    position: absolute;
+    left: 0; top: 71px;
+    width: 103px; height: 17px;
+    font-size: 12px;
+    color: var(--text-quaternary); /* token: paint_40:0402 */
+    line-height: 17px;
+  }
+  .go-learn-btn {
+    position: absolute;
+    left: 136px; top: 54px;
+    width: 87px; height: 34px;
+    box-shadow: var(--shadow-btn); /* token: effect_103:15006 */
+    background: #FFC79E; /* token: paint_103:15004 */
+    border-radius: 8px;
+  }
+  .go-learn-btn .label {
+    position: absolute;
+    left: 22px; top: 7px;
+    font-size: 14px; font-weight: 500;
+    color: var(--btn-text); /* token: paint_189:5818 */
+    line-height: 20px;
+  }
+
+  /* ===== 6. 统计行 (sections 7/8/9/10) ===== */
+  .stats-title {
+    position: absolute;
+    left: 16px; top: 352px;
+    width: 56px; height: 20px;
+    font-size: 14px; font-weight: 500;
+    color: var(--text-tertiary); /* token: paint_2:128 */
+    line-height: 20px;
+  }
+  .pill {
+    position: absolute;
+    top: 380px;
+    height: 30px;
+  }
+  .pill .pill-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+  }
+  .pill-today { left: 16px; width: 60px; }
+  .pill-today .label {
+    position: absolute;
+    left: 16px; top: 5px;
+    font-size: 14px; font-weight: 500;
+    color: #FFFFFF; /* token: paint_2:0429 */
+    line-height: 20px;
+  }
+  .pill-week { left: 84px; width: 68px; }
+  .pill-week .label {
+    position: absolute;
+    left: 16px; top: 5px;
+    font-size: 14px; font-weight: 500;
+    color: var(--text-tertiary); /* token: paint_103:14801 */
+    line-height: 20px;
+  }
+  .arrow-next {
+    position: absolute;
+    left: 343px; top: 387px;
+    width: 16px; height: 16px;
+  }
+
+  /* ===== 7. 贴纸卡 (sections 13-17) ===== */
+  .sticker-card {
+    position: absolute;
+    left: 16px; top: 422px;
+    width: 343px; height: 196px;
+    border-radius: 16px;
+  }
+  .sticker-card .card-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 343px; height: 196px;
+  }
+  .sticker {
+    position: absolute;
+  }
+  .sticker .photo {
+    position: absolute;
+  }
+  .sticker .photo img {
+    position: absolute;
+    display: block;
+    box-shadow: var(--shadow-sticker); /* token: effect_326:04304 */
+    border-radius: 8px;
+  }
+  .sticker .word {
+    position: absolute;
+    font-family: var(--font-sticker);
+    font-size: 12px; font-weight: 900;
+    text-transform: capitalize;
+    -webkit-text-stroke: 4px var(--sticker-stroke); /* token: paint_622:00418 */
+    line-height: 14px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== 8. 课程/直播 tab 容器 (section 12) ===== */
+  .content-tabs {
+    position: absolute;
+    left: 102px; top: 676px;
+    width: 170px; height: 42px;
+    border-radius: 21px;
+  }
+  .content-tabs .tab-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 170px; height: 42px;
+  }
+  .content-tabs .tab-icon {
+    position: absolute;
+    left: 12px; top: 10px;
+    width: 22px; height: 22px;
+    overflow: hidden;
+  }
+  .content-tabs .tab-icon img {
+    position: absolute;
+    width: 24px; height: 24px;
+    transform: rotate(-9.23deg);
+    left: -0.66px; top: -1.47px;
+  }
+  .content-tabs .tab-word {
+    position: absolute;
+    left: 34px; top: 11px;
+    width: 28px; height: 20px;
+    font-size: 14px; font-weight: 500;
+    color: var(--text-primary); /* token: paint_326:08300 */
+    line-height: 20px;
+  }
+  .content-tabs .tab-item {
+    position: absolute;
+    top: 12px;
+    width: 24px; height: 17px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-muted); /* token: paint_40:0117 */
+    line-height: 17px;
+    text-align: center;
+  }
+  .content-tabs .tab-course { left: 82px; }
+  .content-tabs .tab-live { left: 126px; }
+
+  /* ===== 9. TabBar (sections 18-29) ===== */
+  .tab-bar {
+    position: absolute;
+    left: 0; top: 730px;
+    width: 375px; height: 82px;
+    background: var(--tabbar-bg); /* token: paint_103:14690 + effect_2:374 backdrop blur */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  .tab-bar .tabbar-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 375px; height: 82px;
+  }
+  .tab-item {
+    position: absolute;
+    top: 740px;
+    width: 24px; height: 38px;
+  }
+  .tab-item .icon {
+    position: absolute;
+    left: 0; top: 0;
+    width: 24px; height: 24px;
+  }
+  .tab-item .label {
+    position: absolute;
+    left: 2px; top: 24px;
+    width: 20px; height: 14px;
+    font-size: 10px; font-weight: 500;
+    text-align: center;
+    line-height: 14px;
+    color: var(--text-tabbar-inactive); /* token: paint_103:14666 */
+  }
+  .tab-item.dialog { left: 30px; }
+  .tab-item.today { left: 103px; }
+  .tab-item.scene { left: 176px; }
+  .tab-item.study { left: 248px; }
+  .tab-item.mine { left: 321px; }
+  .tab-item.mine .label { color: #111E38; } /* token: paint_103:03364 选中态 */
+  .home-indicator {
+    position: absolute;
+    left: 121px; top: 799px;
+    width: 134px; height: 5px;
+    background: #000000; /* token: paint_2:0432 */
+    border-radius: 2.5px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 1. Hero 渐变背景 (sec 0) -->
+  <div class="hero-grad"></div>
+  <div class="off-canvas-text">阿祖搞定常用高频词</div>
+
+  <!-- 2. 状态栏 (sec 1) -->
+  <div class="status-bar">
+    <div class="status-time">11:07</div>
+    <div class="status-cellular">
+      <i></i><i></i><i></i><i></i>
+    </div>
+    <div class="status-wifi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="315.99944172328 15.9869424 15.334355276720032 12.0130576" width="375" height="44"><path d="M323.6670694,19.2844775C325.8918018,19.2845747,328.031463,20.1386855,329.643817,21.6702781C329.76523099999997,21.7885227,329.959299,21.7870312,330.078878,21.666934L331.239491,20.4966044C331.300038,20.4356916,331.333797,20.3531818,331.333295,20.2673328C331.332792,20.1814837,331.29807,20.0993738,331.236813,20.0391729C327.0049,15.9869424,320.3285689,15.9869424,316.096656546,20.0391729C316.03535438,20.0993292,316.00057227386,20.1814141,316.000006998589,20.2672632C315.99944172328,20.3531125,316.033139884,20.4356475,316.093644582,20.4966044L317.2545907,21.666934C317.374094,21.7872124,317.5683117,21.7887049,317.6896527,21.6702781C319.3022118,20.1385851,321.4421186,19.2844718,323.6670694,19.2844775Z
+M326.974133,24.3657136C326.068064,23.5459394,324.8893385,23.091985700000002,323.6669922,23.0920606C322.4454546,23.0925665,321.2676649,23.5464807,320.362195,24.3657136C320.2396445,24.4820585,320.0465961,24.4795361,319.9271326,24.3600292L318.7681947,23.1896996C318.7070167,23.1284008,318.6730247,23.0451322,318.6738427,22.9585686C318.6746604,22.872005,318.7102199,22.789392,318.7725453,22.7292585C321.5317068,20.16485,325.8046207,20.16485,328.563782,22.7292585C328.626069,22.789392499999998,328.661631,22.8719645,328.662511,22.9584999C328.663391,23.0450354,328.629518,23.1283126,328.568467,23.1896996L327.409195,24.3600292C327.289731,24.4795361,327.096683,24.4820585,326.974133,24.3657136Z
+M325.8949184,25.8851357C325.9569168,25.8243399,325.9910612,25.7406759,325.9892874,25.6538973C325.9875135,25.5671186,325.9499798,25.4849176,325.8855476,25.4267015C324.604887,24.34443,322.7292447,24.34443,321.4485846,25.4267015C321.3841076,25.4848709,321.3465123,25.5670462,321.3446751,25.653824800000002C321.3428378,25.740604400000002,321.3769221,25.8242941,321.4388795,25.8851357L323.4445152,27.907131C323.5032988,27.966557,323.5834427,28,323.6670656,28C323.750689,28,323.8308334,27.966557,323.889617,27.907131L325.8949184,25.8851357Z" fill="#000000"/></svg></div>
+    <div class="status-battery">
+      <span class="border"></span>
+      <span class="cap"></span>
+      <span class="capacity"></span>
+    </div>
+  </div>
+
+  <!-- 3. 导航栏 (sec 11) -->
+  <div class="nav-bar">
+    <div class="nav-title">词书</div>
+    <div class="nav-switch-btn">
+      <span class="btn-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 32" width="88" height="32"><path d="M0,16C0,24.836557,7.1634426,32,16,32L72,32C80.836555,32,88,24.836557,88,16C88,7.1634426,80.836555,0,72,0L16,0C7.1634426,0,0,7.1634426,0,16Z" fill="#FFFFFF"/></svg></span>
+      <span class="label">换词书</span>
+    </div>
+  </div>
+
+  <!-- 4. Hero 统计区 (sec 3/4/5) -->
+  <div class="zero">0</div>
+  <div class="broken-heart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="1.6640624962500001 4.17773437 7.173828159999999 10.742187880000001" width="20" height="20"><path d="M7.52734325625,7.01953125L8.17773435625,5.72070315L8.00390575625,5.54492185C6.63476515625,4.17773437,4.4042966562500006,4.17773437,3.0332029562500002,5.54492185C1.6640624962500001,6.91601565,1.6640624962500001,9.144530750000001,3.0332029562500002,10.51562505L3.4121093562500002,10.89257765L8.142577656250001,14.91992225L7.87304685625,13.16992095C7.86132815625,13.09179595,7.87304685625,13.01171875,7.90820265625,12.94140525L8.73046875625,11.29882815L7.61914065625,10.34765625C7.53906245625,10.27929685,7.49023435625,10.17773385,7.48632765625,10.07226515C7.48242185625,9.96679685,7.52343745625,9.86328125,7.59765625625,9.78710885L8.83789065625,8.54687455L7.61718745625,7.47851565C7.48632765625,7.363281049999999,7.44921825625,7.17578125,7.52734325625,7.01953125Z" fill="#ACACAC"/></svg></div>
+  <div class="continuous-days">连续打卡词书</div>
+
+  <!-- 5. 学习卡 (sec 6) -->
+  <div class="learn-card">
+    <div class="card-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 132.00002" width="343" height="132"><defs><linearGradient id="grad_paint_326_04344" x1="0.5000" y1="-0.0000" x2="0.5000" y2="1.0000"><stop offset="0" stop-color="rgb(246,247,251)" stop-opacity="0"/><stop offset="1" stop-color="#E7EAF1"/></linearGradient></defs><path d="M0,108.00002C0,121.25485,10.745164,132.00002,24,132.00002L319,132.00002C332.25482,132.00002,343,121.25485,343,108.00002L343,24C343,10.745164,332.25482,0,319,0L24,0C10.745164,0,0,10.745164,0,23.999998L0,108.00002Z" fill="#FFFFFF"/><path d="M0,108.00002C0,121.25485,10.745164,132.00002,24,132.00002L319,132.00002C332.25482,132.00002,343,121.25485,343,108.00002L343,24C343,10.745164,332.25482,0,319,0L24,0C10.745164,0,0,10.745164,0,23.999998L0,108.00002Z
+M1,108.00002Q1,117.52694,7.7365437,124.26348Q14.473086,131.00003,24,131.00003L319,131.00003Q328.52692,131.00003,335.26346,124.26348Q342,117.52693,342,108.00002L342,24Q342,14.473094,335.26343,7.7365451Q328.52686,1.0000007,318.99994,1.0000026L24,1Q14.473089,1,7.7365437,7.7365437Q1.0000013,14.473086,1.0000026,23.999998L1,108.00002Z" fill="url(#grad_paint_326_04344)"/></svg></div>
+    <div class="cover">
+      <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/bc9d0e5a68fe8e689788a9487960427a.png" alt="">
+    </div>
+    <div class="content">
+      <div class="learn-title">英语陪跑课高频词</div>
+      <div class="badge-title">
+        <span class="badge-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="7.7614022e-14 0 85.99999999999993 20" width="86" height="20"><path d="M8,0L78,0C82.418282,0,86,3.5817213,86,8L86,12C86,16.418278,82.418282,20,78,20L7.9999986,20C3.5817213,20,3.5577541e-13,16.418278,2.6003364e-13,12L1.7335577e-13,7.9999995C7.7614022e-14,3.5817213,3.5817213,0,8,0" fill="#FEF8EB" fill-rule="evenodd"/></svg></span>
+        <span class="label">阿祖陪你学单词</span>
+      </div>
+      <div class="learn-sub">新词 168 复习词 6</div>
+    </div>
+    <div class="go-learn-btn">
+      <span class="label">去学习</span>
+    </div>
+  </div>
+
+  <!-- 6. 统计行 (sec 7/8/9/10) -->
+  <div class="stats-title">学会的词</div>
+  <div class="pill pill-today">
+    <span class="pill-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 29.999994" width="60" height="30"><path d="M0,14.999997C0,23.284267,6.7157259,29.999994,14.999996,29.999994L45.000004,29.999994C53.284275,29.999994,60,23.284267,60,14.999997C60,6.7157259,53.284275,0,45.000004,0L14.999997,0C6.7157259,0,0,6.7157259,0,14.999997Z" fill="#111E38"/></svg></span>
+    <span class="label">今日</span>
+  </div>
+  <div class="pill pill-week">
+    <span class="pill-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68 29.999998" width="68" height="30"><path d="M0,14.999997C0,23.284267,6.7157259,29.999996,14.999998,29.999996L53,29.999998C61.284271,29.999998,68,23.284271,68,14.999999C68,6.7157278,61.284271,0,53,0L14.999997,0C6.7157259,0,0,6.7157259,0,14.999997Z" fill="#FFFFFF"/></svg></span>
+    <span class="label">近7日</span>
+  </div>
+  <div class="arrow-next"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0.000019393861293792725 0 7.999736465513706 12.002705574035645" width="7.998621463775635" height="12.003528594970703"><path d="M0.0592041015625,8.001953125L0.0592041015625,12.001953125L4.0592041015625,12.001953125L4.0592041015625,8.001953125L0.0592041015625,8.001953125Z" fill="#111E38" transform="matrix(0.9996303915977478,0,-0.007387984078377485,1.0001881122589111,0.059140184616808256,-0.0015052654780447483)"/><path d="M3.999755859375,4.0009765625L3.999755859375,8.0009765625L7.999755859375,8.0009765625L7.999755859375,4.0009765625L3.999755859375,4.0009765625Z" fill="#111E38"/><path d="M0.029571533203125,0L0.029571533203125,4L4.029571533203125,4L4.029571533203125,0L0.029571533203125,0Z" fill="#111E38" transform="matrix(0.9996303915977478,0,-0.007388034835457802,1.0001881122589111,0.000010929887139354832,0)"/></svg></div>
+
+  <!-- 7. 贴纸卡 (sec 13-17) -->
+  <div class="sticker-card">
+    <div class="card-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 196.00002" width="343" height="196"><defs><linearGradient id="grad_paint_326_04508" x1="0.5000" y1="-0.0000" x2="0.5000" y2="1.0000"><stop offset="0" stop-color="rgb(245,247,251)" stop-opacity="0"/><stop offset="1" stop-color="#E6EAF1"/></linearGradient></defs><path d="M0,172.00002C0,185.25485,10.745164,196.00002,24,196.00002L319,196.00002C332.25482,196.00002,343,185.25485,343,172.00002L343,24C343,10.745164,332.25482,0,319,0L24,0C10.745164,0,0,10.745164,0,24L0,172.00002Z" fill="#FFFFFF"/><path d="M0,172.00002C0,185.25485,10.745164,196.00002,24,196.00002L319,196.00002C332.25482,196.00002,343,185.25485,343,172.00002L343,24C343,10.745164,332.25482,0,319,0L24,0C10.745164,0,0,10.745164,0,24L0,172.00002Z
+M1,172.00003Q1,181.52692,7.7365437,188.26347Q14.473093,195.00003,24,195.00003L319,195.00003Q328.52692,195.00003,335.26346,188.26347Q342,181.52692,342,172.00003L342,24Q342,14.473094,335.26343,7.7365451Q328.52686,1.0000007,318.99994,1.0000026L24,1Q14.473089,1,7.7365437,7.7365437Q1.0000013,14.473086,1.0000026,24L1,172.00003Z" fill="url(#grad_paint_326_04508)"/></svg></div>
+    <!-- mines 贴纸 (sec13 内相对坐标, 卡片原点 16,422) -->
+    <div class="sticker" style="left:139.82px; top:45.15px; width:85.25px; height:79.79px; transform:rotate(-10.98deg);">
+      <div class="photo" style="left:8.52px; top:12.02px; width:68.2px; height:54.97px; transform:rotate(25.56deg);">
+        <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/bbb9a9020544daf338c62531b63b3529.png" style="left:1.39px; top:-3.56px; width:67.01px; height:83.01px; transform:rotate(-6.98deg);">
+      </div>
+      <div class="word" style="left:9.65px; top:58.37px; transform:rotate(22.96deg); color:#B8B8D0; text-shadow:0 1px 6px #D8DCE4;">mines</div>
+    </div>
+    <!-- parking 贴纸: 绝对(60.63,462.24) - 卡片(16,422) -->
+    <div class="sticker" style="left:44.63px; top:40.24px; width:97.91px; height:101.83px; transform:rotate(-4.24deg);">
+      <div class="photo" style="left:13.09px; top:11.8px; width:71.73px; height:76.56px; transform:rotate(-25.81deg);">
+        <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/0124f641f63dc0bf678039f042de38de.png" style="left:-0.54px; top:-0.39px; width:71.57px; height:86.67px;">
+      </div>
+      <div class="word" style="left:38px; top:76.28px; transform:rotate(-27.11deg); color:#F4C441; text-shadow:0 1px 6px #F3DC9D;">parking</div>
+    </div>
+    <!-- croissant 贴纸: 绝对(19.97,534.18) - 卡片 -->
+    <div class="sticker" style="left:3.97px; top:112.18px; width:95.1px; height:79.3px; transform:rotate(-1.46deg);">
+      <div class="photo" style="left:7.57px; top:14.01px; width:79.96px; height:51.3px; transform:rotate(21.41deg);">
+        <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/153d38e4cead47c57e3dcca988d45388.png" style="left:8.9px; top:3.82px; width:77.05px; height:64.98px; transform:rotate(-2.1deg);">
+      </div>
+      <div class="word" style="left:11.1px; top:56.01px; transform:rotate(18.58deg); color:#FFB07E; text-shadow:0 1px 6px #F7D8C4;">croissant</div>
+    </div>
+    <!-- LOVE 贴纸: 绝对(114.37,558.67) - 卡片 -->
+    <div class="sticker" style="left:98.37px; top:136.67px; width:60.84px; height:54.26px; transform:rotate(-7.72deg);">
+      <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/7a76bb40ad26485c9e4ff9db9337d66d.png" class="photo" style="left:1.42px; top:1.63px; width:58px; height:51px; transform:rotate(-3.3deg);">
+      <div class="word" style="left:15.73px; top:34.7px; transform:rotate(-3.56deg); color:#FC9898; text-shadow:0 1px 6px #FFCCCC;">LOVE</div>
+    </div>
+    <!-- milk tea 贴纸: 绝对(183.41,535.57) - 卡片 -->
+    <div class="sticker" style="left:167.41px; top:113.57px; width:80px; height:77.18px; transform:rotate(-0.61deg);">
+      <div class="photo" style="left:9.67px; top:11.03px; width:62.53px; height:50.33px; transform:rotate(25.56deg);">
+        <img src="https://image-resource.mastergo.com/85982995532225/85982995532227/f24cf8300c473d7aff3e8e7f608f1f99.png" style="left:2.29px; top:8.13px; width:57.5px; height:92.08px; transform:rotate(0.2deg);">
+      </div>
+      <div class="word" style="left:0.49px; top:52.25px; transform:rotate(22.96deg); color:#A7E165; text-shadow:0 1px 6px #D5E8C0;">milk tea</div>
+    </div>
+  </div>
+
+  <!-- 8. 课程/直播 tab 容器 (sec 12) -->
+  <div class="content-tabs">
+    <div class="tab-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 42" width="170" height="42"><path d="M0,21C0,32.59798,9.4020185,42,21.000002,42L149,42C160.59798,42,170,32.59798,170,21C170,9.4020185,160.59798,0,149,0L21,0C9.4020185,0,0,9.4020185,0,21Z" fill="#FFFFFF"/></svg></div>
+    <div class="tab-icon">
+      <img src="https://image-resource.mastergo.com/183757767547788/183757767547790/1b85df39e2c0f44b66ecfd0535412923.png" alt="">
+    </div>
+    <div class="tab-word">词书</div>
+    <div class="tab-item tab-course">课程</div>
+    <div class="tab-item tab-live">直播</div>
+  </div>
+
+  <!-- 9. TabBar (sec 18-29) -->
+  <div class="tab-bar">
+    <div class="tabbar-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 82" width="375" height="82"><path d="M0,0L0,82L375,82L375,0L0,0Z" fill="#FFFFFF"/></svg></div>
+    <div class="tab-item dialog">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 20" width="22" height="20"><path d="M0,3L0,7L3,7L3,3L0,3Z" fill="#D1D1D1"/><path d="M0,13L0,17L3,17L3,13L0,13Z" fill="#D1D1D1"/><path d="M19,3L19,7L22,7L22,3L19,3Z" fill="#D1D1D1"/><path d="M19,17L22,17L22,13L19,13L19,17Z" fill="#D1D1D1"/><path d="M6,7L6,13L9,13L9,7L6,7Z" fill="#D1D1D1"/><path d="M13,7L13,13L16,13L16,7L13,7Z" fill="#D1D1D1"/><path d="M3,3L19,3L19,0L3,0L3,3Z" fill="#D1D1D1"/><path d="M3,17L3,20L19,20L19,17L3,17Z" fill="#D1D1D1"/><path d="M20.33682944995,3.0899992000000003Q20.26682919275,3.2999986,21.66682509375,4Q21.66681579375,3.5000055000000003,21.91680839375,3.2500055000000003Q22.16680649375,3,22.66681739375,3Q22.96682289375,3,22.99682309375,2.90999877Q23.06682329375,2.6999979,21.66682509375,2Q21.66681529375,3,20.66682508375,3Q20.36682936575,3,20.33682944995,3.0899992000000003Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,40.6669921875,0)"/><path d="M20.33682944995,19.0899992Q20.26682919275,19.2999986,21.66682509375,20Q21.66681579375,19.5000055,21.91680839375,19.2500055Q22.16680649375,19,22.66681739375,19Q22.96682289375,19,22.99682309375,18.90999877Q23.06682329375,18.6999979,21.66682509375,18Q21.66681529375,19,20.66682508375,19Q20.36682936575,19,20.33682944995,19.0899992Z" fill="#D1D1D1" transform="matrix(-1,0,0,-1,40.6669921875,36)"/><path d="M1.6699593327625,3.0899992000000003Q1.5999590755625,3.2999986,2.9999549765625,4Q2.9999456765625,3.5000055000000003,3.2499382765625002,3.2500055000000003Q3.4999363765625002,3,3.9999472765625,3Q4.2999527765625,3,4.329952976562501,2.90999877Q4.3999531765625,2.6999979,2.9999549765625,2Q2.9999451765625,3,1.9999549665625,3Q1.6999592485625,3,1.6699593327625,3.0899992000000003Z" fill="#D1D1D1"/><path d="M1.66983726245,19.0899992Q1.59983700525,19.2999986,2.99983290625,20Q2.99982360625,19.5000055,3.2498162062500002,19.2500055Q3.4998143062500002,19,3.99982520625,19Q4.29983070625,19,4.329830906250001,18.90999877Q4.39983110625,18.6999979,2.99983290625,18Q2.99982310625,19,1.99983289625,19Q1.69983717825,19,1.66983726245,19.0899992Z" fill="#D1D1D1" transform="matrix(1,0,0,-1,0,36)"/></svg></span>
+      <span class="label">对话</span>
+    </div>
+    <div class="tab-item today">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 19.5" width="22" height="19.5"><path d="M0,19.5L3,19.5L3,6L0,6L0,19.5Z" fill="#D1D1D1"/><path d="M19,6L19,19.5L22,19.5L22,6L19,6Z" fill="#D1D1D1"/><path d="M16,6L19,6L19,3L16,3L16,6Z" fill="#D1D1D1"/><path d="M3,6L6,6L6,3L3,3L3,6Z" fill="#D1D1D1"/><path d="M6,3L16,3L16,0L6,0L6,3Z" fill="#D1D1D1"/><path d="M6,16.5L6,19.5L17,19.5L17,16.5L6,16.5Z" fill="#D1D1D1"/><path d="M1.66983724195,6.0899992Q1.59983700525,6.2999986,2.9998330062500003,7Q2.99982500625,6.5000055,3.24981820625,6.2500055Q3.49981690625,6,3.99982790625,6Q4.29983310625,6,4.32983330625,5.90999883Q4.399833206249999,5.69999802,2.9998330062500003,5Q2.99982310625,6,1.99983286625,6Q1.69983714825,6,1.66983724195,6.0899992Z" fill="#D1D1D1"/><path d="M4.66983726245,3.0899992000000003Q4.59983700525,3.2999986,5.99983290625,4Q5.9998236062500006,3.5000055000000003,6.24981620625,3.2500055000000003Q6.49981430625,3,6.99982520625,3Q7.29983070625,3,7.329830906250001,2.90999877Q7.39983110625,2.6999979,5.99983290625,2Q5.99982310625,3,4.99983289625,3Q4.69983717825,3,4.66983726245,3.0899992000000003Z" fill="#D1D1D1"/><path d="M17.33682944995,3.0899992000000003Q17.26682919275,3.2999986,18.66682509375,4Q18.66681579375,3.5000055000000003,18.91680839375,3.2500055000000003Q19.16680649375,3,19.66681739375,3Q19.96682289375,3,19.99682309375,2.90999877Q20.06682329375,2.6999979,18.66682509375,2Q18.66681529375,3,17.66682508375,3Q17.36682936575,3,17.33682944995,3.0899992000000003Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,34.6669921875,0)"/><path d="M20.33682944995,6.0899992Q20.26682919275,6.2999986,21.66682509375,7Q21.66681579375,6.5000055,21.91680839375,6.2500055Q22.16680649375,6,22.66681739375,6Q22.96682289375,6,22.99682309375,5.90999877Q23.06682329375,5.6999979,21.66682509375,5Q21.66681529375,6,20.66682508375,6Q20.36682936575,6,20.33682944995,6.0899992Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,40.6669921875,0)"/></svg></span>
+      <span class="label">首页</span>
+    </div>
+    <div class="tab-item scene">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0.5 4.5 3 14.5" width="24" height="24"><path d="M0.5,19L3.5,19L3.5,4.5L0.5,4.5L0.5,19Z" fill="#D1D1D1"/></svg></span>
+      <span class="label">场景</span>
+    </div>
+    <div class="tab-item study">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23.00000762939453 20" width="23.00000762939453" height="20"><path d="M0,17L3,17L3,3L0,3L0,17Z" fill="#D1D1D1"/><path d="M10,3L10,12L13,12L13,3L10,3Z" fill="#D1D1D1"/><path d="M20.00000762939453,17L23.00000762939453,17L23.00000762939453,3L20.00000762939453,3L20.00000762939453,17Z" fill="#D1D1D1"/><path d="M3,0L3,3L10,3L10,0L3,0Z" fill="#D1D1D1"/><path d="M2,3L3.0000001000000003,4Q2.9999920700000002,3.5000055000000003,3.2499853,3.2500055000000003Q3.499984,3,3.999995,3L3.0000001000000003,2Q2.99999022,3,2,3Z" fill="#D1D1D1"/><path d="M21.00000762939453,3L22.000007729394532,4Q21.999999699394532,3.5000055000000003,22.24999292939453,3.2500055000000003Q22.499991629394533,3,23.00000262939453,3L22.000007729394532,2Q21.999997849394532,3,21.00000762939453,3Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,42.00001525878906,0)"/><path d="M12,3L13.0000001,4Q12.99999207,3.5000055000000003,13.2499853,3.2500055000000003Q13.499984,3,13.999995,3L13.0000001,2Q12.99999022,3,12,3Z" fill="#D1D1D1"/><path d="M11,3L12.0000001,4Q11.99999207,3.5000055000000003,12.2499853,3.2500055000000003Q12.499984,3,12.999995,3L12.0000001,2Q11.99999022,3,11,3Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,22,0)"/><path d="M13,3L20,3L20,0L13,0L13,3Z" fill="#D1D1D1"/><path d="M0,20L23,20L23,17L0,17L0,20Z" fill="#D1D1D1"/></svg></span>
+      <span class="label">学习</span>
+    </div>
+    <div class="tab-item mine">
+      <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="3 10.5 17 3" width="23" height="21"><path d="M3,10.5L3,13.5L20,13.5L20,10.5L3,10.5Z" fill="#111E38"/></svg></span>
+      <span class="label">我的</span>
+    </div>
+  </div>
+  <div class="home-indicator"></div>
+
+</div>
+</body>
+</html>

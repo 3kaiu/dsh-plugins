@@ -19,6 +19,7 @@ const names = registered.map((t) => t.name);
 console.log("注册工具:", names.join(", "));
 if (!names.includes("infer_layout")) throw new Error("缺少 infer_layout");
 if (!names.includes("annotate_layout")) throw new Error("缺少 annotate_layout");
+if (!names.includes("clean_layout")) throw new Error("缺少 clean_layout");
 
 const infer = registered.find((t) => t.name === "infer_layout");
 if (!infer.execute) throw new Error("infer_layout 缺 execute");
@@ -68,5 +69,33 @@ if (result.stats.containers !== 1) throw new Error("应标注 1 个容器");
 if (result.stats.flex !== 1) throw new Error("root 应为 flex");
 if (!result.tree[0].layout || result.tree[0].layout.flexDirection !== "row") throw new Error("root 应 row");
 console.log("annotate_layout 输出 OK ✓");
+
+// 执行 clean_layout: 拍平稿 → 标准 DSL + 结构描述
+const cleanTool = registered.find((t) => t.name === "clean_layout");
+const cleanOut = await cleanTool.execute(
+  {
+    canvas: { width: 375, height: 812 },
+    sections: [
+      { id: "bg", name: "矩形", type: "LAYER", x: 0, y: 0, width: 375, height: 159, dsl: { styles: {}, nodes: [{ type: "LAYER", id: "bg", name: "矩形", layoutStyle: { width: 375, height: 159, relativeX: 0, relativeY: 0 }, _color: "linear-gradient(180deg, #7F7CFF 0%, #79A8FF 100%)" }] } },
+      { id: "sb", name: "编组", type: "FRAME", x: 0, y: 0, width: 375, height: 44 },
+      { id: "nb", name: "标题", type: "FRAME", x: 0, y: 44, width: 375, height: 44 },
+      { id: "card", name: "容器", type: "FRAME", x: 16, y: 200, width: 343, height: 132, dsl: { styles: {}, rowTexts: [{ text: "阿祖陪你学单词" }], nodes: [{ type: "FRAME", id: "card", name: "容器", layoutStyle: { width: 343, height: 132, relativeX: 0, relativeY: 0 }, effect: "box-shadow" }] } },
+      { id: "tb", name: "矩形", type: "PATH", x: 0, y: 730, width: 375, height: 82, dsl: { styles: {}, nodes: [{ type: "PATH", id: "tb", name: "矩形", layoutStyle: { width: 375, height: 82, relativeX: 0, relativeY: 0 }, _color: "#FFFFFF" }] } },
+      { id: "ic1", name: "容器", type: "FRAME", x: 30, y: 740, width: 24, height: 24 },
+      { id: "lb1", name: "对话", type: "TEXT", x: 32, y: 764, width: 20, height: 14, dsl: { styles: {}, rowTexts: [{ text: "对话" }], nodes: [{ type: "TEXT", id: "lb1", name: "对话", layoutStyle: { width: 20, height: 14, relativeX: 0, relativeY: 0 }, text: "对话" }] } },
+      { id: "ic2", name: "容器", type: "FRAME", x: 103, y: 740, width: 24, height: 24 },
+      { id: "lb2", name: "首页", type: "TEXT", x: 105, y: 764, width: 20, height: 14, dsl: { styles: {}, rowTexts: [{ text: "首页" }], nodes: [{ type: "TEXT", id: "lb2", name: "首页", layoutStyle: { width: 20, height: 14, relativeX: 0, relativeY: 0 }, text: "首页" }] } },
+    ],
+    rootMeta: { name: "词书", background: "#F6F7FB" },
+  },
+  {},
+);
+console.log("clean_layout stats:", JSON.stringify(cleanOut.stats));
+if (!cleanOut.dsl || !cleanOut.dsl.root) throw new Error("clean_layout 缺 dsl.root");
+if (cleanOut.dsl.root.layoutStyle.width !== 375) throw new Error("root 宽度应为 375");
+if (!cleanOut.description || !cleanOut.description.includes("tab-item-对话")) throw new Error("description 应含 tab-item-对话");
+if (!cleanOut.description.includes("tab-item-首页")) throw new Error("description 应含 tab-item-首页");
+if (/div|css|flexbox|\bView\b/i.test(cleanOut.description)) throw new Error("description 不应含前端技术词汇");
+console.log("clean_layout 输出 OK ✓ (描述含语义容器与 tab-item, 无技术词汇)");
 
 console.log("\n插件注册测试全部通过 ✓");

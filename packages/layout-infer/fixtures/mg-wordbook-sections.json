@@ -1,0 +1,334 @@
+{
+  "meta": {
+    "source": "https://mastergo.com/goto/VkvU7lo6?page_id=40:223&layer_id=755:06264&file=199505469175552",
+    "rootName": "容器 173939",
+    "canvas": {
+      "width": 375,
+      "height": 812
+    },
+    "splitContainers": [
+      {
+        "id": "755:06265",
+        "name": "词书",
+        "type": "FRAME",
+        "width": 375,
+        "height": 812,
+        "x": 0,
+        "y": 0,
+        "background": "#F6F7FB"
+      },
+      {
+        "id": "755:06485",
+        "name": "组 174341",
+        "type": "INSTANCE",
+        "width": 375,
+        "height": 82,
+        "x": 0,
+        "y": 730
+      }
+    ],
+    "note": "堆叠稿完整 section 元数据: 30 个扁平 section + 页面绝对坐标 + 根容器信息。DSL 节点树在 mg-stacked-dsl-{i}.json 中按 sectionIndex 关联。"
+  },
+  "sections": [
+    {
+      "sectionIndex": 0,
+      "id": "755:06435",
+      "name": "矩形 148435",
+      "type": "LAYER",
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 159
+    },
+    {
+      "sectionIndex": 1,
+      "id": "755:06408",
+      "name": "编组",
+      "type": "FRAME",
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 44
+    },
+    {
+      "sectionIndex": 2,
+      "id": "755:06430",
+      "name": "阿祖搞定常用高频词",
+      "type": "TEXT",
+      "x": 461,
+      "y": 174,
+      "width": 108,
+      "height": 17
+    },
+    {
+      "sectionIndex": 3,
+      "id": "755:06300",
+      "name": "0",
+      "type": "TEXT",
+      "x": 172,
+      "y": 90,
+      "width": 31,
+      "height": 70
+    },
+    {
+      "sectionIndex": 4,
+      "id": "755:06294",
+      "name": "组 174130",
+      "type": "GROUP",
+      "x": 156,
+      "y": 156,
+      "width": 84,
+      "height": 20
+    },
+    {
+      "sectionIndex": 5,
+      "id": "755:06333",
+      "name": "心碎",
+      "type": "FRAME",
+      "x": 134,
+      "y": 156,
+      "width": 20,
+      "height": 20
+    },
+    {
+      "sectionIndex": 6,
+      "id": "755:06362",
+      "name": "容器 173849",
+      "type": "FRAME",
+      "x": 16,
+      "y": 200,
+      "width": 343,
+      "height": 132
+    },
+    {
+      "sectionIndex": 7,
+      "id": "755:06305",
+      "name": "组 172938",
+      "type": "GROUP",
+      "x": 84,
+      "y": 380,
+      "width": 68,
+      "height": 30
+    },
+    {
+      "sectionIndex": 8,
+      "id": "755:06478",
+      "name": "组 172939",
+      "type": "GROUP",
+      "x": 16,
+      "y": 380,
+      "width": 60,
+      "height": 30
+    },
+    {
+      "sectionIndex": 9,
+      "id": "755:06436",
+      "name": "学会的词",
+      "type": "TEXT",
+      "x": 16,
+      "y": 352,
+      "width": 56,
+      "height": 20
+    },
+    {
+      "sectionIndex": 10,
+      "id": "755:06472",
+      "name": "容器 173774",
+      "type": "FRAME",
+      "x": 343,
+      "y": 387,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "sectionIndex": 11,
+      "id": "755:06314",
+      "name": "标题",
+      "type": "FRAME",
+      "x": 0,
+      "y": 44,
+      "width": 375,
+      "height": 44
+    },
+    {
+      "sectionIndex": 12,
+      "id": "755:06448",
+      "name": "容器 173844",
+      "type": "FRAME",
+      "x": 102,
+      "y": 676,
+      "width": 170,
+      "height": 42
+    },
+    {
+      "sectionIndex": 13,
+      "id": "755:06339",
+      "name": "组 174137",
+      "type": "GROUP",
+      "x": 16,
+      "y": 422,
+      "width": 343,
+      "height": 196
+    },
+    {
+      "sectionIndex": 14,
+      "id": "755:06267",
+      "name": "组 174138",
+      "type": "GROUP",
+      "x": 60.63,
+      "y": 462.24,
+      "width": 97.90740203857422,
+      "height": 101.8348388671875
+    },
+    {
+      "sectionIndex": 15,
+      "id": "755:06275",
+      "name": "组 174146",
+      "type": "GROUP",
+      "x": 19,
+      "y": 533,
+      "width": 95.10220336914062,
+      "height": 79.30290222167969
+    },
+    {
+      "sectionIndex": 16,
+      "id": "755:06441",
+      "name": "组 174140",
+      "type": "GROUP",
+      "x": 114.37,
+      "y": 558.67,
+      "width": 60.841766357421875,
+      "height": 54.25666046142578
+    },
+    {
+      "sectionIndex": 17,
+      "id": "755:06284",
+      "name": "组 174141",
+      "type": "GROUP",
+      "x": 183.41,
+      "y": 535.57,
+      "width": 79.998779296875,
+      "height": 77.1827392578125
+    },
+    {
+      "sectionIndex": 18,
+      "id": "755:06485/408:9717",
+      "name": "矩形",
+      "type": "PATH",
+      "x": 0,
+      "y": 730,
+      "width": 375,
+      "height": 82
+    },
+    {
+      "sectionIndex": 19,
+      "id": "755:06485/408:9691",
+      "name": "容器 173797",
+      "type": "FRAME",
+      "x": 248,
+      "y": 740,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "sectionIndex": 20,
+      "id": "755:06485/408:9673",
+      "name": "容器 173798",
+      "type": "FRAME",
+      "x": 321,
+      "y": 740,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "sectionIndex": 21,
+      "id": "755:06485/408:9638",
+      "name": "我的",
+      "type": "TEXT",
+      "x": 323,
+      "y": 764,
+      "width": 20,
+      "height": 14
+    },
+    {
+      "sectionIndex": 22,
+      "id": "755:06485/408:9642",
+      "name": "对话",
+      "type": "TEXT",
+      "x": 32,
+      "y": 764,
+      "width": 20,
+      "height": 14
+    },
+    {
+      "sectionIndex": 23,
+      "id": "755:06485/408:9634",
+      "name": "学习",
+      "type": "TEXT",
+      "x": 250,
+      "y": 764,
+      "width": 20,
+      "height": 14
+    },
+    {
+      "sectionIndex": 24,
+      "id": "755:06485/408:9646",
+      "name": "首页",
+      "type": "TEXT",
+      "x": 105,
+      "y": 764,
+      "width": 20,
+      "height": 14
+    },
+    {
+      "sectionIndex": 25,
+      "id": "755:06485/408:9630",
+      "name": "场景",
+      "type": "TEXT",
+      "x": 178,
+      "y": 764,
+      "width": 20,
+      "height": 14
+    },
+    {
+      "sectionIndex": 26,
+      "id": "755:06485/408:02510",
+      "name": "Bars / Home Indicator / iPhone / Light - Portrait",
+      "type": "INSTANCE",
+      "x": 121,
+      "y": 778,
+      "width": 134,
+      "height": 34
+    },
+    {
+      "sectionIndex": 27,
+      "id": "755:06485/408:9661",
+      "name": "容器 173796",
+      "type": "FRAME",
+      "x": 103,
+      "y": 740,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "sectionIndex": 28,
+      "id": "755:06485/408:9650",
+      "name": "容器 173799",
+      "type": "FRAME",
+      "x": 176,
+      "y": 740,
+      "width": 24,
+      "height": 24
+    },
+    {
+      "sectionIndex": 29,
+      "id": "755:06485/408:9703",
+      "name": "容器 173794",
+      "type": "FRAME",
+      "x": 30,
+      "y": 740,
+      "width": 24,
+      "height": 24
+    }
+  ]
+}

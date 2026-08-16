@@ -228,7 +228,8 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
     css.push(`color:${color}`);
     if (node.textAlign && node.textAlign !== "left") css.push(`text-align:${node.textAlign}`);
     const multi = node.textMode !== "single-line";
-    if (multi && ls.width != null) css.push(`width:${ls.width}px`);
+    // 宽度保留设计稿列宽(防止 flex align-items:stretch 拉伸; 行宽实测=设计宽, 不会裁切)
+    if (ls.width != null) css.push(`width:${ls.width}px`);
     css.push(multi ? "white-space:pre-wrap" : "white-space:nowrap");
     inner = escapeHtml(text);
   } else if (node.type === "PATH") {

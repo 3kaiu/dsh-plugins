@@ -5,6 +5,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { inferLayout } from "@3kaiu/dsh-plugin-kit";
 import { annotate } from "./annotate.js";
 import { classifyDsl } from "./classify.js";
+import { applyCleanTool } from "./clean.js";
 
 const name = "dsh-layout-infer";
 
@@ -76,6 +77,8 @@ function apply(ctx) {
       },
     }),
   );
+
+  applyCleanTool(ctx);
 
   ctx.tools.register(
     defineTool({

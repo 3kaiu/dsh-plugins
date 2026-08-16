@@ -1,0 +1,42 @@
+画布 375x812
+容器 173939375x812@0,0 布局=自由定位 [颜色:#F6F7FB]
+  hero-background375x159@0,0 [颜色:linear-gradient(180deg, #7F7CFF 0%, #79A8FF 100%)]
+  learn-card343x132@16,200 [效果:box-shadow]
+  content-tabs170x42@102,676 [效果:box-shadow]
+  sticker-card343x196@16,422 布局=自由定位 [效果:box-shadow]
+    组 17413898x102@61,462 旋转-4.2° [角色:sticker]
+    组 17414695x79@19,533
+    组 17414061x54@114,559 旋转-7.7° [角色:sticker]
+    组 17414180x77@183,536 旋转-0.6° [角色:sticker]
+  status-bar375x44@0,0
+  nav-bar375x44@0,44
+  hero106x86@134,90 布局=自由定位
+    column-group106x86@134,90 布局=自由定位
+      031x70@172,90 [文本:"0"]
+      心碎20x20@134,156
+      组 17413084x20@156,156 [文本:"连续打卡词书"]
+  stats-row343x58@16,352 布局=自由定位
+    stats-item136x58@16,352 布局=自由定位
+      学会的词56x20@16,352 [文本:"学会的词"]
+      组 17293960x30@16,380 [文本:"今日"]
+      组 17293868x30@84,380 [文本:"近7日"]
+    容器 17377416x16@343,387
+  tab-bar375x82@0,730 布局=自由定位
+    矩形375x82@0,730 [颜色:#FFFFFF | 效果:backdrop-blur | 角色:tab-bar-bg]
+    tab-item-学习24x38@248,740 布局=column 主轴对齐=flex-start 交叉对齐=center
+      容器 17379724x24@248,740 [角色:tab-icon]
+      学习20x14@250,764 [角色:tab-label | 文本:"学习"]
+    tab-item-我的24x38@321,740 布局=column 主轴对齐=flex-start 交叉对齐=center
+      容器 17379824x24@321,740 [角色:tab-icon]
+      我的20x14@323,764 [角色:tab-label | 文本:"我的"]
+    tab-item-首页24x38@103,740 布局=column 主轴对齐=flex-start 交叉对齐=center
+      容器 17379624x24@103,740 [角色:tab-icon]
+      首页20x14@105,764 [角色:tab-label | 文本:"首页"]
+    tab-item-场景24x38@176,740 布局=column 主轴对齐=flex-start 交叉对齐=center
+      容器 17379924x24@176,740 [角色:tab-icon]
+      场景20x14@178,764 [角色:tab-label | 文本:"场景"]
+    tab-item-对话24x38@30,740 布局=column 主轴对齐=flex-start 交叉对齐=center
+      容器 17379424x24@30,740 [角色:tab-icon]
+      对话20x14@32,764 [角色:tab-label | 文本:"对话"]
+    Bars / Home Indicator / iPhone / Light - Portrait134x34@121,778
+  阿祖搞定常用高频词108x17@461,174 [文本:"阿祖搞定常用高频词"]
