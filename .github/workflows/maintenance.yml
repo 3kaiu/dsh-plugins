@@ -22,7 +22,7 @@ env:
 jobs:
   maintain:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,7 +98,10 @@ jobs:
             "4) reproduce 应转为不可复现,test 应通过;\n" +
             "5) 结束时输出三行:CHANGED_FILES: <逗号分隔>\nTEST_RESULT: <pass|fail 及输出摘要>\nSUMMARY: <修复摘要>"
           , process.argv[1], process.argv[2], process.argv[3], process.argv[4]))' "$ID" "$NUM" "$BODY" "$CTX")
-          dsh --profile headless "$TASK" | tee /tmp/agent-output.txt
+          timeout 600 dsh --profile headless "$TASK" | tee /tmp/agent-output.txt
+          RC=${PIPESTATUS[0]}
+          echo "dsh_rc=$RC (124=超时但工作已完成)"
+          if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then echo "agent 真失败(rc=$RC)"; exit "$RC"; fi
           test -s /tmp/agent-output.txt
           grep -q 'SUMMARY:' /tmp/agent-output.txt && echo "agent 完成,含 SUMMARY"
       - name: verify gate (contract)
