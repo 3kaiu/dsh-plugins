@@ -5,7 +5,7 @@ import { parseMiniYaml } from "./yaml-mini.mjs";
 
 export const DEFAULT_CONTRACT = {
   budget: { maxRunsPerDay: 3, maxAttemptsPerIssue: 3, maxChangedFiles: 15, maxDiffLines: 500, maxRuntimeMin: 15 },
-  allow: ["packages/**", "tests/**", "fixtures/**", ".dsh/knowledge/**", "docs/**"],
+  allow: ["packages/**", "tests/**", "fixtures/**", ".dsh/knowledge/**", ".dsh/incidents/**", "docs/**"],
   deny: [".github/workflows/release.yml", ".dsh/autopilot.yml", "LICENSE", "**/package.json"],
 };
 
