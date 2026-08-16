@@ -31,11 +31,39 @@ pnpm install:local   # = pnpm build && node scripts/install-local.mjs
 `install-local.mjs` 对 `$DSH_HOME/profiles/web`:
 1. 用 `pnpm add file:<abs>` 把三个插件装进 profile 的 node_modules(与发布后
    `dsh plugin --profile web add <pkg>` 等效);
-2. 把 profile 的 `cordis.patch.yml` 中对应插件行的 `name` 原地升级为包名
-   (`@3kaiu/dsh-llm-opencode-zen` 等),旧的 `../../plugins/...` 相对路径自动被替换。
+2. 把声明了 `dsh.bundle` 的依赖 reconcile 进 `dsh.profile.bundles`
+   (即 `dsh plugin add` 在安装后自动做的那一步);
+3. 清理 profile patch 中旧的插件条目(插件注册改由 bundle 层 patch 提供)。
 
-重启 dsh(或等 HMR)后生效。旧的手工安装目录(`~/.dsh/plugins/dsh-*`)不再被引用,
-可手动删除。
+重启 dsh(或等 HMR)后生效。
+
+### 分发与安装(不需要 npm 账号)
+
+发布到 npm **不是必须的**——仓库内置 GitHub Actions
+(`.github/workflows/release.yml`),打 tag 即自动构建 + `pnpm pack` 并把
+tarball 挂到 GitHub Release:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+安装 tarball(用户侧,无需构建授权、无需 npm):
+
+```sh
+dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-opencode-zen/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
+```
+
+tarball 内已含构建产物(`dist/` + `cordis.patch.yml`),运行时依赖
+(`@deepseek-ai/*`、`schemastery`、`eventsource-parser`)声明在
+`dependencies` 中,安装时由 pnpm 装入 profile 的 store,插件 dist 的
+external import 即可解析(已按此流程实测验证)。
+
+> 说明:官方也支持 `dsh plugin add github:you/repo` 直接装 git 源码,但那会
+> 安装**仓库根**且要求包的 `prepare` 脚本自包含——对 monorepo 不适用,
+> 所以本仓库走"构建产物(tarball)"路线。等发布到 npm 后,安装可简化为
+> `dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen`。
 
 ### 发布后安装
 
@@ -82,9 +110,10 @@ pnpm test    # 各包 build + 全部测试套件
 ## 版本兼容
 
 所有插件按 **DSH 0.1.0-rc.6**(开发者预览版,API 可能破坏性变更)开发:
-`@deepseek-ai/*` 运行时依赖通过 `peerDependencies` 声明(由宿主 profile 提供,
-保证与 harness 共享同一 `LlmAdapter` 品牌单实例);workspace 内测试用
-`devDependencies` 固定同一版本。升级 DSH 后如遇插件不兼容,优先检查 peer 版本。
+`@deepseek-ai/*` 运行时依赖固定 0.1.0-rc.6,声明在 `dependencies`
+(安装时由 pnpm 装入 profile 的 store,与官方"内置包始终从 dsh 安装目录解析"
+互不冲突,已实测验证);workspace 内测试用 `devDependencies` 固定同一版本。
+升级 DSH 后如遇插件不兼容,优先检查依赖版本。
 
 公共能力包 `@3kaiu/dsh-plugin-kit` 保持零运行时依赖(不 import 任何
 `@deepseek-ai/*`),因此既可被插件 bundle,也可被外部工具(MasterGo 脚本等)

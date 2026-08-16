@@ -19,22 +19,20 @@ importers:
         version: 0.24.2
 
   packages/layout-infer:
+    dependencies:
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.0-rc.6
+        version: 0.1.0-rc.6(b6nzleejznykjypjubilix76n4)
     devDependencies:
       '@3kaiu/dsh-plugin-kit':
         specifier: workspace:*
         version: link:../shared
-      '@deepseek-ai/dsh-tools':
-        specifier: 0.1.0-rc.6
-        version: 0.1.0-rc.6(b6nzleejznykjypjubilix76n4)
       esbuild:
         specifier: ^0.24.2
         version: 0.24.2
 
   packages/llm-opencode-zen:
-    devDependencies:
-      '@3kaiu/dsh-plugin-kit':
-        specifier: workspace:*
-        version: link:../shared
+    dependencies:
       '@deepseek-ai/dsh-credentials':
         specifier: 0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
@@ -53,12 +51,16 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
-      esbuild:
-        specifier: ^0.24.2
-        version: 0.24.2
       eventsource-parser:
         specifier: 3.1.1
         version: 3.1.1
+    devDependencies:
+      '@3kaiu/dsh-plugin-kit':
+        specifier: workspace:*
+        version: link:../shared
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
 
   packages/shared: {}
 

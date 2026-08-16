@@ -20,9 +20,6 @@
       "patch": "./cordis.patch.yml"
     }
   },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
-  },
   "devDependencies": {
     "@3kaiu/dsh-plugin-kit": "workspace:*",
     "esbuild": "^0.24.2",
@@ -37,5 +34,8 @@
     "plugin",
     "dsh-plugin"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+  }
 }

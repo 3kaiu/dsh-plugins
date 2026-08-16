@@ -20,15 +20,6 @@
       "patch": "./cordis.patch.yml"
     }
   },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "3.18.1",
-    "eventsource-parser": "3.1.1"
-  },
   "devDependencies": {
     "@3kaiu/dsh-plugin-kit": "workspace:*",
     "esbuild": "^0.24.2",
@@ -48,5 +39,14 @@
     "plugin",
     "dsh-plugin"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "eventsource-parser": "3.1.1"
+  }
 }
