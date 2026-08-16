@@ -104,29 +104,52 @@ jobs:
           if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then echo "agent 真失败(rc=$RC)"; exit "$RC"; fi
           test -s /tmp/agent-output.txt
           grep -q 'SUMMARY:' /tmp/agent-output.txt && echo "agent 完成,含 SUMMARY"
-      - name: verify gate (contract)
+      - name: verify gate (contract + 修复验证)
         id: verify
         run: |
-          git add -A 2>/dev/null || true
+          ID="${{ steps.select.outputs.incident_id }}"
+          git add -A
           DSH_MAINT_DIFF_BASE=origin/main node packages/dsh-maintenance-core/bin/dsh-maint.mjs verify contract --json > /tmp/verify.json
           node -e '
             const j = JSON.parse(require("fs").readFileSync("/tmp/verify.json", "utf8"));
             console.log(JSON.stringify(j.data.checks, null, 1));
             if (!j.ok) process.exit(1);
           '
+          # 机器验证修复本身:reproduce 应转不可复现,test 应通过
+          node packages/dsh-maintenance-core/bin/dsh-maint.mjs reproduce "$ID" --json > /tmp/reproduce.json
+          node -e '
+            const j = JSON.parse(require("fs").readFileSync("/tmp/reproduce.json", "utf8"));
+            console.log("reproduce:", JSON.stringify(j.data));
+            if (j.data.reproduced !== false) { console.error("缺陷仍可复现,闸门拒绝"); process.exit(1); }
+          '
+          node packages/dsh-maintenance-core/bin/dsh-maint.mjs test "$ID" --json > /tmp/test.json
+          node -e '
+            const j = JSON.parse(require("fs").readFileSync("/tmp/test.json", "utf8"));
+            console.log("test:", JSON.stringify(j.data));
+            if (j.data.passed !== true) { console.error("回归测试未通过,闸门拒绝"); process.exit(1); }
+          '
+          echo "verify gate 全通过(contract + reproduce + test)"
       - name: commit + PR
         id: pr
         run: |
           ID="${{ steps.select.outputs.incident_id }}"
           NUM="${{ steps.issue.outputs.issue_number }}"
-          if git diff --quiet origin/main -- .; then echo "无变更,跳过 PR"; exit 0; fi
+          git add -A
+          if git diff --quiet origin/main -- . && git diff --cached --quiet; then echo "无变更,跳过 PR"; exit 0; fi
           BR="maintenance/${ID}-$(date -u +%Y%m%d-%H%M%S)"
           git checkout -b "$BR"
-          git commit -am "maintenance(${ID}): agent fix" 2>/dev/null || echo "工作树已干净(Agent 可能已自行提交)"
+          if git diff --cached --quiet; then
+            echo "无暂存变更(Agent 可能已自行提交):"
+            git log --oneline origin/main..HEAD | head -5
+            git diff --stat origin/main...HEAD | tail -3
+          else
+            git commit -m "maintenance(${ID}): agent fix"
+          fi
           git push origin "$BR"
           BODY=$(tail -c 2000 /tmp/agent-output.txt)
-          gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\n%s' "$ID" "$BODY")" 2>&1 | tee /tmp/pr-link.txt || true
+          gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\n%s' "$ID" "$BODY")" 2>&1 | tee /tmp/pr-link.txt
           PR=$(cat /tmp/pr-link.txt | grep -o 'https://github.com/[^ ]*pull/[0-9]*' | head -1)
+          if [ -z "$PR" ]; then echo "PR 创建失败,输出见上"; exit 1; fi
           echo "pr_url=$PR" >> "$GITHUB_OUTPUT"
       - name: comment issue
         if: always()
