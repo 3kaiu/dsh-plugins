@@ -96,7 +96,7 @@ jobs:
             "2) 最小修复,只改 contract allow 路径(packages/** docs/** 等),禁止改 package.json / .github/workflows/release.yml;\n" +
             "3) 若事项 testCommand 为空或已过时,把它更新为能验证修复的回归命令(在 .dsh/incidents/<id>.json 里);\n" +
             "4) reproduce 应转为不可复现,test 应通过;\n" +
-            "5) 结束时输出三行:CHANGED_FILES: <逗号分隔>\nTEST_RESULT: <pass|fail 及输出摘要>\nSUMMARY: <修复摘要>"
+            "5) 结束时输出三行:CHANGED_FILES: <逗号分隔,必须与你的实际修改一一对应,闸门会逐文件核验>\nTEST_RESULT: <pass|fail 及输出摘要>\nSUMMARY: <修复摘要>"
           , process.argv[1], process.argv[2], process.argv[3], process.argv[4]))' "$ID" "$NUM" "$BODY" "$CTX")
           timeout 600 dsh --profile headless "$TASK" | tee /tmp/agent-output.txt
           RC=${PIPESTATUS[0]}
@@ -115,20 +115,30 @@ jobs:
             console.log(JSON.stringify(j.data.checks, null, 1));
             if (!j.ok) process.exit(1);
           '
-          # 机器验证修复本身:reproduce 应转不可复现,test 应通过
-          node packages/dsh-maintenance-core/bin/dsh-maint.mjs reproduce "$ID" --json > /tmp/reproduce.json
+          # agent 声明 → claim.json(证据核验输入)
           node -e '
-            const j = JSON.parse(require("fs").readFileSync("/tmp/reproduce.json", "utf8"));
-            console.log("reproduce:", JSON.stringify(j.data));
-            if (j.data.reproduced !== false) { console.error("缺陷仍可复现,闸门拒绝"); process.exit(1); }
-          '
-          node packages/dsh-maintenance-core/bin/dsh-maint.mjs test "$ID" --json > /tmp/test.json
+            const fs = require("fs");
+            const t = fs.readFileSync("/tmp/agent-output.txt", "utf8");
+            const cf = (t.match(/CHANGED_FILES:\s*([^\n]*)/) || [])[1];
+            const sr = (t.match(/TEST_RESULT:\s*([^\n]*)/) || [])[1];
+            const sm = (t.match(/SUMMARY:\s*([\s\S]*)$/) || [])[1];
+            const claim = {
+              incidentId: process.argv[1],
+              changedFiles: cf ? cf.split(",").map((s) => s.trim()).filter(Boolean) : [],
+              testResult: sr ? sr.trim() : "",
+              summary: sm ? sm.trim() : "",
+            };
+            fs.writeFileSync("/tmp/claim.json", JSON.stringify(claim, null, 2));
+            console.log("claim.changedFiles:", JSON.stringify(claim.changedFiles), "| summary:", claim.summary.slice(0, 60));
+          ' "$ID"
+          # 证据核验:声明 vs 磁盘事实(reproduce 转不可复现 + test 通过 + 声明文件真实修改 + 契约)
+          DSH_MAINT_DIFF_BASE=origin/main node packages/dsh-maintenance-core/bin/dsh-maint.mjs verify evidence --claim /tmp/claim.json --incident "$ID" --json > /tmp/evidence.json
           node -e '
-            const j = JSON.parse(require("fs").readFileSync("/tmp/test.json", "utf8"));
-            console.log("test:", JSON.stringify(j.data));
-            if (j.data.passed !== true) { console.error("回归测试未通过,闸门拒绝"); process.exit(1); }
+            const j = JSON.parse(require("fs").readFileSync("/tmp/evidence.json", "utf8"));
+            for (const c of j.data.checks) console.log("  [" + c.result + "] " + c.name + (c.detail ? " — " + c.detail : ""));
+            if (!j.ok) { console.error("证据核验未通过(疑似假完成),闸门拒绝"); process.exit(1); }
           '
-          echo "verify gate 全通过(contract + reproduce + test)"
+          echo "verify gate 全通过(contract + evidence)"
       - name: commit + PR
         id: pr
         run: |
@@ -149,7 +159,11 @@ jobs:
           fi
           git push origin "$BR"
           BODY=$(tail -c 2000 /tmp/agent-output.txt)
-          gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\n%s' "$ID" "$BODY")" 2>&1 | tee /tmp/pr-link.txt
+          EV=$(node -e '
+            const j = JSON.parse(require("fs").readFileSync("/tmp/evidence.json", "utf8"));
+            console.log(j.data.checks.map((c) => "- " + (c.result === "pass" ? "✅" : "❌") + " " + c.name + (c.detail ? " (" + c.detail + ")" : "")).join("\n"));
+          ')
+          gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\n%s\n\n**闸门证据**\n%s' "$ID" "$BODY" "$EV")" 2>&1 | tee /tmp/pr-link.txt
           PR=$(cat /tmp/pr-link.txt | grep -o 'https://github.com/[^ ]*pull/[0-9]*' | head -1)
           if [ -z "$PR" ]; then echo "PR 创建失败,输出见上"; exit 1; fi
           echo "pr_url=$PR" >> "$GITHUB_OUTPUT"
