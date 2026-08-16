@@ -82,11 +82,12 @@ jobs:
           BR="agent-loop/$(date -u +%Y%m%d-%H%M%S)"
           git checkout -b "$BR"
           git add -A
-          if git diff --cached --quiet; then
+          if git diff --quiet origin/main -- .; then
             echo "[agent-loop] 无变更,跳过 PR"
             exit 0
           fi
-          git commit -m "agent-loop: 自动运行记录 $(date -u +%Y-%m-%d)"
+          git commit -m "agent-loop: 自动运行记录 $(date -u +%Y-%m-%d)" 2>/dev/null \
+            || echo "[agent-loop] 工作树已干净(Agent 可能已自行提交),直接推送"
           git push origin "$BR"
           gh pr create --base main --head "$BR" \
             --title "agent-loop 自动记录 $(date -u +%Y-%m-%d)" \
