@@ -133,8 +133,10 @@ firehose——插件零耦合接入,无需 tail 磁盘日志(会话 JSONL 为 zs
 - test/completion 两族保留,由 GitHub 侧(source=github)填充。
 
 **headless 退出语义(实测坑)**:headless 跑完即进程退出——不触发 cordis
-dispose、不触发 session/disposed。插件以 process.once("exit") 兜底:补发
-session.completed + 落盘 events/seq;seq 每 25 条周期落盘降低丢失窗口。
+dispose、不触发 session/disposed,且退出前有约 4 分钟 quiescence 等待期。
+插件两层兜底:① turn/end 后空闲 10s(idleCompleteMs,续轮自动取消)即补发
+session.completed——让 Console 实时看到"完成";② process.once("exit")
+兜底最终补发 + 落盘 events/seq;seq 每 25 条周期落盘降低丢失窗口。
 
 **验证**(隔离 home,headless 任务 "Run 'uname -s' …")产出 5 条包络,
 events/seq=5,家族文件 session.jsonl + tool.jsonl + all.jsonl:

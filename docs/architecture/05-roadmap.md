@@ -11,6 +11,8 @@
 | 0 ✅ | macOS 桌面底座 | dsh-launcher v0.1.0 | 已完成:CI 全绿、Release 发布、冒烟通过 |
 | 0.5 | **无头大脑 PoC** | **完成(2026-08-16,11 篇)**:探测实测 + CI 双 runner + agent-loop 最小闭环全链路(本地构建插件 → headless 全栈 → Agent 跑测试写记录 → 提交推分支;PR 创建待仓库设置开关,见 11 篇 §5) | 最小闭环 PR 出现(人工 merge),budget/白名单真实生效(PR 开关开启后满足) |
 | 1 | **工作台 MVP(四件套)** | ①llm-opencode-zen 稳定性收尾 ②dsh-runtime(五族事件+WS+事件库)③DSH Console(四页 MVP)④GitHub 维护闭环(Issue→Zen→PR→CI,人工 merge)(实现级接口见 09 篇,组件见 10 篇) | **你自己每天能通过 Console 全程看见一次真实任务**;一个真实 failure 走完"事件→issue→PR→人工 merge"闭环 |
+
+> Phase 1 进度(2026-08-17):① 完成(agent-loop 已闭环) ② **dsh-runtime-events v0.1.0 完成**(事件桥,见 11 篇 §6) ③ **dsh-console v0.1.0 完成**(事件库服务端 REST+WS+静态托管 3090,七页 MVP 实时绑定事件流:总览/会话/任务/失败/健康/维护/设置,Preact+signals;实时闭环实测:任务结束 10s 内 session.completed 推送到位) ④ 待执行(维护闭环工作流)。
 | 2 | **变聪明** | Verify/Replay/Recovery/Knowledge/Benchmark(原 reliability 深化)+ 兼容 matrix | gate 拦截一次"假完成";matrix ≥3 组合 CI 自动跑 |
 | 3 | **自动化** | auto repair / auto PR / auto regression / guarded auto-merge + budget 全量 | 0 误合并(1 放行 + 1 拦截) |
 | 4 | **分析** | Agent Score/Analytics/归因 + 无人值守演示 + 发行门禁 | "00:00 失败 → 02:40 修复合入"一次走通;score 归因能解释一次下降 |

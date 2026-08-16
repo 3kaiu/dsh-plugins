@@ -27,7 +27,7 @@ const fixtures = [
 console.log("# 映射:session/tool/error 家族");
 {
   const emitted = [];
-  const opts = { inputSummaryMax: 200, stdoutTailMax: 500 };
+  const opts = { inputSummaryMax: 200, stdoutTailMax: 500, idleCompleteMs: 0 };
   const agg = { sessions: new Map(), calls: new Map() };
   const emit = (family, type, data, sessionId) => emitted.push({ family, type, data, sessionId });
   sessionOf(agg, fakeSession, T0);
@@ -73,7 +73,7 @@ console.log("# 映射:session/tool/error 家族");
 console.log("# tool.failed(isError)");
 {
   const emitted = [];
-  const opts = { inputSummaryMax: 200, stdoutTailMax: 500 };
+  const opts = { inputSummaryMax: 200, stdoutTailMax: 500, idleCompleteMs: 0 };
   const agg = { sessions: new Map(), calls: new Map() };
   const emit = (family, type, data, sessionId) => emitted.push({ family, type, data, sessionId });
   const s2 = { id: "session-fail-1" };
@@ -91,7 +91,7 @@ console.log("# tool.failed(isError)");
 console.log("# interrupted 补发");
 {
   const emitted = [];
-  const opts = { inputSummaryMax: 200, stdoutTailMax: 500 };
+  const opts = { inputSummaryMax: 200, stdoutTailMax: 500, idleCompleteMs: 0 };
   const agg = { sessions: new Map(), calls: new Map() };
   const emit = (family, type, data, sessionId) => emitted.push({ family, type, data, sessionId });
   const s3 = { id: "session-int-1" };
@@ -136,6 +136,27 @@ console.log("# sink:追加 + seq 持久化 + 家族文件");
   sink2.flush();
   assert.equal(readFileSync(join(dir, "seq"), "utf8"), "3");
   ok("sink:seq 单调 + 家族文件 + 重启续 seq");
+}
+
+console.log("# 空闲补发(turn/end + idleCompleteMs)");
+{
+  const emitted = [];
+  const opts = { inputSummaryMax: 200, stdoutTailMax: 500, idleCompleteMs: 10 };
+  const agg = { sessions: new Map(), calls: new Map() };
+  const emit = (family, type, data, sessionId) => emitted.push({ family, type, data, sessionId });
+  const s4 = { id: "session-idle-1" };
+  sessionOf(agg, s4, T0);
+  processEvent(agg, emit, opts, s4, { type: "turn/start", time: T0, data: { turn: 1 } });
+  processEvent(agg, emit, opts, s4, { type: "turn/end", time: T0 + 10, data: { turn: 1, reason: { kind: "completed" } } });
+  await new Promise((res) => setTimeout(res, 40));
+  const c = emitted.find((e) => e.type === "session.completed");
+  assert.ok(c, "空闲补发应产生 completed");
+  assert.equal(c.data.reason, "completed");
+  assert.equal(c.data.turns, 1);
+  // 补发后再次 finalize 不应重复
+  finalizeSession(agg, emit, s4.id, agg.sessions.get(s4.id), T0 + 100, true);
+  assert.equal(emitted.filter((e) => e.type === "session.completed").length, 1);
+  ok("空闲补发:10ms 后 completed,不重复");
 }
 
 console.log("\npassed", passed, "checks");
