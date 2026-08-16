@@ -1,0 +1,33 @@
+{
+  "name": "@3kaiu/dsh-harness-updater",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness plugin: daily registry check for @deepseek-ai/dsh with npx-cache warm-up. Zero runtime dependencies.",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "updater",
+    "plugin",
+    "dsh-plugin"
+  ],
+  "license": "MIT"
+}

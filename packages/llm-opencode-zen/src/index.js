@@ -1,7 +1,7 @@
-import { randomBytes, createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { QuotaTracker, Semaphore, sessionKeyOf, DEFAULT_COOLDOWN_MS } from "@3kaiu/dsh-plugin-kit";
 import z from "@deepseek-ai/schemastery";
 import {
   CONTEXT_WINDOW_EXCEEDED_CODE,
@@ -27,163 +27,11 @@ import { EventSourceParserStream } from "eventsource-parser/stream";
 
 //#region telemetry
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
-const STORAGES_DIR = join(DSH_HOME, "storages");
-const QUOTA_FILE = join(STORAGES_DIR, "llm-opencode-zen-usage.json");
-const DEFAULT_COOLDOWN_MS = 60000;
-const PERSIST_DEBOUNCE_MS = 5000;
-
-class QuotaTracker {
-  file;
-  now;
-  requests = 0;
-  totalInputTokens = 0;
-  totalOutputTokens = 0;
-  totalCacheReadTokens = 0;
-  totalReasoningTokens = 0;
-  rateLimited = 0;
-  quotaExceeded = 0;
-  sessionCooldowns = {};
-  requestTimes = {};
-  pacing = { enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 };
-  projectId = `proj_${randomBytes(12).toString("base64url")}`;
-  lastPersistAt = 0;
-  constructor(file, now = () => Date.now()) {
-    this.file = file;
-    this.now = now;
-    try {
-      const data = JSON.parse(readFileSync(file, "utf8"));
-      this.requests = data.requests ?? 0;
-      this.totalInputTokens = data.totalInputTokens ?? 0;
-      this.totalOutputTokens = data.totalOutputTokens ?? 0;
-      this.totalCacheReadTokens = data.totalCacheReadTokens ?? 0;
-      this.totalReasoningTokens = data.totalReasoningTokens ?? 0;
-      this.rateLimited = data.rateLimited ?? 0;
-      this.quotaExceeded = data.quotaExceeded ?? 0;
-      this.sessionCooldowns = data.sessionCooldowns ?? {};
-      if (typeof this.sessionCooldowns !== "object" || this.sessionCooldowns === null)
-        this.sessionCooldowns = {};
-      if (typeof data.cooldownUntil === "number" && data.cooldownUntil > 0)
-        this.sessionCooldowns["default"] = Math.max(this.sessionCooldowns["default"] ?? 0, data.cooldownUntil);
-      this.projectId = data.projectId ?? this.projectId;
-    } catch {}
-  }
-  configurePacing(pacing) {
-    if (pacing !== void 0 && pacing !== null) this.pacing = pacing;
-  }
-  markRequest(sessionId) {
-    const bucket = this.sessionBucket(sessionId);
-    const now = this.now();
-    const window = Math.max(this.pacing.windowMs * 2, 1000);
-    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
-    times.push(now);
-    this.requestTimes[bucket] = times;
-  }
-  // 返回发送前需要等待的毫秒数（0 = 立即发送）。
-  // 目的：在触发服务端 402/429 之前主动放慢节奏（滚动窗口预算）。
-  pacingDelayMs(sessionId) {
-    if (!this.pacing.enabled) return 0;
-    const bucket = this.sessionBucket(sessionId);
-    const now = this.now();
-    const window = Math.max(this.pacing.windowMs, 1000);
-    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
-    if (times.length < this.pacing.maxRequests) return 0;
-    const oldest = Math.min(...times);
-    const wait = Math.min(oldest + window - now, this.pacing.maxHoldMs);
-    return Math.max(0, wait);
-  }
-  recordQuotaExceeded() {
-    this.quotaExceeded += 1;
-    this.persist(true);
-  }
-  recordUsage(usage) {
-    this.requests += 1;
-    this.totalInputTokens += usage.inputTokens;
-    this.totalOutputTokens += usage.outputTokens;
-    if (usage.cacheReadTokens !== void 0) this.totalCacheReadTokens += usage.cacheReadTokens;
-    if (usage.reasoningTokens !== void 0) this.totalReasoningTokens += usage.reasoningTokens;
-    this.persist();
-  }
-  recordLimit(retryAfterMs, sessionId) {
-    this.rateLimited += 1;
-    this.sessionCooldowns[this.sessionBucket(sessionId)] =
-      this.now() + (retryAfterMs ?? DEFAULT_COOLDOWN_MS);
-    this.pruneCooldowns();
-    this.persist(true);
-  }
-  cooldownRemainingMs(sessionId) {
-    this.pruneCooldowns();
-    const until = this.sessionCooldowns[this.sessionBucket(sessionId)] ?? 0;
-    return Math.max(0, until - this.now());
-  }
-  sessionBucket(sessionId) {
-    if (sessionId === void 0 || sessionId === null) return "default";
-    return sessionKeyFromId(sessionId);
-  }
-  pruneCooldowns() {
-    const now = this.now();
-    for (const key of Object.keys(this.sessionCooldowns)) {
-      if (this.sessionCooldowns[key] <= now) delete this.sessionCooldowns[key];
-    }
-  }
-  cacheHitRate() {
-    const billed = this.totalInputTokens + this.totalCacheReadTokens;
-    return billed > 0 ? this.totalCacheReadTokens / billed : 0;
-  }
-  snapshot() {
-    return {
-      requests: this.requests,
-      totalInputTokens: this.totalInputTokens,
-      totalOutputTokens: this.totalOutputTokens,
-      totalCacheReadTokens: this.totalCacheReadTokens,
-      totalReasoningTokens: this.totalReasoningTokens,
-      cacheHitRate: this.cacheHitRate(),
-      rateLimited: this.rateLimited,
-      quotaExceeded: this.quotaExceeded,
-      sessionCooldowns: this.sessionCooldowns,
-      projectId: this.projectId,
-      updatedAt: new Date(this.now()).toISOString(),
-    };
-  }
-  persist(force = false) {
-    if (!force && this.now() - this.lastPersistAt < PERSIST_DEBOUNCE_MS) return;
-    try {
-      mkdirSync(dirname(this.file), { recursive: true });
-      writeFileSync(this.file, `${JSON.stringify(this.snapshot(), null, 2)}\n`);
-      this.lastPersistAt = this.now();
-    } catch {}
-  }
-}
+const QUOTA_FILE = join(DSH_HOME, "storages", "llm-opencode-zen-usage.json");
 
 const quota = new QuotaTracker(QUOTA_FILE);
 
-class Semaphore {
-  max;
-  active = 0;
-  waiters = [];
-  constructor(max) {
-    this.max = max;
-  }
-  acquire(signal) {
-    if (this.active < this.max) {
-      this.active += 1;
-      return;
-    }
-    return new Promise((resolve, reject) => {
-      const waiter = { resolve, reject, signal };
-      this.waiters.push(waiter);
-      signal?.addEventListener("abort", () => {
-        const index = this.waiters.indexOf(waiter);
-        if (index >= 0) this.waiters.splice(index, 1);
-        reject(new LlmError("cancelled while waiting for a concurrency slot", "ABORTED"));
-      }, { once: true });
-    });
-  }
-  release() {
-    const next = this.waiters.shift();
-    if (next) next.resolve();
-    else this.active -= 1;
-  }
-}
+
 //#endregion
 
 //#region serialize
@@ -603,13 +451,30 @@ function providerRetryAfterMs(header) {
   return void 0;
 }
 
-function formatDuration(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return "稍后";
+// Real OpenCode client headers captured from mitmproxy traffic against https://opencode.ai/zen/v1
+// User-Agent: opencode/${version} ai-sdk/provider-utils/${version} runtime/${runtime}
+// The free model is authenticated with the literal token "public".
+//
+// ⚠️ 脆弱性声明: 这是对 OpenCode Zen 免费接口的"模拟官方客户端"做法,
+// 服务端一旦校验 UA/增加签名,适配器可能失效;UA 可通过配置 userAgent 覆盖,
+// 也允许设置成真实环境的值(如 opencode/1.x.x)。
+const OPENCODE_UA = "opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14";
+
+function formatDuration(ms, locale = "zh") {
+  if (!Number.isFinite(ms) || ms <= 0) return locale === "en" ? "shortly" : "稍后";
   const totalSeconds = Math.ceil(ms / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
+  if (locale === "en") {
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? "s" : ""}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes > 1 ? "s" : ""}`);
+    if (seconds > 0 && parts.length === 0) parts.push(`${seconds} second${seconds > 1 ? "s" : ""}`);
+    return parts.length > 0 ? parts.join(" ") : "under a minute";
+  }
   const parts = [];
   if (days > 0) parts.push(`${days} 天`);
   if (hours > 0) parts.push(`${hours} 小时`);
@@ -618,9 +483,12 @@ function formatDuration(ms) {
   return parts.length > 0 ? parts.join(" ") : "1 分钟以内";
 }
 
-function rateLimitMessage(ms) {
-  const wait = formatDuration(ms);
-  return `OpenCode Zen 免费额度已用尽，当前处于限流状态，约 ${wait} 后可恢复使用；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
+function rateLimitMessage(ms, locale, apiKeyEnv) {
+  const wait = formatDuration(ms, locale);
+  if (locale === "en") {
+    return `OpenCode Zen free quota exhausted; rate-limited for about ${wait}. Set env ${apiKeyEnv} for a higher quota.`;
+  }
+  return `OpenCode Zen 免费额度已用尽，当前处于限流状态，约 ${wait} 后可恢复使用；如需更高额度，可设置环境变量 ${apiKeyEnv}`;
 }
 
 function requestId(headers) {
@@ -638,25 +506,12 @@ function httpErrorCode(status, error) {
   return "PROVIDER_ERROR";
 }
 
-// Real OpenCode client headers captured from mitmproxy traffic against https://opencode.ai/zen/v1
-// User-Agent: opencode/${version} ai-sdk/provider-utils/${version} runtime/${runtime}
-// The free model is authenticated with the literal token "public".
-const OPENCODE_UA = "opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14";
-
-function sessionKeyFromId(sessionId) {
-  // 无 sessionId 时使用基于 projectId 的稳定 key：保证请求头与冷却 bucket
-  // 一致（sessionBucket 对 undefined 返回 "default"），并让服务端视角的会话稳定。
-  if (sessionId === void 0)
-    return `ses_${createHash("sha256").update(`default:${quota.projectId}`).digest("base64url").slice(0, 16)}`;
-  return `ses_${createHash("sha256").update(String(sessionId)).digest("base64url").slice(0, 16)}`;
-}
-
-function opencodeHeaders(sessionId) {
+function opencodeHeaders(sessionId, userAgent, projectId) {
   return {
-    "user-agent": OPENCODE_UA,
+    "user-agent": userAgent,
     "x-opencode-client": "cli",
-    "x-opencode-project": quota.projectId,
-    "x-opencode-session": sessionKeyFromId(sessionId),
+    "x-opencode-project": projectId,
+    "x-opencode-session": sessionKeyOf(sessionId, projectId),
     "x-opencode-request": `msg_${randomBytes(12).toString("base64url")}`,
   };
 }
@@ -739,7 +594,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
       ...attributionHeaders(),
-      ...opencodeHeaders(options.sessionId),
+      ...opencodeHeaders(options.sessionId, connection.userAgent, quota.projectId),
     };
 
     let response;
@@ -774,10 +629,15 @@ class OpenCodeZenAdapter extends LlmAdapter {
       }
       const retryAfter = providerRetryAfterMs(response.headers.get("retry-after"));
       const code = httpErrorCode(response.status, providerError);
+      const locale = connection.locale ?? "zh";
       if (response.status === 429) {
-        message = `OpenCode Zen 免费额度限流（HTTP 429）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter)} 后可重试` : ""}；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
+        message = locale === "en"
+          ? `OpenCode Zen free-tier rate limit (HTTP 429): ${message}${retryAfter !== void 0 ? `; retry in about ${formatDuration(retryAfter, locale)}` : ""}; set env ${DEFAULT_API_KEY_ENV} for a higher quota`
+          : `OpenCode Zen 免费额度限流（HTTP 429）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter, locale)} 后可重试` : ""}；如需更高额度，可设置环境变量 ${DEFAULT_API_KEY_ENV}`;
       } else if (response.status === 402) {
-        message = `OpenCode Zen 免费额度已耗尽（HTTP 402）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter)} 后可恢复` : ""}；可设置环境变量 ${DEFAULT_API_KEY_ENV} 使用付费额度，或等待免费额度每日重置`;
+        message = locale === "en"
+          ? `OpenCode Zen free quota exhausted (HTTP 402): ${message}${retryAfter !== void 0 ? `; recovers in about ${formatDuration(retryAfter, locale)}` : ""}; set env ${DEFAULT_API_KEY_ENV} for paid quota or wait for the daily free reset`
+          : `OpenCode Zen 免费额度已耗尽（HTTP 402）：${message}${retryAfter !== void 0 ? `，约 ${formatDuration(retryAfter, locale)} 后可恢复` : ""}；可设置环境变量 ${DEFAULT_API_KEY_ENV} 使用付费额度，或等待免费额度每日重置`;
       }
       throw new LlmError(message, code, {
         status: response.status,
@@ -798,12 +658,14 @@ class OpenCodeZenAdapter extends LlmAdapter {
     const connection = {
       baseURL: settings.baseURL,
       apiKeyEnv: settings.apiKeyEnv,
+      userAgent: settings.userAgent,
+      locale: settings.locale,
     };
 
     const cooldownMs = quota.cooldownRemainingMs(options.sessionId);
     if (cooldownMs > 0) {
       throw new LlmError(
-        rateLimitMessage(cooldownMs),
+        rateLimitMessage(cooldownMs, connection.locale, DEFAULT_API_KEY_ENV),
         "RATE_LIMITED",
         { providerRetryAfterMs: cooldownMs },
       );
@@ -965,6 +827,8 @@ const Config = z.object({
   maxConcurrentStreams: z.number().step(1).min(1).default(DEFAULT_MAX_CONCURRENT_STREAMS),
   pacing: PacingSchema.default({ enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 }),
   retryPolicy: RetryPolicySchema.default(DEFAULT_RETRY_POLICY),
+  locale: z.union(["zh", "en"]).default("zh"),
+  userAgent: z.string().default(OPENCODE_UA),
 });
 
 const PUBLIC_BASE_URL = "https://opencode.ai/zen/v1";
@@ -1026,6 +890,8 @@ function resolveAdapterOptions(config, environment) {
     maxConcurrentStreams,
     pacing,
     retryPolicy: resolveRetryPolicy(config.retryPolicy ?? DEFAULT_RETRY_POLICY, "llm-opencode-zen: retryPolicy"),
+    locale: config.locale ?? "zh",
+    userAgent: config.userAgent ?? OPENCODE_UA,
   };
 }
 
@@ -1107,8 +973,6 @@ export {
   Config,
   OpenCodeZenAdapter,
   PUBLIC_BASE_URL,
-  QuotaTracker,
-  Semaphore,
   apply,
   estimateUsage,
   inject,
@@ -1118,3 +982,6 @@ export {
   resolveAdapterOptions,
   translate,
 };
+// QuotaTracker/Semaphore/sessionKeyOf 由 @3kaiu/dsh-plugin-kit 提供,
+// 保持 re-export 兼容既有引用方。
+export { QuotaTracker, Semaphore, sessionKeyOf } from "@3kaiu/dsh-plugin-kit";

@@ -1,5 +1,5 @@
 // 整树标注: 递归对每个容器反推布局语义 + 建议命名
-import { inferLayout } from './core.js'
+import { inferLayout } from '@3kaiu/dsh-plugin-kit'
 
 const round = (n) => Math.round((n || 0) * 100) / 100
 

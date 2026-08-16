@@ -1,0 +1,52 @@
+{
+  "name": "@3kaiu/dsh-llm-opencode-zen",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness plugin: resilient OpenCode Zen free-tier LLM adapter (deepseek-v4-flash-free), tuned for rate-limited free quotas.",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "eventsource-parser": "3.1.1"
+  },
+  "devDependencies": {
+    "@3kaiu/dsh-plugin-kit": "workspace:*",
+    "esbuild": "^0.24.2",
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "eventsource-parser": "3.1.1"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "opencode-zen",
+    "llm",
+    "plugin",
+    "dsh-plugin"
+  ],
+  "license": "MIT"
+}

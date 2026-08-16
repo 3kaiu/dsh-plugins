@@ -1,5 +1,5 @@
 // reasoning_content 回传回归测试: 多轮对话中 assistant 消息带推理时必须回传 reasoning_content
-import { OpenCodeZenAdapter } from "../dist/llm-opencode-zen.js";
+import { OpenCodeZenAdapter } from "../dist/index.js";
 
 let capturedBody = null;
 

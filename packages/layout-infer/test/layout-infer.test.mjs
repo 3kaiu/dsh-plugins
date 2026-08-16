@@ -4,10 +4,10 @@
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { annotate } from "../src/layout-infer/annotate.js";
-import { inferLayout } from "../src/layout-infer/core.js";
+import { annotate } from "../src/annotate.js";
+import { inferLayout } from "@3kaiu/dsh-plugin-kit";
 
-const PREFIX = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "mg-pure-sec-");
+const PREFIX = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "mg-pure-sec-");
 
 // 1. 整树标注: 30 个 section 全部标注
 const all = { total: 0, containers: 0, flex: 0, absolute: 0 };

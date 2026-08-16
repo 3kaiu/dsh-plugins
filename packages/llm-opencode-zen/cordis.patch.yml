@@ -1,0 +1,3 @@
+- insert:
+    - id: llm-opencode-zen
+      name: '@3kaiu/dsh-llm-opencode-zen'

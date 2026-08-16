@@ -1,5 +1,5 @@
 // 插件注册 mock 测试: 模拟 ctx.tools.register,验证两个工具注册且可执行
-import { apply } from "../dist/layout-infer.js";
+import { apply } from "../dist/index.js";
 
 const registered = [];
 const disposers = [];

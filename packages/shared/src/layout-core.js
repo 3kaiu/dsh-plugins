@@ -10,7 +10,9 @@
  * 与官方 DSL 的 flexContainerInfo 字段对齐:
  *   { flexDirection, alignItems, mainSizing, crossSizing, gap, padding }
  *
- * 纯函数,无副作用。Node / dsh bridge / MasterGo 插件共用。
+ * 纯函数,无副作用。位于 @3kaiu/dsh-plugin-kit,供 dsh-layout-infer 等
+ * 插件及 MasterGo 等外部工具通过 ESM import 复用
+ * (不再污染 globalThis——宿主进程全局对象不属于插件)。
  */
 
 const TOL = 2 // 像素容差(整数坐标设计稿)
@@ -409,4 +411,3 @@ function inferGrid(children, tol) {
 }
 
 export { inferLayout, mode, round1, simulateFlex, clusterByAxis }
-if (typeof globalThis !== 'undefined') globalThis.layoutInfer = { inferLayout, mode, round1 }

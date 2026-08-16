@@ -2,7 +2,7 @@
 // 把设计稿裸坐标(absolute)反推为 flex 语义(flexDirection/gap/padding/alignItems),
 // 辅助 LLM 在做 UI 还原时直接获得布局结构,而不是从坐标猜。
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { inferLayout } from "./core.js";
+import { inferLayout } from "@3kaiu/dsh-plugin-kit";
 import { annotate } from "./annotate.js";
 
 const name = "dsh-layout-infer";

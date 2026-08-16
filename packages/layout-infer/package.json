@@ -1,0 +1,41 @@
+{
+  "name": "@3kaiu/dsh-layout-infer",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness plugin: UI layout inference tools (infer_layout / annotate_layout) that reverse flex semantics from absolute design coordinates.",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/plugin-register.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "@3kaiu/dsh-plugin-kit": "workspace:*",
+    "esbuild": "^0.24.2",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "layout",
+    "flex",
+    "design",
+    "plugin",
+    "dsh-plugin"
+  ],
+  "license": "MIT"
+}

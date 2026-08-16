@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-harness-updater
+      name: '@3kaiu/dsh-harness-updater'

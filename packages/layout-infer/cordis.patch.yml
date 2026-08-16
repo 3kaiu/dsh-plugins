@@ -1,0 +1,5 @@
+- insert:
+    - id: dsh-layout-infer
+      name: '@3kaiu/dsh-layout-infer'
+      inject:
+        - tools

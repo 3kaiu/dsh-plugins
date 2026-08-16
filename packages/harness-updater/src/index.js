@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -21,10 +21,13 @@ function readState() {
   }
 }
 
+// 原子写: 先写 tmp 再 rename,崩溃/多实例并发不会留下半写 JSON
 function writeState(state) {
   try {
     mkdirSync(join(dshHome(), "state"), { recursive: true });
-    writeFileSync(stateFile(), `${JSON.stringify(state, null, 2)}\n`);
+    const file = stateFile();
+    writeFileSync(`${file}.${process.pid}.tmp`, `${JSON.stringify(state, null, 2)}\n`);
+    renameSync(`${file}.${process.pid}.tmp`, file);
   } catch {}
 }
 

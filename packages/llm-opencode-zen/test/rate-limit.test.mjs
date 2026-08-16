@@ -1,5 +1,5 @@
 // 402/429 限流回归测试: 验证配额耗尽(QUOTA)与限流(RATE_LIMITED)路径的冷却与文案
-import { OpenCodeZenAdapter, quota, resolveAdapterOptions } from "../dist/llm-opencode-zen.js";
+import { OpenCodeZenAdapter, quota, resolveAdapterOptions } from "../dist/index.js";
 
 const opts = {
   models: [],

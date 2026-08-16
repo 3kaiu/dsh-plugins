@@ -1,41 +1,20 @@
 {
-  "name": "dsh-llm-opencode-zen",
+  "name": "dsh-opencode-zen-monorepo",
   "version": "0.1.0",
-  "description": "DeepSeek Harness plugin: resilient OpenCode Zen free-tier LLM adapter plus a daily harness self-updater.",
+  "private": true,
+  "description": "Monorepo for DeepSeek Harness plugins: OpenCode Zen LLM adapter, harness updater, layout inference.",
   "type": "module",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "exports": {
-    ".": "./dist/llm-opencode-zen.js",
-    "./updater": "./dist/harness-updater.js",
-    "./layout-infer": "./dist/layout-infer.js"
-  },
   "scripts": {
-    "build": "node build.mjs",
-    "install:local": "node build.mjs && node install.mjs",
-    "test": "node build.mjs && node test/core-extra.test.mjs && node test/layout-infer.test.mjs && node test/plugin-register.test.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs"
-  },
-  "dependencies": {
-    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "3.18.1",
-    "eventsource-parser": "3.1.1"
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "install:local": "pnpm build && node scripts/install-local.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.2"
   },
-  "keywords": [
-    "dsh",
-    "deepseek-harness",
-    "opencode-zen",
-    "llm",
-    "plugin"
-  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0",
   "license": "MIT"
 }

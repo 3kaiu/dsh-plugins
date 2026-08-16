@@ -1,0 +1,29 @@
+{
+  "name": "@3kaiu/dsh-plugin-kit",
+  "version": "0.1.0",
+  "description": "Shared building blocks for DeepSeek Harness plugins: quota tracking, concurrency semaphore, layout inference core, test utilities.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./quota-tracker": "./src/quota-tracker.js",
+    "./semaphore": "./src/semaphore.js",
+    "./layout-core": "./src/layout-core.js",
+    "./test-utils": "./src/test-utils.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node test/layout-core.test.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "layout",
+    "quota",
+    "semaphore"
+  ],
+  "license": "MIT"
+}
