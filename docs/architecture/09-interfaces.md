@@ -200,8 +200,8 @@ resilience:
   maxConcurrentStreams: 2
   streamIdleTimeoutMs: 300000
 userAgent:
-  default: opencode/1.18.18                # 跟随官方 CLI;可配置
-  spoofMode: false                         # 默认关,显式开启须在 README 声明风险
+  default: opencode/1.18.18                # 免费层可用性前提(实测:无此形态→429,见 11 篇)
+  note: 可配置;服务端若加签名校验则适配器失效,README 声明脆弱性
 ```
 
 ## 7. GitHub sync 文件格式(08 篇 §7 的落盘版)

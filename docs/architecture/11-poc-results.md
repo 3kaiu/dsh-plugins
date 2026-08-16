@@ -1,0 +1,153 @@
+# 11 · Phase 0.5 实测记录(OpenCode Zen 无头探测)
+
+> 状态:**实测完成(2026-08-16)** · v0.4 新增
+> 位置:dsh-plugins 分支 poc/phase05-zen-probe(PR #1)
+
+## 1. 三个经验问题的实证答案
+
+| 问题 | 答案 | 证据 |
+| --- | --- | --- |
+| 出网可达性 | ✅ 可达 | GET /models → 200(~1.1~1.4s) |
+| Bearer public 认证 | ✅ 认证成功 | 裸请求 → 429(非 401);指纹齐全 → 200 |
+| 429 行为 | **网关按客户端指纹分流** | 同 IP 同时刻:裸 curl → 429;伪造 opencode 客户端 → 200 |
+
+**结论(修正此前假设)**:之前把 429 归因于"免费额度耗尽"是**错的**——
+同一时刻、同一出口,裸请求 429 而指纹请求 200,证明 429 由**请求形态**触发。
+免费层对"非 opencode 客户端形态"的流量直接拒绝。这**实证了插件模拟客户端
+做法是免费层可用性的前提**;插件源码的脆弱性声明也得到印证:服务端确实校验
+客户端形态,只是当前是软校验(UA + headers 即可通过,无签名)。
+
+## 2. 指纹规格(Phase 1 直接使用;与 llm-opencode-zen 同构)
+
+```text
+User-Agent: opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14
+x-opencode-client: cli
+x-opencode-project: proj_<12B base64url>          # 按安装持久化(quota 文件)
+x-opencode-session: ses_<sha256("default:"+projectId) base64url 前16字符>
+x-opencode-request: msg_<12B base64url>           # 每请求新生成
+Authorization: Bearer public                      # 免费层;OPENCODE_ZEN_API_KEY 提额
+Content-Type: application/json
+```
+
+```json
+// body(必须 stream:true,真实客户端恒流式;响应 SSE 至 [DONE])
+{ "model": "deepseek-v4-flash-free",
+  "messages": [ { "role": "user", "content": "…" } ],
+  "stream": true,
+  "stream_options": { "include_usage": true },
+  "max_tokens": 256, "top_p": 0.95 }
+```
+
+wire 要点(实测踩坑):
+- **reasoning_effort 仅在非 off 时发送**;wire 枚举为
+  none/minimal/low/medium/high/xhigh/max,内部枚举(off/low/high/max)≠ wire 枚举;
+  off → **省略字段**(发送 "off" 会 400,已实测);
+- 上游为 sglang OpenAI 兼容端点(400 错误体暴露 /sgl-workspace/... 栈);
+- 行为表:无指纹 → 429 FreeUsageLimitError;指纹+非法 body → 400(透出上游校验);
+  指纹+合法 body → 200 SSE。
+
+## 3. 对 Phase 1 的工程含义
+
+1. agent-loop / autopilot 的大脑调用**必须复用插件形态**(走 dsh + llm-opencode-zen
+   全栈,或复制本指纹),**禁止裸调**;
+2. pacing 仍必要:指纹解决"形态识别",不解决"频率"(插件注释:服务端约每 3 次
+   成功请求后按窗口限流);
+3. 免费额度真耗尽时错误形态为 402(插件已处理);429 优先怀疑形态而非额度;
+4. CI 验证完成(2026-08-16,run 31953638701):ubuntu + macos 双 runner 均出网可达
+   (models 200,132/197ms)且 chat 首试即 200(POC_OK,1149/1453ms),
+   GitHub 出口 IP 无额外 429,指纹形态在 CI 同样成立;
+5. OPENCODE_ZEN_API_KEY 提额路径待配置 secret 后验证(当前 key_variant=no)。
+
+## 4. 原始数据(飞行记录)
+
+- 本地三组:裸 429×3(40/80s 退避内不恢复)→ 指纹 400(reasoning_effort:"off")
+  → 指纹 200 + POC_OK(2225ms,SSE [DONE],task_passed=yes);
+- 完整原始响应保留于各次运行的 out_dir(result.json/summary.txt/chat.N.*);
+  CI 侧 artifact 保留 7 天;
+- CI(run 31953638701,workflow poc-headless-zen):ubuntu-latest chat 200/1149ms
+  task_passed=yes;macos-latest chat 200/1453ms task_passed=yes;均 sse_done=yes,
+  fingerprint 各 runner 独立持久化。
+
+## 5. 附:agent-loop 最小闭环实测(Phase 1 首件,2026-08-16)
+
+workflow agent-loop(main 上,手动触发)复刻本地全栈配方并一次跑通:
+
+1. CI 内 npm i -g @deepseek-ai/dsh@0.1.0-rc.6 + 仓库本地构建插件
+   (cd packages/llm-opencode-zen && node build.mjs,入口相对 CWD,需在包目录执行);
+2. dsh plugin 转发 pnpm 不传 -w,需 pnpm add -w file:... + 手动 reconcile
+   bundles(install-local.mjs 已记录此坑);
+3. agent-default-model: {provider: opencode-zen, model: deepseek-v4-flash-free}
+   (DSH_HOME/settings.yaml)——与本地/桌面完全同一形态;
+4. dsh --profile headless "<task>" 真实跑通:Agent 运行测试(rate-limit.test.mjs
+   全绿)→ 写 docs/architecture/AGENT-LOOP.md → 输出 VERDICT: pass,
+   全程约 40-60s,零凭证;
+5. 提交 + 推分支 ✅(远端 agent-loop/<ts> 分支,含记录文件);
+6. PR 创建被仓库设置拦截(GitHub Actions is not permitted to create or approve
+   pull requests),工作流已降级为打印 PR 链接并成功退出;勾选仓库
+   Settings → Actions → General → Allow GitHub Actions to create and approve
+   pull requests 后即自动开 PR(人工 merge 不变)。
+
+工程含义:Phase 1 的 agent-loop/autopilot 直接复用此配方;Agent 工具行为有 LLM
+方差(有的轮次自行 git commit),PR 步骤以 origin/main 为 diff 基准兜底。
+
+## 6. 附:dsh-runtime 事件桥实测(Phase 1 第二件,2026-08-17)
+
+结论先行:官方运行时**没有公开的事件总线 API**,但 cordis 事件面暴露了可订阅的
+firehose——插件零耦合接入,无需 tail 磁盘日志(会话 JSONL 为 zstd,且 headless
+下实测只有 header 行,不承载事件;事件仅在进程内 firehose 上实时发布)。
+
+**订阅面**(插件 apply 内 ctx.on):
+- `session/created` / `session/disposed`(生命周期,disposed 仅 web 会话触发)
+- `session/event`(firehose:每追加一条会话事件回调 (session, event),
+  event = { type, seq, time, data };构造期种子事件不发布)
+
+**实证事件形状**(真实工具调用会话,deepseek-v4-flash-free,headless):
+
+| 官方 type | data 要点 | 用途 |
+| --- | --- | --- |
+| permission/preset, sandbox/mode, approval/policy | preset/mode/policy | 会话环境(暂不转发) |
+| agent/inbox/spliced | target/start/inserted | 消息拼接(暂不转发) |
+| turn/start, turn/end | turn;reason.kind=completed/error | 轮次计数、完成原因 |
+| step/start, step/end | turn/step | 步进(暂不转发) |
+| user/message | content/role/id | 输入(暂不转发) |
+| session/title | title/messageSeqs/source | session.title |
+| request/context | provider/model/contextWindow | session.started 的 model |
+| session/title-llm-request | titleProvider/messages | 标题 LLM 请求(暂不转发) |
+| assistant/chunk | chunk.type=block-start/reasoning-delta/tool-call-delta/block-end/usage/finish | 流式;usage 段累计 tokens |
+| assistant/message | message+usage | 完成消息(暂不转发) |
+| **tool/call** | callId/name/arguments | **tool.started** |
+| **tool/result** | message.content[].tool-result{isError,text} | **tool.completed / tool.failed** |
+| llm/retry | error | **error.recorded(LLM_RETRY)** |
+
+**映射到 09 协议**(packages/dsh-runtime-events v0.1.0,零依赖官方内部模块):
+
+- session.started ← 首个 {session/title 或 request/context} 时发射(带已积累的
+  title/model/provider);session.title ← session/title;
+  session.completed ← session/disposed 或退出兜底(turns + 全程 token 累计 +
+  reason 取最后 turn/end 真实结果;durationMs 按最后活动时间,避免被
+  headless quiescence 等待期拉长);
+- tool.started/completed/failed ← tool/call + tool/result(isError;
+  exitCode=0/1 由 isError 派生,latencyMs=call→result 时间差,stdoutTail 截断);
+- error.recorded ← llm/retry(LLM_RETRY/LOW)+ 用量文件增量(rateLimited →
+  RATE_LIMITED/LOW,quotaExceeded → QUOTA_EXCEEDED/MEDIUM,occurrences=增量);
+- test/completion 两族保留,由 GitHub 侧(source=github)填充。
+
+**headless 退出语义(实测坑)**:headless 跑完即进程退出——不触发 cordis
+dispose、不触发 session/disposed。插件以 process.once("exit") 兜底:补发
+session.completed + 落盘 events/seq;seq 每 25 条周期落盘降低丢失窗口。
+
+**验证**(隔离 home,headless 任务 "Run 'uname -s' …")产出 5 条包络,
+events/seq=5,家族文件 session.jsonl + tool.jsonl + all.jsonl:
+
+```
+{"seq":1,...,"type":"session.started","data":{"title":"Run 'uname -s' and reply"}}
+{"seq":2,...,"type":"session.title","data":{"title":"Run 'uname -s' and reply"}}
+{"seq":3,...,"type":"tool.started","data":{"tool":"bash","inputSummary":"{\"command\": \"uname -s\"..."}}
+{"seq":4,...,"type":"tool.completed","data":{"tool":"bash","exitCode":0,"latencyMs":186,"stdoutTail":"Darwin\n"}}
+{"seq":5,...,"type":"session.completed","data":{"turns":1,"durationMs":...,"tokens":{"in":8321,"out":128},"reason":"completed"}}
+```
+
+工程含义:Phase 1 的 dsh-runtime ② 已落地一半——事件源(session/tool/error)
+真实可用,WS/事件库消费侧随 Console 实现;五族协议对 harness 侧实现者即本插件,
+对 github/console 侧消费方以 JSONL 为准(09 篇 §2 事件库规格)。
+

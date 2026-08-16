@@ -11,10 +11,10 @@
 | --- | --- |
 | Zen 免费模型能否无头认证? | **能**。认证是字面 Bearer `public`,无登录态、无本机凭证依赖 |
 | 更高额度怎么办? | 一个 GitHub Secret(`OPENCODE_ZEN_API_KEY`)即可,不需要自己的 API 服务 |
-| UA 会成阻碍吗? | UA 可配置,默认跟随官方 CLI;源码已注明"服务端加签名即失效"风险,属兼容手段而非策略 |
+| UA 会成阻碍吗? | **已实测(11 篇)**:服务端确实校验客户端形态——裸请求 429,伪造 opencode 客户端指纹即 200;插件做法是免费层可用性前提,签名校验风险依旧成立 |
 | public repo 的 Actions 计费? | GitHub-hosted 标准 runner 对公开仓库免费(官方计费文档) |
 | 定时调度? | cron + 时区;最小间隔 5 分钟(官方 workflow 语法文档) |
-| 真正的 PoC 风险 | runner 出网到 opencode.ai;CI 出口 IP 的 429 争用;pacing 参数调优 |
+| 真正的 PoC 风险 | **runner 出网 ✅ 已实测**(ubuntu+macos 均 200 POC_OK);CI 出口 IP 无额外 429(指纹形态);pacing 参数调优仍待 agent-loop 长跑观察 |
 
 ## 2. 架构
 

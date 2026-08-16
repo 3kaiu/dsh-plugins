@@ -118,14 +118,17 @@ Phase 5 Verify    三层验证:unit → integration(mock Zen)→ live(真实链�
 | Zen/Go 的 DeepSeek V4 tool calling 报 Internal server error | TOOL.JSON_REPAIR(观察项) | fixtures/tool-calls/malformed.json |
 | Zen 模型请求超时无响应 | NETWORK.TIMEOUT | fixtures/streaming/empty-choices.json |
 
-## 8. UA 与合规策略(调整后的原则)
+## 8. UA 与客户端形态策略(v0.4 实测修订,见 11 篇)
 
-1. **默认正常 UA**,不把"伪装官方 CLI"当核心策略;
-2. 防限流主防线 = pacing(3 req / 20s 窗口)+ 正确 429/402 处理 + per-session 隔离;
-3. **网络身份(出口 IP/IPv6/Loon 出口)与请求身份(UA/Header)分离**,
-   网络层配置不写进插件,插件只声明行为;
-4. 若某端点确实需要特定 UA 才能工作,做成显式配置项并在 README 声明风险,
-   默认关闭。
+1. **客户端形态 = 免费层可用性前提(已实测)**:裸请求(默认 UA、无 x-opencode-*)
+   → 429 FreeUsageLimitError;携带插件同构指纹(UA + x-opencode-client/project/
+   session/request + stream SSE)→ 200。"模拟官方客户端"不是可选优化而是必需行为;
+2. **形态 ≠ 签名**:当前是软校验(UA/Header 即可通过),服务端一旦加签名校验
+   适配器仍可能失效(插件源码脆弱性声明) → 指纹做成显式配置(userAgent 可覆盖),
+   README 声明脆弱性,不做签名级对抗;
+3. **频率防线不变**:pacing(3 req / 20s)+ 正确 429/402 处理 + per-session 隔离;
+   指纹解决形态识别,不解决频率;
+4. **网络身份与请求身份分离**不变:出口 IP 配置不写进插件,插件只声明行为。
 
 ## 9. 验证三层(与 reliability 共用测试基建)
 

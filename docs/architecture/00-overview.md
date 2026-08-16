@@ -22,6 +22,7 @@
 | 08-protocol.md | **dsh-runtime 事件协议与目录底座** |
 | 09-interfaces.md | **实现级接口规范(API / WS / 六工具 / contracts)** |
 | 10-console-components.md | **Console 前端组件级设计** |
+| 11-poc-results.md | **Phase 0.5 实测记录(指纹规格 + 经验结论)** |
 
 ## 1. 一句话定位(v0.3)
 

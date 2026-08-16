@@ -9,7 +9,7 @@
 | Phase | 目标 | 交付物 | 完成定义(DoD) |
 | --- | --- | --- | --- |
 | 0 ✅ | macOS 桌面底座 | dsh-launcher v0.1.0 | 已完成:CI 全绿、Release 发布、冒烟通过 |
-| 0.5 | **无头大脑 PoC** | 06 篇 §12 清单(双 runner + Bearer public + 最小闭环) | 最小闭环 PR 出现(人工 merge),budget/白名单真实生效 |
+| 0.5 | **无头大脑 PoC** | **完成(2026-08-16,11 篇)**:探测实测 + CI 双 runner + agent-loop 最小闭环全链路(本地构建插件 → headless 全栈 → Agent 跑测试写记录 → 提交推分支;PR 创建待仓库设置开关,见 11 篇 §5) | 最小闭环 PR 出现(人工 merge),budget/白名单真实生效(PR 开关开启后满足) |
 | 1 | **工作台 MVP(四件套)** | ①llm-opencode-zen 稳定性收尾 ②dsh-runtime(五族事件+WS+事件库)③DSH Console(四页 MVP)④GitHub 维护闭环(Issue→Zen→PR→CI,人工 merge)(实现级接口见 09 篇,组件见 10 篇) | **你自己每天能通过 Console 全程看见一次真实任务**;一个真实 failure 走完"事件→issue→PR→人工 merge"闭环 |
 | 2 | **变聪明** | Verify/Replay/Recovery/Knowledge/Benchmark(原 reliability 深化)+ 兼容 matrix | gate 拦截一次"假完成";matrix ≥3 组合 CI 自动跑 |
 | 3 | **自动化** | auto repair / auto PR / auto regression / guarded auto-merge + budget 全量 | 0 误合并(1 放行 + 1 拦截) |
@@ -20,7 +20,7 @@
 | 件 | 做 | 不做 |
 | --- | --- | --- |
 | ① llm-opencode-zen | 现有稳定性收尾(pacing/cooldown/reasoning/tool-call) | 协议合同化(Phase 2)、benchmark |
-| ② dsh-runtime | 五族事件(session/tool/error/test/completion)+ WS + JSONL 事件库 + GitHub sync(读) | verify/replay 等扩展族、daemon 化 |
+| ② dsh-runtime | **事件桥 v0.1.0 已落地(2026-08-17,见 11 篇 §6)**:firehose 订阅面实测 + 五族归一化 JSONL(session/tool/error 有真实数据,test/completion 留 GitHub 侧);待续:WS + 事件库消费侧 + GitHub sync(读) | verify/replay 等扩展族、daemon 化 |
 | ③ DSH Console | Dashboard 实时 + Sessions(活动流+timeline 只读)+ Failures(聚合+Inspect)+ Health 摘要 | Score 完整版、Analytics、原生壳 |
 | ④ GitHub 维护闭环 | Issue → agent → PR → CI → 人工 merge;budget 四项 | guarded auto-merge、一次修多任务 |
 
