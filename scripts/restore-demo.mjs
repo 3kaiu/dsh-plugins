@@ -133,7 +133,7 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
     w: round(ls.width ?? 0),
     h: round(ls.height ?? 0),
   };
-  expected.push({ oid, ...exp });
+  expected.push({ oid, ...exp, r: ls.rotate ?? 0 });
 
   const css = [];
   css.push("box-sizing:border-box");
@@ -176,7 +176,11 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
     }
   } else {
     // 无原生 flex
-    if (kids.length > 0) {
+    if (parentAbs) {
+      // 拍平上下文: 一律 absolute 精确落位(不做几何 flex 反推 — 单子元素歧义会导致堆叠错乱)
+      css.push(`position:absolute;left:${ls.relativeX ?? 0}px;top:${ls.relativeY ?? 0}px`);
+      css.push(`width:${ls.width ?? 0}px;height:${ls.height ?? 0}px`);
+    } else if (kids.length > 0) {
       if (inferred?.position === "flex") {
         css.push(`display:flex;flex-direction:${inferred.flexDirection}`);
         if (inferred.alignItems) css.push(`align-items:${inferred.alignItems}`);
@@ -225,7 +229,7 @@ function gen(node, parentAbs, absX, absY, parentOid, parentOutOfFlow) {
       const br = String(node.borderRadius);
       css.push(`border-radius:${br.endsWith("px") ? br : br + "px"}`);
     }
-    for (const c of kids) inner += gen(c, forceAbs, exp.x, exp.y, oid, outOfFlowKids);
+    for (const c of kids) inner += gen(c, forceAbs || parentAbs, exp.x, exp.y, oid, outOfFlowKids);
   }
   if (ls.rotate) css.push(`transform:rotate(${ls.rotate}deg)`);
 
@@ -264,13 +268,18 @@ const measureScript = `
   const all = out.filter(o => !o.missing);
   const maxD = (k) => Math.max(...all.map(o => err(o[k])));
   const avgD = (k) => all.reduce((s, o) => s + err(o[k]), 0) / (all.length || 1);
-  const over2 = all.filter(o => err(o.dx) > 2 || err(o.dy) > 2 || err(o.dw) > 2 || err(o.dh) > 2);
-  const hit = all.filter(o => err(o.dx) <= 1 && err(o.dy) <= 1 && err(o.dw) <= 1 && err(o.dh) <= 1).length;
+  const rot = out.filter(o => (rows.find(r => r.oid === o.oid) || {}).r).length;
+  const plain = all.filter(o => !(rows.find(r => r.oid === o.oid) || {}).r);
+  const over2 = plain.filter(o => err(o.dx) > 2 || err(o.dy) > 2 || err(o.dw) > 2 || err(o.dh) > 2);
+  const hit = plain.filter(o => err(o.dx) <= 1 && err(o.dy) <= 1 && err(o.dw) <= 1 && err(o.dh) <= 1).length;
+  const avgP = (k) => plain.reduce((s, o) => s + err(o[k]), 0) / (plain.length || 1);
   const report = {
     total: all.length,
+    plain: plain.length,
+    rotated: rot,
     hit1px: hit,
-    hitRate: +(hit / (all.length || 1) * 100).toFixed(2),
-    avg: { dx: +avgD('dx').toFixed(2), dy: +avgD('dy').toFixed(2), dw: +avgD('dw').toFixed(2), dh: +avgD('dh').toFixed(2) },
+    hitRate: +(hit / (plain.length || 1) * 100).toFixed(2),
+    avg: { dx: +avgP('dx').toFixed(2), dy: +avgP('dy').toFixed(2), dw: +avgP('dw').toFixed(2), dh: +avgP('dh').toFixed(2) },
     max: { dx: +maxD('dx').toFixed(2), dy: +maxD('dy').toFixed(2), dw: +maxD('dw').toFixed(2), dh: +maxD('dh').toFixed(2) },
     over2px: over2.length,
     worst: over2.slice(0, 12).map(o => ({ oid: o.oid, dx: o.dx, dy: o.dy, dw: o.dw, dh: o.dh })),
@@ -305,8 +314,8 @@ const measureScript = `
   const lavg = (k) => loc.reduce((s, o) => s + Math.abs(o[k]), 0) / (loc.length || 1);
   document.getElementById('report').textContent += '\\nLOCAL\\n' + JSON.stringify(loc, null, 1);
   document.getElementById('summary').textContent =
-    '绝对: 节点 ' + all.length + ' | ≤1px 命中 ' + report.hitRate + '% | 平均 dx=' + avgD('dx').toFixed(2) + ' dy=' + avgD('dy').toFixed(2) +
-    ' dw=' + avgD('dw').toFixed(2) + ' dh=' + avgD('dh').toFixed(2) + ' | 超2px:' + over2.length +
+    '绝对(非旋转): ' + plain.length + ' 节点 | ≤1px 命中 ' + report.hitRate + '% | 平均 dx=' + avgP('dx').toFixed(2) + ' dy=' + avgP('dy').toFixed(2) +
+    ' dw=' + avgP('dw').toFixed(2) + ' dh=' + avgP('dh').toFixed(2) + ' | 超2px:' + over2.length + ' | 旋转节点 ' + rot + ' 个(包围盒不适用)' +
     '\\n' +
     '局部(相对父): 节点 ' + loc.length + ' | 位置≤1px ' + lhitPos + ' (' + (lhitPos / (loc.length || 1) * 100).toFixed(1) + '%) | 全维≤1px ' + lhit +
     ' | 平均局部误差 dx=' + lavg('dx').toFixed(2) + ' dy=' + lavg('dy').toFixed(2) + ' dw=' + lavg('dw').toFixed(2) + ' dh=' + lavg('dh').toFixed(2) +
@@ -320,11 +329,27 @@ const overlay = expected
   .map((e) => `<div style="position:absolute;left:${e.x}px;top:${e.y}px;width:${e.w}px;height:${e.h}px;border:1px dashed rgba(236,72,153,.55);pointer-events:none;box-sizing:border-box;z-index:9999"></div>`)
   .join("");
 
+// Inter 字体内嵌(存在 fonts 目录时): 消除"系统无 Inter"导致的文本宽度/换行/观感差异
+import { readFileSync as rfs, existsSync } from "node:fs";
+let fontFaceCss = "";
+const FONT_DIR = "/tmp/restore/fonts";
+if (existsSync(FONT_DIR)) {
+  const faces = [];
+  for (const w of ["400", "500", "600", "700", "800"]) {
+    const f = `${FONT_DIR}/inter-${w}.woff2`;
+    if (!existsSync(f)) continue;
+    const b64 = rfs(f).toString("base64");
+    faces.push(`@font-face{font-family:"Inter";src:url(data:font/woff2;base64,${b64}) format("woff2");font-weight:${w};font-style:normal}`);
+  }
+  fontFaceCss = faces.join("\n");
+}
+
 const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
+  ${fontFaceCss}
   body { margin: 0; background: #e5e7eb; font-family: system-ui, sans-serif; }
   #wrap { padding: 24px; }
   #summary { font: 13px/1.6 monospace; background: #111827; color: #34d399; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; white-space: pre-wrap; }
