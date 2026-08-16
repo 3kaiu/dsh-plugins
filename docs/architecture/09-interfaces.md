@@ -129,9 +129,11 @@ interface CompletionVerdict { goalSummary: string;
   },
   {
     "name": "dsh_maintenance_verify",
-    "description": "跑全量回归 + 契约校验。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
+    "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",
-      "properties": { "scope": { "enum": ["full", "contract"] } }, "required": [] }
+      "properties": { "scope": { "enum": ["contract", "evidence", "full"] },
+                      "claim": { "type": "string", "description": "evidence 必填:agent 声明 JSON 路径,格式 { incidentId, changedFiles: string[], summary }" },
+                      "incidentId": { "type": "string", "description": "evidence 必填:事项 ID,用于读取 reproduce/test 命令" } }, "required": [] }
   }
 ]
 ```

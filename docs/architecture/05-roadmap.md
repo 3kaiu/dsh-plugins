@@ -13,6 +13,8 @@
 | 1 | **工作台 MVP(四件套)** | ①llm-opencode-zen 稳定性收尾 ②dsh-runtime(五族事件+WS+事件库)③DSH Console(四页 MVP)④GitHub 维护闭环(Issue→Zen→PR→CI,人工 merge)(实现级接口见 09 篇,组件见 10 篇) | **你自己每天能通过 Console 全程看见一次真实任务**;一个真实 failure 走完"事件→issue→PR→人工 merge"闭环 |
 
 > Phase 1 进度(2026-08-17):① 完成(agent-loop 已闭环) ② **dsh-runtime-events v0.1.0 完成**(事件桥,见 11 篇 §6) ③ **dsh-console v0.1.0 完成**(事件库服务端 REST+WS+静态托管 3090,七页 MVP 实时绑定事件流:总览/会话/任务/失败/健康/维护/设置,Preact+signals;实时闭环实测:任务结束 10s 内 session.completed 推送到位) ④ **完成**(dsh-maintenance-core 六工具 + contract 闸门 + incidents 注册表 + maintenance/ci 工作流;真实闭环实测 4 轮,PR #4 已开、待人工 merge;实测记录见 11 篇 §7)。
+>
+> Phase 2 进度(2026-08-17):**Verification 首件完成**——dsh-maint verify evidence 证据核验闸门(agent 声明 vs 磁盘事实:声明文件真实在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截假完成);4 场景实测 3 拦 1 放(scripts/demo-fake-completion.mjs,测试 9 项全过);maintenance.yml verify gate 已换用 evidence 并在 PR body 附闸门证据。DoD 半程达成:**gate 拦截一次"假完成" ✅**;matrix ≥3 组合 CI 自动跑待做。
 | 2 | **变聪明** | Verify/Replay/Recovery/Knowledge/Benchmark(原 reliability 深化)+ 兼容 matrix | gate 拦截一次"假完成";matrix ≥3 组合 CI 自动跑 |
 | 3 | **自动化** | auto repair / auto PR / auto regression / guarded auto-merge + budget 全量 | 0 误合并(1 放行 + 1 拦截) |
 | 4 | **分析** | Agent Score/Analytics/归因 + 无人值守演示 + 发行门禁 | "00:00 失败 → 02:40 修复合入"一次走通;score 归因能解释一次下降 |

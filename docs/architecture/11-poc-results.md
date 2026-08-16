@@ -182,3 +182,26 @@ reproduce 退出 0=缺陷可复现,testCommand 校验 README 内容)实测闭环
   (needs-human/attempts)、headless profile 配方(pnpm add -w + bundles reconcile +
   settings)、agent 任务模板、verify gate、commit+PR、issue 回评、attempt 标签。
 
+## 8. 附:假完成拦截实测(Phase 2 首件,2026-08-17)
+
+"假完成"定义:agent 声称修复完成,但磁盘事实不支持(三种形态):
+
+| 形态 | 演示 | 闸门拦截点 |
+| --- | --- | --- |
+| A 谎报完成 | 只输出 SUMMARY,磁盘无修改 | claimed_files_in_diff(声明文件不在 diff) |
+| B 改错对象 | 改了别的文件,缺陷仍在 | reproduce_not_reproducible(仍可复现) |
+| C 测试未过 | 目标文件已改,但回归命令不过 | test_passed(测试失败) |
+
+**dsh-maint verify evidence** 把 agent 声明(claim.json:incidentId/changedFiles/summary)与磁盘事实逐一比对:
+summary 非空、声明文件全部真实出现在 diff、diff 无未声明文件、reproduce 转不可复现、test 通过、契约合规(禁止路径/文件数)。
+任一 fail 即整体拒绝——不放行任何"嘴上完成"。
+
+**实测**:临时仓库构造 4 场景,脚本 scripts/demo-fake-completion.mjs 一键演示,结果 3 拦 1 放;
+同一套核验已接入 .github/workflows/maintenance.yml 的 verify gate(agent 三行输出 CHANGED_FILES/TEST_RESULT/SUMMARY 解析为 claim.json),
+PR body 自动附带"闸门证据"逐项清单,人工 merge 前可直接核对。
+
+**工程含义**:Phase 2 DoD 的"gate 拦截一次假完成"达成;
+验证从"看 diff 形状"升级为"核验声明与事实一致",闸门对 agent 行为形成真实约束
+(任务模板明示:CHANGED_FILES 必须与实际修改一一对应,闸门会逐文件核验)。
+剩余 DoD:兼容 matrix ≥3 组合 CI 自动跑(下一件)。
+
