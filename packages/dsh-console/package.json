@@ -1,0 +1,26 @@
+{
+  "name": "@3kaiu/dsh-console",
+  "version": "0.1.0",
+  "description": "DSH Console: agent workbench for DeepSeek Harness — event library server (REST + WS, protocol per docs/09) and four-page MVP frontend (Preact), served on 3090.",
+  "type": "module",
+  "bin": { "dsh-console": "server.mjs" },
+  "main": "server.mjs",
+  "files": [ "server.mjs", "dist" ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.3",
+    "@preact/signals": "^1.3.1",
+    "preact": "^10.25.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "keywords": [ "dsh", "console", "dashboard", "events", "agent-workbench" ],
+  "license": "MIT"
+}

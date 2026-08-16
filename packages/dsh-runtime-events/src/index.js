@@ -37,6 +37,7 @@ const Config = z.object({
   usagePollMs: z.number().min(1000).max(3600000).default(5000),
   inputSummaryMax: z.number().min(0).default(200),
   stdoutTailMax: z.number().min(0).default(500),
+  idleCompleteMs: z.number().min(0).default(10000),
   usageFile: z.string().default(join(DSH_HOME, "storages", "llm-opencode-zen-usage.json")),
 });
 //#endregion
@@ -96,9 +97,19 @@ function processEvent(aggregate, emit, opts, session, event) {
       break;
     case "turn/start":
       st.turns += 1;
+      if (st.pendingComplete !== void 0) { clearTimeout(st.pendingComplete); st.pendingComplete = void 0; }
       break;
     case "turn/end":
       st.reason = d.reason?.kind ?? "completed";
+      // headless 单轮会话:进程退出前会有长 quiescence 等待(实测 ~4 分钟);
+      // turn/end 后空闲 10s 即视为会话完成,立即补发(续轮会取消)。
+      if (opts.idleCompleteMs > 0 && !st.completed) {
+        if (st.pendingComplete !== void 0) clearTimeout(st.pendingComplete);
+        st.pendingComplete = setTimeout(() => {
+          st.pendingComplete = void 0;
+          finalizeSession(aggregate, emit, sid, st, Date.now());
+        }, opts.idleCompleteMs);
+      }
       break;
     case "assistant/chunk": {
       const chunk = d.chunk ?? {};
@@ -157,6 +168,7 @@ function processEvent(aggregate, emit, opts, session, event) {
 function finalizeSession(aggregate, emit, sid, st, now = Date.now(), interrupted = false) {
   if (st.completed) return;
   st.completed = true;
+  if (st.pendingComplete !== void 0) { clearTimeout(st.pendingComplete); st.pendingComplete = void 0; }
   maybeStarted(aggregate, emit, sid, st);
   // 中断兜底时用最后活动时间计时长(进程退出时间会被 quiescence 等待期拉长);
   // reason 优先取最后一个 turn/end 的真实结果,而非一律 "interrupted"。
