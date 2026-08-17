@@ -7,6 +7,8 @@
 //   dsh-maint test <incidentId> [--json]        跑定向测试(修复前后对比)
 //   dsh-maint replay <traceRef> [--json]        深度回放:会话元数据+工具调用序列+错误+timeline
 //   dsh-maint replay --before <ref> --after <ref> [--json]  修复前后行为对比
+//   dsh-maint benchmark <traceRef> [--json]      Agent Benchmark:行为指标(失败率/重试/错误密度/质量分)
+//   dsh-maint benchmark --before <ref> --after <ref> [--json]  修复前后指标对比
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
@@ -128,6 +130,59 @@ function diffTraces(beforeRef, afterRef) {
   const errA = a.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
   const errB = b.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
   return { exists: true, seqA, seqB, changes, resultChanges, errors: { before: a.errors, after: b.errors, total: errA + " → " + errB }, reason: { before: a.session.reason, after: b.session.reason }, sessionA: a.session, sessionB: b.session };
+}
+// Agent Benchmark:消费 trace 计算行为指标(效率/质量),支持修复前后对比
+// 指标全部可解释:失败率/重试/错误密度直接来自事件流,不引入黑盒模型
+function benchmarkMetrics(traceRef) {
+  const d = deepReplay(traceRef);
+  if (!d.exists) return { exists: false };
+  const calls = d.calls;
+  const toolCalls = calls.length;
+  const failedCalls = calls.filter((c) => (c.exitCode ?? 0) !== 0).length;
+  const failureRate = toolCalls ? failedCalls / toolCalls : 0;
+  const toolKinds = new Set(calls.map((c) => c.tool)).size;
+  const errorCount = d.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
+  const errorDensity = toolCalls ? errorCount / toolCalls : 0;
+  const turns = d.session.turns ?? 0;
+  const avgLatency = (() => {
+    const lats = calls.map((c) => c.latencyMs).filter((x) => x != null);
+    return lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) : null;
+  })();
+  // 质量分:基础 100 - 失败率 - 重试/错误惩罚(每项封顶,保证可解释)
+  const quality = Math.max(0, Math.round((1 - failureRate - 0.15 * d.llmRetries - 0.1 * errorDensity) * 100));
+  const verdict = quality >= 80 ? "good" : quality >= 60 ? "ok" : "poor";
+  return {
+    exists: true, path: d.path, eventCount: d.eventCount,
+    metrics: {
+      turns, toolCalls, toolKinds, avgLatencyMs: avgLatency,
+      durationMs: d.session.durationMs ?? null,
+      failedCalls, failureRate: +failureRate.toFixed(3),
+      llmRetries: d.llmRetries, errors: d.errors, errorDensity: +errorDensity.toFixed(3),
+      reason: d.session.reason ?? null,
+    },
+    quality, verdict,
+  };
+}
+// 修复前后 Benchmark 对比:每项指标给变化方向
+function compareBenchmarks(beforeRef, afterRef) {
+  const a = benchmarkMetrics(beforeRef);
+  const b = benchmarkMetrics(afterRef);
+  if (!a.exists || !b.exists) return { exists: false, a: a.exists, b: b.exists };
+  const deltas = {};
+  for (const k of ["toolCalls", "failedCalls", "llmRetries", "errorDensity", "failureRate", "quality"]) {
+    const va = a.metrics[k] ?? a[k], vb = b.metrics[k] ?? b[k];
+    if (typeof va === "number" && typeof vb === "number") {
+      deltas[k] = { before: va, after: vb, delta: +(vb - va).toFixed(3) };
+    }
+  }
+  const improved = deltas.failureRate && deltas.failureRate.delta < 0 ? ["failureRate"] : [];
+  if (deltas.llmRetries && deltas.llmRetries.delta < 0) improved.push("llmRetries");
+  if (deltas.errorDensity && deltas.errorDensity.delta < 0) improved.push("errorDensity");
+  if (deltas.quality && deltas.quality.delta > 0) improved.push("quality");
+  return {
+    exists: true, before: a, after: b, deltas,
+    verdict: { before: a.verdict, after: b.verdict, improved },
+  };
 }
 
 // 契约类闸门(contract):diff 范围 + 禁止路径 + 行数
@@ -279,6 +334,41 @@ const TOOLS = {
     return out(true, { traceRef, ...d });
   },
 
+  benchmark({ traceRef, json, before, after }) {
+    if (before && after) {
+      const c = compareBenchmarks(before, after);
+      if (!c.exists) return out(true, { exists: false, before: c.a, after: c.b }, ["before/after trace 至少一个不存在"]);
+      if (!json) {
+        console.log("=== Benchmark 对比: " + before + " (修复前) vs " + after + " (修复后) ===");
+        const pad = (k, v) => console.log("  " + String(k).padEnd(14) + " " + v);
+        for (const k of ["toolCalls", "failedCalls", "llmRetries", "errorDensity", "failureRate", "quality"]) {
+          const dlt = c.deltas[k];
+          if (!dlt) continue;
+          const arrow = dlt.delta < 0 ? "↓" : dlt.delta > 0 ? "↑" : "→";
+          pad(k, dlt.before.toFixed(3) + " → " + dlt.after.toFixed(3) + " " + arrow);
+        }
+        pad("verdict", c.verdict.before + " → " + c.verdict.after + (c.verdict.improved.length ? " (改善: " + c.verdict.improved.join(", ") + ")" : ""));
+      }
+      return out(true, c);
+    }
+    if (!traceRef) return fail("需要 --traceRef(或 --before + --after)");
+    const m = benchmarkMetrics(traceRef);
+    if (!m.exists) return out(true, { traceRef, exists: false }, ["trace 不存在"]);
+    if (!json) {
+      console.log("=== Benchmark: " + m.path + " (" + m.eventCount + " 事件) ===");
+      const pad = (k, v) => console.log("  " + String(k).padEnd(14) + " " + v);
+      pad("turns", m.metrics.turns);
+      pad("toolCalls", m.metrics.toolCalls + " (种类 " + m.metrics.toolKinds + ")");
+      pad("failedCalls", m.metrics.failedCalls + " (失败率 " + (m.metrics.failureRate * 100).toFixed(0) + "%)");
+      pad("llmRetries", m.metrics.llmRetries);
+      pad("errors", m.metrics.errors.reduce((s, e) => s + e.taxonomy + " ×" + (e.occurrences ?? 1) + " ", ""));
+      pad("avgLatency", m.metrics.avgLatencyMs != null ? m.metrics.avgLatencyMs + "ms" : "-");
+      pad("reason", m.metrics.reason ?? "-");
+      pad("quality", m.quality + "/100 (" + m.verdict + ")");
+    }
+    return out(true, { traceRef, ...m });
+  },
+
   verify({ scope = "contract", json, claim, incident }) {
     const contract = loadContract(REPO);
     const diffBase = process.env.DSH_MAINT_DIFF_BASE;
@@ -321,7 +411,7 @@ for (let i = 0; i < rest.length; i++) {
   else if (rest[i] === "--after") args.after = rest[++i];
   // 位置参数:verify 的第一个位置参数是 scope;replay 的是 traceRef;其余命令是 id
   else if (cmd === "verify" && !args.scope) args.scope = rest[i];
-  else if (cmd === "replay" && !args.traceRef) args.traceRef = rest[i];
+  else if ((cmd === "replay" || cmd === "benchmark") && !args.traceRef) args.traceRef = rest[i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {
