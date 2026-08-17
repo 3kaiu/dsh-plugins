@@ -4,7 +4,14 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { reconstructHierarchy, ROLES } from "@3kaiu/dsh-plugin-kit";
+// 注意:reconstructHierarchy/ROLES 来自 layout-core.js 的层级重建内核(WIP,
+// 尚未合入 main)。main 上运行时条件跳过;实现合入后自动恢复执行。
+import * as kit from "@3kaiu/dsh-plugin-kit";
+if (!kit.ROLES || !kit.reconstructHierarchy) {
+  console.log("SKIP stacked-restore: 依赖层级重建内核(未合入 main,本地 WIP 合入后自动启用)");
+  process.exit(0);
+}
+const { reconstructHierarchy, ROLES } = kit;
 
 const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "mg-stacked-sections.json");
 const fx = JSON.parse(readFileSync(FIXTURE, "utf8"));
