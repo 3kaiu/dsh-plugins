@@ -619,3 +619,15 @@ console 已停止
 ```
 
 **使用**:下载 zip(仓库 Releases 页)→ 解压 → `./start.sh` → http://127.0.0.1:3090 → Safari 添加到程序坞(独立 App 体验);官方 Harness(3080)用 dsh-launcher 发行包。**边界**:本包不含官方代码与启动器(零 fork 零修改);发行包内 doctor 15/100 为"无维护仓库上下文"的正确语义(在维护仓库中为 100,见 §20)。
+
+**GitHub 实测**(workflow release.yml run 32001165036,bundle success):
+
+```text
+$ gh workflow run release.yml -f version=0.1.0
+$ gh release view workbench-v0.1.0 --json assets
+{"assets":[{"name":"dsh-workbench-0.1.0.zip","size":88580},{"name":"SHA256SUMS","size":90}]}
+$ gh release download workbench-v0.1.0 && shasum -a 256 -c SHA256SUMS
+dsh-workbench-0.1.0.zip: OK
+```
+
+**验收闭环**:下载 → SHA256 校验 → 解压 → start.sh → PWA 资产可达 → Safari 程序坞。
