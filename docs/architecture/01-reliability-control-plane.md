@@ -1,6 +1,6 @@
 # 01 · dsh-reliability:Agent Reliability / Control Plane
 
-> 本篇是整套规划的核心。状态:**设计定稿(未执行)**。
+> 本篇是整套规划的核心。状态:**已执行(Phase 3 自动化落地:guarded auto-merge + budget 全量;实测见 11 篇 §15/§18)**。
 > 对应路线图 Phase 3(见 05-roadmap.md)。
 
 ## 1. 定位与问题
