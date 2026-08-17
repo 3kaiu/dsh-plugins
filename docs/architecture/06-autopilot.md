@@ -139,6 +139,8 @@ budget:
 
 **auto-merge 不是无条件:它只放行"证明过的小事",任何风险信号都升级人工。**
 
+> **Phase 3 已实现(2026-08-17)**:判定由 `dsh-maint guard` 落地——维护分支(maintenance/ 前缀)+ verified 标签(evidence 闸门全过时 workflow 打上)+ 无 needs-human + attempts<3(PR body 解析)+ CI 全绿(mergeStateStatus=CLEAN/READY);放行 → `gh pr merge --squash --delete-branch` + 关 issue;拦截 → 打 needs-human + 输出全部原因。实测见 11 篇 §15(M4 里程碑达成)。
+
 ## 9. dsh-autopilot.yml(用户视角的完整配置)
 
 ```yaml

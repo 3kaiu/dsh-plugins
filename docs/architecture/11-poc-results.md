@@ -455,3 +455,23 @@ $ dsh-maint guard --mock deny-branch.json --json
 **归因实测**(单测注入 90→60 下降,失败率 +0.4):score 输出 `⚠ 下降 90→60(30) 主因 failureRate [+0.40 / 重试 0.0 / 错误密度 0.00]`——能解释一次下降 ✅(DoD 第二项)。
 **门禁语义决策**:发行门禁看"最新一次"而非平均——修复后历史失败已不惩罚当前(否则 00:00 失败会永久拖累门禁);avg 仅作趋势展示。
 **DoD 达成**:00:00 失败 → 02:40 修复合入一次走通 ✅;score 归因能解释一次下降 ✅(测试 32 项全过)。
+
+## 17. 附:真实 headless 实战验证实测(Phase 2/4 收尾拼图,2026-08-17)
+
+**动机**:demo 链路(§14)用模拟事件流验证了全部真实代码路径;本节用**真实 headless 会话产物**验证事件格式兼容(填补最后一块拼图)。
+
+**过程**:隔离 home(`DSH_HOME=/tmp/dsh-home-real`)按 CI provision 步骤搭建 headless profile(llm-opencode-zen + dsh-runtime-events bundles)→ 真实会话一次跑通(`dsh --profile headless "输出 exactly: hello-headless"` → 输出 `hello-headless`)→ 事件落盘 `state/events/all.jsonl`(schema:1,含 eventId/family/source 字段)。
+
+**真实闭环**:事件流 → trace import 落盘 → replay → benchmark:
+
+```text
+$ dsh-maint trace INC-REAL-001 --from events.jsonl
+trace 已落盘: .dsh/state/traces/inc-real.jsonl (6 事件)
+$ dsh-maint replay .dsh/state/traces/inc-real.jsonl --json
+exists: true | events: 6 | reason: completed | turns: 1 | calls: 0
+$ dsh-maint benchmark .dsh/state/traces/inc-real.jsonl --json
+quality: 100 | verdict: good | reason: completed
+```
+
+**结论**:真实 headless 会话事件(schema:1)与 replay/benchmark 完全兼容——部署环境(headless 会话 + 事件桥 + trace 落盘 + 评分)全链路已验证,真实修复走的是同一条管道。
+**边界说明**:本机会话无工具调用(最小任务),tool 族事件的真实兼容性由 §10 的五族 fixture 覆盖(同一 deepReplay 消费者);完整真实修复会话(含工具调用)在 CI maintenance 工作流中每日运行。
