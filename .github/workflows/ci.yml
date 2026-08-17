@@ -22,8 +22,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
-      - name: pnpm
-        run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
       - name: build
