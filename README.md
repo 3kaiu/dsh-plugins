@@ -24,61 +24,35 @@
 
 要求 Node.js ≥ 20(开发环境使用 pnpm workspace)。
 
-### 本地开发安装(未发布时)
+### 安装(推荐:GitHub 直装,零发布流程)
+
+构建产物(`dist/`)**直接提交在仓库里**,clone/pull 即用——不打 tag、
+不生成 tarball、不发布到任何 registry:
 
 ```sh
-pnpm install
-pnpm install:local   # = pnpm build && node scripts/install-local.mjs
+git clone https://github.com/3kaiu/dsh-plugins.git
+cd dsh-plugins
+pnpm install                    # 只装构建工具(esbuild 等 devDeps)
+node scripts/install-local.mjs  # 把全部插件装进 $DSH_HOME/profiles/web
+```
+
+更新(永远是最新 main):
+
+```sh
+git pull && node scripts/install-local.mjs
 ```
 
 `install-local.mjs` 对 `$DSH_HOME/profiles/web`:
-1. 用 `pnpm add file:<abs>` 把全部插件装进 profile 的 node_modules(与发布后
-   `dsh plugin --profile web add <pkg>` 等效);
-2. 把声明了 `dsh.bundle` 的依赖 reconcile 进 `dsh.profile.bundles`
-   (即 `dsh plugin add` 在安装后自动做的那一步);
+1. 用 `pnpm add file:<abs>` 把全部插件装进 profile 的 node_modules;
+2. 把声明了 `dsh.bundle` 的依赖 reconcile 进 `dsh.profile.bundles`;
 3. 清理 profile patch 中旧的插件条目(插件注册改由 bundle 层 patch 提供)。
 
 重启 dsh(或等 HMR)后生效。
 
-### 分发与安装(不需要 npm 账号)
-
-发布到 npm **不是必须的**——仓库内置 GitHub Actions
-(`.github/workflows/release.yml`),打 tag 即自动构建 + `pnpm pack` 并把
-tarball 挂到 GitHub Release:
-
-```sh
-git tag v0.2.0 && git push origin v0.2.0
-```
-
-安装 tarball(用户侧,无需构建授权、无需 npm):
-
-```sh
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-console-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-github-sync-0.1.0.tgz
-```
-
-tarball 内已含构建产物(`dist/` + `cordis.patch.yml`),运行时依赖
-(`@deepseek-ai/*`、`schemastery`、`eventsource-parser`)声明在
-`dependencies` 中,安装时由 pnpm 装入 profile 的 store,插件 dist 的
-external import 即可解析(已按此流程实测验证)。
-
-> 说明:官方也支持 `dsh plugin add github:you/repo` 直接装 git 源码,但那会
-> 安装**仓库根**且要求包的 `prepare` 脚本自包含——对 monorepo 不适用,
-> 所以本仓库走"构建产物(tarball)"路线。等发布到 npm 后,安装可简化为
-> `dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen`。
-
-### 发布后安装
-
-```sh
-dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen
-dsh plugin --profile web add @3kaiu/dsh-harness-updater
-dsh plugin --profile web add @3kaiu/dsh-layout-infer
-dsh plugin --profile web add @3kaiu/dsh-console      # Console 工作台:随 dsh web 启动(默认 http://127.0.0.1:3090)
-dsh plugin --profile web add @3kaiu/dsh-github-sync  # GitHub sync(读):CI runs + PR 状态 → 事件库 test/completion 族
-```
+> 为什么可行:各包 `dist` 随源码提交,CI 强制校验构建产物与源码一致
+> (build 后有 diff 即失败);`install-local` 只做 profile 接线
+> (file: 安装 + bundles reconcile),全程不依赖 npm 发布/账号/tag。
+> 等将来发布到 npm 后,可简化为 `dsh plugin --profile web add <pkg>`。
 
 ## 配置
 

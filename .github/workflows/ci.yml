@@ -27,6 +27,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: build
         run: pnpm build
+      - name: 构建产物一致性(提交的 dist 必须与源码同步)
+        run: |
+          git diff --exit-code -- packages/ || {
+            echo "::error::dist 与源码不一致:先运行 pnpm build 并提交 dist(构建产物直接分发,见 README)"
+            exit 1
+          }
       - name: test
         run: pnpm test
       - name: 兼容健康检查(doctor ≥90)
