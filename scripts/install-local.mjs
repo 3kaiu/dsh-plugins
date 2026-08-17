@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// install-local: 把 workspace 内的四个插件包装进本地 web profile。
+// install-local: 把 workspace 内的插件包装进本地 web profile。
 //
 // 与官方分发对齐(等价于发布后 `dsh plugin --profile web add <pkg>`):
 // 1. `pnpm add file:<abs>` 把包装进 profile 的 node_modules;
@@ -13,10 +13,11 @@
 // 用法:
 //   本地源码模式:先 `pnpm build`,再 `node scripts/install-local.mjs`
 //   Release 模式(推荐,免构建):`node scripts/install-local.mjs --release`
-//     从 GitHub Release 下载 tarball 安装(URL 直装,无需本地构建/发布)
+//     从 GitHub Release 下载 tarball 安装(下载后先做 SHA-256 校验,通过才
+//     交给 pnpm;Release 需为重建后的产物,含 SHA256SUMS 资产)
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,6 +48,19 @@ for (const plugin of PLUGINS) {
     const tgz = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
     const url = RELEASE_BASE + "/" + tgz;
     console.log(`\n[install-local] add ${plugin.pkg} <- ${url}`);
+    // 供应链校验:先下载到临时目录,比对 GitHub Release 发布的 SHA256SUMS,
+    // 通过后才交给 pnpm——不安装任何未校验的产物(仓库/CDN 被攻破时中止)。
+    const tmpTgz = join(tmpdir(), "dsh-tgz", tgz);
+    mkdirSync(dirname(tmpTgz), { recursive: true });
+    execSync(`curl -fsSL -o "${tmpTgz}" "${url}"`, { stdio: "inherit" });
+    const sumsTxt = execSync(`curl -fsSL "${RELEASE_BASE}/SHA256SUMS"`, { encoding: "utf8" });
+    const want = sumsTxt.split("\n").map((l) => l.trim()).find((l) => l.endsWith("  " + tgz))?.split(/\s+/)[0];
+    const got = execSync(`shasum -a 256 "${tmpTgz}"`).toString().trim().split(/\s+/)[0];
+    if (!want || want !== got) {
+      console.error(`[install-local] SHA-256 校验失败: ${tgz}(期望 ${want ?? "无条目"},实得 ${got});中止安装——请确认 Release 已重建(含 SHA256SUMS 资产)`);
+      process.exit(1);
+    }
+    console.log(`[install-local] SHA-256 校验通过: ${tgz} ${got.slice(0, 12)}…`);
     execSync(`cd "${profileDir}" && pnpm add -w "${url}"`, { stdio: "inherit" });
     continue;
   }
@@ -54,7 +68,7 @@ for (const plugin of PLUGINS) {
   // dist 必须已构建:esbuild 包看 index.js,console 是前端产物(index.html/assets),
   // 统一检查"目录非空"。
   if (!existsSync(abs) || !existsSync(join(abs, "dist")) || readdirSync(join(abs, "dist")).length === 0) {
-    console.error(`dist missing for ${plugin.pkg}; run \`pnpm build\` first`);
+    console.error(`dist missing for ${plugin.pkg}; run pnpm build first`);
     process.exit(1);
   }
   console.log(`\n[install-local] add ${plugin.pkg} (${abs})`);
@@ -76,9 +90,9 @@ for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
   // file:(本地源码)或 https?:(Release tarball)都算可 reconcile 的 bundle 来源
   if (!/^(file:|https?:)/.test(spec)) continue;
   const local = spec.startsWith("file:");
-  const abs = local ? spec.slice("file:".length) : join(profileDir, "node_modules", name);
-  if (!local && !existsSync(join(abs, "package.json"))) continue;
-  if (local && !existsSync(join(abs, "package.json"))) continue;
+  // file: 可能是相对路径(pnpm 按 profile 目录解析),统一 resolve 成绝对路径
+  const abs = local ? resolve(spec.slice("file:".length)) : join(profileDir, "node_modules", name);
+  if (!existsSync(join(abs, "package.json"))) continue;
   const manifest = JSON.parse(readFileSync(join(abs, "package.json"), "utf8"));
   if (manifest.dsh?.bundle?.patch === void 0) continue;
   if (!bundles.includes(name)) bundles.push(name);
@@ -87,46 +101,20 @@ pkg.dsh = { ...pkg.dsh, profile: { ...pkg.dsh?.profile, bundles } };
 if (Object.keys(pkg.dependencies ?? {}).length === 0) delete pkg.dependencies;
 writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
 if (stale.length > 0) console.log(`[install-local] removed stale deps: ${stale.join(", ")}`);
-console.log(`[install-local] dsh.profile.bundles: ${bundles.join(", ")}`);
 
-// 4. 从 profile patch 移除插件条目(bundle 层 patch 已注册,避免双注册)
-function removeEntries(patch, ids) {
-  const targets = new Set(ids);
-  const lines = patch.split("\n");
+// 4. 从 cordis.patch.yml 移除旧插件条目(bundle 层 patch 取代注册)
+const patchText = existsSync(patchFile) ? readFileSync(patchFile, "utf8") : "";
+if (patchText.trim() !== "") {
+  const lines = patchText.split("\n");
   const out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const m = /^\s*- id: (.+?)\s*$/.exec(lines[i]);
-    if (m !== null && targets.has(m[1].trim())) {
-      const indent = lines[i].match(/^\s*/)[0].length;
-      i++;
-      while (i < lines.length) {
-        const cur = lines[i];
-        if (cur.trim() === "") { i++; continue; }
-        if (cur.match(/^\s*/)[0].length <= indent) { i--; break; }
-        i++;
-      }
-      continue;
-    }
-    out.push(lines[i]);
+  let skip = 0;
+  for (const line of lines) {
+    if (skip > 0) { skip -= 1; continue; }
+    const hit = PLUGINS.find((p) => p.patchIds.some((id) => line.includes(id)));
+    if (hit) { skip = 2; continue; }
+    out.push(line);
   }
-  // 清理因此变空的 insert 块
-  return out.join("\n").replace(/\n- insert:\s*\n(?=\n|$)/g, "\n");
+  writeFileSync(patchFile, out.join("\n"));
+  console.log("[install-local] cordis.patch.yml 已清理旧插件条目");
 }
-// 用户 patch 层可能尚不存在(launcher 生成过 profile 但从未编辑过 patch)
-const patch = existsSync(patchFile) ? readFileSync(patchFile, "utf8") : "";
-const cleaned = removeEntries(patch, PLUGINS.flatMap((p) => p.patchIds));
-if (cleaned !== patch) {
-  writeFileSync(patchFile, cleaned);
-  console.log(`[install-local] removed plugin entries from ${patchFile}`);
-}
-
-// 5. 收敛安装
-execSync(`cd "${profileDir}" && pnpm install`, { stdio: "inherit" });
-
-console.log(`
-[install-local] done. Notes:
-  - 插件注册由 bundle 机制提供: profile.dsh.profile.bundles 已含 @3kaiu/*,
-    每个包的 cordis.patch.yml 在启动时作为 bundle 层 patch 应用;
-  - 旧的手工安装目录(~/.dsh/plugins/dsh-llm-opencode-zen 等)不再被引用,可手动删除;
-  - 修改在下次启动 dsh web 时生效(或由 HMR 热加载);
-  - ${FROM_RELEASE ? "当前为 Release 模式(--release):更新 = git pull && node scripts/install-local.mjs --release" : "当前为源码模式:更新 = git pull && pnpm build && node scripts/install-local.mjs"}`);
+console.log("\n[install-local] 完成。请重启 dsh web 会话以加载插件。");

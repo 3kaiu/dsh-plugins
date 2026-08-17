@@ -4,22 +4,36 @@
   "description": "DeepSeek Harness plugin: runtime event bridge — normalizes the official session firehose into the five-family event protocol (session/tool/error/test/completion) as JSONL under DSH_HOME/state/events.",
   "type": "module",
   "main": "dist/index.js",
-  "exports": { ".": "./dist/index.js" },
-  "files": [ "dist", "cordis.patch.yml" ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
   "scripts": {
     "build": "node build.mjs",
     "test": "node build.mjs && node test/events.test.mjs"
   },
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "devDependencies": {
-    "esbuild": "^0.24.2",
-    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "3.18.1"
+    "esbuild": "^0.24.2"
   },
   "dependencies": {
     "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
     "@deepseek-ai/schemastery": "3.18.1"
   },
-  "keywords": [ "dsh", "deepseek-harness", "runtime", "events", "telemetry", "dsh-plugin" ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "runtime",
+    "events",
+    "telemetry",
+    "dsh-plugin"
+  ],
   "license": "MIT"
 }
