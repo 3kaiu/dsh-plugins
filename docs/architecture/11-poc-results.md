@@ -517,3 +517,56 @@ Agent Score: 1 次,avg 0,最新 0/100,发行门禁 未过 ❌
 
 **说明**:门禁未过是正确语义——唯一评分是历史失败记录(quality 0, reason=failed),尚未产生修复后评分;发行门禁看最新一次,修复产生新评分后自动放行(§16 演示过该路径)。
 **DoD**:report 命令实现 + 34 项测试全过(新增 2 项:状态总览/Score 集成 + --gate 透传)。
+
+## 20. 附:doctor 兼容健康检查实测(成功指标收口,2026-08-17)
+
+**能力**:`dsh-maint doctor [--json]`——兼容契约健康检查,权重计分 0-100,≥90 = healthy(对应 05 §6 成功指标"兼容分(doctor) ≥ 90"):
+- incidents 加载(15):loadIncidents 可解析;
+- autopilot.yml 契约(30):直接解析 yaml 验结构(version/permissions allow+deny 数组/merge guarded;行内与块状两种形态兼容——yaml-mini 把行内 `{ mode: guarded }` 解析为字符串,检查做双形态兼容);
+- state 目录(10):benchmarks/checkpoints/traces + knowledge 目录就绪;
+- 工具清单对齐 09 §4(20):docs 声明的 dsh_maintenance_* 与实现 TOOLS 键双向对齐(缺/多都 fail);
+- trace 回放(10):已有 trace 全部可 deepReplay;
+- CI matrix(10):ci.yml 含 os × node 矩阵;
+- knowledge 可读(5):知识文件均可读。
+
+**实测输出**(3kaiu/dsh-plugins @ main,真实仓库):
+
+```text
+$ dsh-maint doctor
+=== 兼容健康检查(doctor) ===
+  [✅] incidents 加载 (+15/15) — 2 个事项可解析
+  [✅] autopilot.yml 契约 (+30/30) — allow 6 / deny 4 / merge guarded
+  [✅] state 目录 (+10/10) — benchmarks/checkpoints/traces/knowledge 就绪
+  [✅] 工具清单对齐 09 §4 (+20/20) — doc 14 / impl 14
+  [✅] trace 回放 (+10/10) — 1 个 trace 可回放
+  [✅] CI matrix (+10/10) — os × node 矩阵存在
+  [✅] knowledge 可读 (+5/5) — 1 个知识文件
+兼容分: 100/100 → healthy
+```
+
+**缺陷注入实测**(单测 4 项):autopilot.yml 损坏 → 70 warning;09 缺失 → 80 warning;incidents 空 → 85 warning;健康仓库 → 100 healthy。测试 38 项全过。
+**用途**:发行前/CI 前健康门禁——与 score --gate(发行门禁)互补:doctor 管"环境与契约健康",score 管"Agent 行为质量"。
+
+## 21. 附:维护早报实测(Console 日活支撑,2026-08-17)
+
+**能力**:`scripts/morning-report.mjs`——把 `dsh-maint report --json` 转成早报 markdown(状态总览 + 发行门禁 + 待办 + 回归告警 + 运行痕迹),支持 `--stdout` 与 `--out <path>`(默认 `.dsh/state/morning-report.md`);对应 05 §6 成功指标"Console 日活 = 早上看早报、晚上看维护报告"。
+
+**实测输出**(3kaiu/dsh-plugins @ main):
+
+```markdown
+# 维护早报 2026-08-17
+
+## 状态总览
+- 事项: **0 open** / 2 fixed
+- 发行门禁: ❌ 未过(阈值 60,最新评分 0)
+
+## 运行痕迹
+- Agent Score: 1 次,avg 0,趋势 [0]
+- 恢复点: INC-20260817-001-20260817T030038
+- 知识: 1 条
+
+---
+*由 dsh-maint report 生成(11 篇 §19)*
+```
+
+**说明**:门禁未过语义正确(唯一评分是失败记录);早报与 report 共用同一数据源,接入 Console 首页/每日通知即可支撑"每天打开"指标。

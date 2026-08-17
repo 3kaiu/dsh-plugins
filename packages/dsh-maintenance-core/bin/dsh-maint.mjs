@@ -29,6 +29,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 
 import { join, resolve, dirname, basename } from "node:path";
 import { loadIncidents, sortIncidents, findByPrefix, scoreOf } from "../lib/incidents.mjs";
 import { loadContract, checkDiff } from "../lib/contract.mjs";
+import { parseMiniYaml } from "../lib/yaml-mini.mjs";
 import { runCommand } from "../lib/run.mjs";
 
 const REPO = resolve(process.env.DSH_MAINT_REPO ?? process.cwd());
@@ -611,6 +612,68 @@ const TOOLS = {
     }
     return out(true, { incidents: { open: open.length, fixed: fixed.length, openList: open.map((i) => ({ id: i.id, title: i.title, taxonomy: i.taxonomy })) }, score: scData, checkpoints: cks, knowledgeFiles: kFiles });
   },
+
+  doctor({ json }) {
+    // 兼容健康检查(doctor):权重计分 0-100,≥90 = healthy;对应 05 §6 成功指标"兼容分(doctor)≥90"
+    const checks = [];
+    const sc = (name, weight, pass, detail) => checks.push({ name, weight, result: pass ? "pass" : "fail", score: pass ? weight : 0, detail: detail ?? "" });
+    try {
+      const incs = loadIncidents();
+      sc("incidents 加载", 15, incs.length > 0, incs.length + " 个事项可解析");
+    } catch (e) { sc("incidents 加载", 15, false, String(e)); }
+    const contractPath = join(REPO, ".dsh", "autopilot.yml");
+    if (!existsSync(contractPath)) {
+      sc("autopilot.yml 契约", 30, false, "文件不存在");
+    } else {
+      try {
+        const y = parseMiniYaml(readFileSync(contractPath, "utf8"));
+        const mergeOk = y.merge !== undefined && (typeof y.merge === "string" ? y.merge.includes("guarded") : y.merge?.mode === "guarded");
+        const valid = !!y && typeof y === "object" && y.version !== undefined && y.permissions && Array.isArray(y.permissions.allow) && Array.isArray(y.permissions.deny) && mergeOk;
+        sc("autopilot.yml 契约", 30, !!valid, valid ? "allow " + y.permissions.allow.length + " / deny " + y.permissions.deny.length + " / merge guarded" : "结构不完整(需 version/permissions/merge)");
+      } catch (e) { sc("autopilot.yml 契约", 30, false, String(e)); }
+    }
+    const dirs = ["benchmarks", "checkpoints", "traces"].map((d) => join(STATE, d));
+    dirs.push(KNOWLEDGE);
+    const missing = dirs.filter((d) => !existsSync(d));
+    sc("state 目录", 10, missing.length === 0, missing.length ? "缺: " + missing.join(", ") : "benchmarks/checkpoints/traces/knowledge 就绪");
+    const docsPath = join(REPO, "docs", "architecture", "09-interfaces.md");
+    if (existsSync(docsPath)) {
+      const docNames = new Set([...readFileSync(docsPath, "utf8").matchAll(/"name": "dsh_maintenance_([a-z]+)"/g)].map((m) => m[1]));
+      const implNames = new Set(Object.keys(TOOLS));
+      const missT = [...docNames].filter((n) => !implNames.has(n));
+      const extra = [...implNames].filter((n) => !docNames.has(n));
+      sc("工具清单对齐 09 §4", 20, missT.length === 0 && extra.length === 0, "doc " + docNames.size + " / impl " + implNames.size + (missT.length ? " 缺: " + missT.join(",") : "") + (extra.length ? " 多: " + extra.join(",") : ""));
+    } else {
+      sc("工具清单对齐 09 §4", 20, false, "09-interfaces.md 不存在");
+    }
+    const tDir = join(STATE, "traces");
+    const tFiles = existsSync(tDir) ? readdirSync(tDir).filter((f) => f.endsWith(".jsonl")) : [];
+    if (tFiles.length) {
+      const ok = tFiles.every((f) => { try { return deepReplay(f).exists; } catch { return false; } });
+      sc("trace 回放", 10, ok, tFiles.length + " 个 trace 可回放");
+    } else {
+      sc("trace 回放", 10, true, "无 trace(空检通过)");
+    }
+    const ciPath = join(REPO, ".github", "workflows", "ci.yml");
+    if (existsSync(ciPath)) {
+      const ci = readFileSync(ciPath, "utf8");
+      const hasMatrix = ci.includes("matrix") && ci.includes("node") && ci.includes("os");
+      sc("CI matrix", 10, hasMatrix, hasMatrix ? "os × node 矩阵存在" : "matrix 配置缺失");
+    } else { sc("CI matrix", 10, false, "ci.yml 不存在"); }
+    const kFiles = existsSync(KNOWLEDGE) ? readdirSync(KNOWLEDGE).filter((f) => f.endsWith(".md")) : [];
+    let kOk = true;
+    for (const f of kFiles) { try { readFileSync(join(KNOWLEDGE, f), "utf8"); } catch { kOk = false; } }
+    sc("knowledge 可读", 5, kOk, kFiles.length + " 个知识文件");
+    const total = checks.reduce((s, c) => s + c.score, 0);
+    const verdict = total >= 90 ? "healthy" : total >= 60 ? "warning" : "unhealthy";
+    if (!json) {
+      console.log("=== 兼容健康检查(doctor) ===");
+      for (const c of checks) console.log("  [" + (c.result === "pass" ? "✅" : "❌") + "] " + c.name + " (+" + c.score + "/" + c.weight + ")" + (c.detail ? " — " + c.detail : ""));
+      console.log("兼容分: " + total + "/100 → " + verdict);
+    }
+    return out(true, { score: total, verdict, checks });
+  },
+
 
   verify({ scope = "contract", json, claim, incident }) {
     const contract = loadContract(REPO);
