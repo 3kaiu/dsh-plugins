@@ -1,13 +1,10 @@
-name: release-workbench
-# Console 工作台发行构建(plugins 仓库产物):workflow_dispatch 或 tag v* 触发
-# 边界:启动器/官方 Harness 生命周期属 3kaiu/dsh-launcher(独立仓库,自有 release.yml)
+name: release-plugins
+# 插件 tarball 发行:GitHub 上直接构建产物(pnpm build),pnpm pack 生成
+# tarball 挂到 Release——不依赖 npm 发布/账号,不用提交 dist。
+# 触发:tag v* 或 workflow_dispatch(手动)。
+# 安装: dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/<包名>-<版本>.tgz
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 版本号(如 0.1.0;留空用 console package.json)
-        required: false
-        type: string
   push:
     tags: ["v*"]
 permissions:
@@ -25,13 +22,20 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
-      - name: build console(PWA 产物)
-        run: pnpm --filter @3kaiu/dsh-console build
-      - name: bundle(TS 发行脚本)
-        run: node scripts/release.ts "${{ github.event_name == 'workflow_dispatch' && format('--version {0}', inputs.version) || '' }}"
+      - name: build(GitHub 上构建全部产物)
+        run: pnpm build
+      - name: pack 插件 tarball
+        run: |
+          mkdir -p dist-release
+          for p in dsh-console dsh-github-sync dsh-runtime-events harness-updater layout-infer llm-opencode-zen; do
+            (cd packages/$p && pnpm pack --pack-destination ../../dist-release/)
+          done
+      - name: workbench 独立发行包(console 独立形态 + 维护工具)
+        run: node scripts/release.ts
       - name: 创建/更新 Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER=$(node -e "console.log(require('./packages/dsh-console/package.json').version)")
-          gh release create "workbench-v$VER" dist-release/dsh-workbench-$VER.zip dist-release/SHA256SUMS --title "DSH Workbench v$VER" --notes "Console 工作台:解压 → ./start.sh → 打开 http://127.0.0.1:3090(Safari 添加到程序坞 = PWA)。官方 Harness(3080)用 3kaiu/dsh-launcher。" || gh release upload "workbench-v$VER" dist-release/dsh-workbench-$VER.zip dist-release/SHA256SUMS --clobber
+          gh release create "v$VER" dist-release/* --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README;workbench 独立发行见包内 README" || gh release upload "v$VER" dist-release/* --clobber
+

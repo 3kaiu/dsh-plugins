@@ -22,24 +22,38 @@
 
 ## 安装
 
-要求 Node.js ≥ 20(开发环境使用 pnpm workspace)。
+要求 Node.js ≥ 20。
 
-### 安装(推荐:GitHub 直装,零发布流程)
+### 安装(推荐:tarball,无需 npm 发布)
 
-构建产物(`dist/`)**直接提交在仓库里**,clone/pull 即用——不打 tag、
-不生成 tarball、不发布到任何 registry:
+GitHub Actions 在**云端直接构建产物**并生成 tarball 挂到 Release
+(不依赖 npm 发布/账号,不提交 dist):
 
 ```sh
-git clone https://github.com/3kaiu/dsh-plugins.git
-cd dsh-plugins
-pnpm install                    # 只装构建工具(esbuild 等 devDeps)
-node scripts/install-local.mjs  # 把全部插件装进 $DSH_HOME/profiles/web
+# 发布(维护者):git tag v0.3.0 && git push origin v0.3.0
+#   → Actions 自动:pnpm build → pnpm pack → 上传 Release
+
+# 安装(用户):
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-console-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-github-sync-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-runtime-events-0.1.0.tgz
 ```
 
-更新(永远是最新 main):
+> profile 是 pnpm workspace 根(官方 dsh 生成),`dsh plugin add` 撞
+> `ERR_PNPM_ADDING_TO_ROOT` 时,等价命令:
+> `cd ~/.dsh/profiles/web && pnpm add -w <上面的 tgz URL>`
+> 两种方式都会自动 reconcile `dsh.profile.bundles`(dsh plugin add 自动做;
+> pnpm 直装需手动补,或使用下方本地脚本)。
+
+### 本地开发安装(源码模式)
 
 ```sh
-git pull && node scripts/install-local.mjs
+git clone https://github.com/3kaiu/dsh-plugins.git && cd dsh-plugins
+pnpm install
+node scripts/install-local.mjs   # 先 pnpm build(脚本会校验 dist)
 ```
 
 `install-local.mjs` 对 `$DSH_HOME/profiles/web`:
@@ -49,10 +63,6 @@ git pull && node scripts/install-local.mjs
 
 重启 dsh(或等 HMR)后生效。
 
-> 为什么可行:各包 `dist` 随源码提交,CI 强制校验构建产物与源码一致
-> (build 后有 diff 即失败);`install-local` 只做 profile 接线
-> (file: 安装 + bundles reconcile),全程不依赖 npm 发布/账号/tag。
-> 等将来发布到 npm 后,可简化为 `dsh plugin --profile web add <pkg>`。
 
 ## 配置
 
