@@ -10,7 +10,10 @@
 //    层 patch 提供,避免同一 id 双注册);
 // 4. 清理旧 install.mjs 写入的无 scope 依赖条目。
 //
-// 用法: 先 `pnpm build`,再 `node scripts/install-local.mjs`
+// 用法:
+//   本地源码模式:先 `pnpm build`,再 `node scripts/install-local.mjs`
+//   Release 模式(推荐,免构建):`node scripts/install-local.mjs --release`
+//     从 GitHub Release 下载 tarball 安装(URL 直装,无需本地构建/发布)
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -26,6 +29,8 @@ const PLUGINS = [
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const FROM_RELEASE = process.argv.includes("--release");
+const RELEASE_BASE = process.env.DSH_PLUGIN_RELEASE_BASE ?? "https://github.com/3kaiu/dsh-plugins/releases/latest/download";
 const dshHome = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
 const profileDir = join(dshHome, "profiles", "web");
 const patchFile = join(profileDir, "cordis.patch.yml");
@@ -37,9 +42,17 @@ if (!existsSync(join(profileDir, "package.json"))) {
 
 // 1. 安装依赖
 for (const plugin of PLUGINS) {
+  if (FROM_RELEASE) {
+    const manifest = JSON.parse(readFileSync(join(root, "packages", plugin.dir, "package.json"), "utf8"));
+    const tgz = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
+    const url = RELEASE_BASE + "/" + tgz;
+    console.log(`\n[install-local] add ${plugin.pkg} <- ${url}`);
+    execSync(`cd "${profileDir}" && pnpm add -w "${url}"`, { stdio: "inherit" });
+    continue;
+  }
   const abs = join(root, "packages", plugin.dir);
-  // dist 必须已提交进仓库(GitHub 直装模式):esbuild 包看 index.js,
-  // console 是前端产物(index.html/assets),统一检查"目录非空"。
+  // dist 必须已构建:esbuild 包看 index.js,console 是前端产物(index.html/assets),
+  // 统一检查"目录非空"。
   if (!existsSync(abs) || !existsSync(join(abs, "dist")) || readdirSync(join(abs, "dist")).length === 0) {
     console.error(`dist missing for ${plugin.pkg}; run \`pnpm build\` first`);
     process.exit(1);
@@ -60,9 +73,12 @@ for (const name of stale) delete pkg.dependencies[name];
 // 3. reconcile bundles: 声明了 dsh.bundle 的依赖按依赖顺序加入 dsh.profile.bundles
 const bundles = pkg.dsh?.profile?.bundles ?? [];
 for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
-  if (!/^file:/.test(spec)) continue;
-  const abs = spec.slice("file:".length);
-  if (!existsSync(join(abs, "package.json"))) continue;
+  // file:(本地源码)或 https?:(Release tarball)都算可 reconcile 的 bundle 来源
+  if (!/^(file:|https?:)/.test(spec)) continue;
+  const local = spec.startsWith("file:");
+  const abs = local ? spec.slice("file:".length) : join(profileDir, "node_modules", name);
+  if (!local && !existsSync(join(abs, "package.json"))) continue;
+  if (local && !existsSync(join(abs, "package.json"))) continue;
   const manifest = JSON.parse(readFileSync(join(abs, "package.json"), "utf8"));
   if (manifest.dsh?.bundle?.patch === void 0) continue;
   if (!bundles.includes(name)) bundles.push(name);
@@ -109,8 +125,8 @@ execSync(`cd "${profileDir}" && pnpm install`, { stdio: "inherit" });
 
 console.log(`
 [install-local] done. Notes:
-  - 插件注册改由 bundle 机制提供: profile.dsh.profile.bundles 已含 @3kaiu/*,
+  - 插件注册由 bundle 机制提供: profile.dsh.profile.bundles 已含 @3kaiu/*,
     每个包的 cordis.patch.yml 在启动时作为 bundle 层 patch 应用;
   - 旧的手工安装目录(~/.dsh/plugins/dsh-llm-opencode-zen 等)不再被引用,可手动删除;
   - 修改在下次启动 dsh web 时生效(或由 HMR 热加载);
-  - 发布到 npm 后,同样的安装可简化为: dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen`);
+  - ${FROM_RELEASE ? "当前为 Release 模式(--release):更新 = git pull && node scripts/install-local.mjs --release" : "当前为源码模式:更新 = git pull && pnpm build && node scripts/install-local.mjs"}`);
