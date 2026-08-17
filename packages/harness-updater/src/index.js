@@ -44,13 +44,21 @@ function warmNpxCache(version) {
   child.on("exit", () => clearTimeout(kill));
 }
 
-async function checkLatest(ctx) {
+/**
+ * 检查 registry 最新版本并更新状态。
+ * @param {object} ctx 插件上下文({ logger: { info, warn } })
+ * @param {{ fetch?: typeof fetch; warm?: (version: string) => void }} [deps]
+ *   测试注入点:mock fetch / 替换 npx 预热(单测不真正 spawn)。
+ */
+async function checkLatest(ctx, deps = {}) {
+  const doFetch = deps.fetch ?? fetch;
+  const doWarm = deps.warm ?? warmNpxCache;
   let latest;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(REGISTRY_URL, { signal: controller.signal });
+      const response = await doFetch(REGISTRY_URL, { signal: controller.signal });
       if (!response.ok) throw new Error(`registry responded ${response.status}`);
       const body = await response.json();
       latest = body.version;
@@ -74,7 +82,7 @@ async function checkLatest(ctx) {
     history.push({ at: state.lastCheckAtIso, from: state.latestPrev ?? null, to: latest });
     state.history = history.slice(-HISTORY_LIMIT);
     state.updatedCount = (state.updatedCount ?? 0) + 1;
-    warmNpxCache(latest);
+    doWarm(latest);
     ctx.logger.info(`[dsh-updater] new dsh version ${latest} found; npx cache warming for next launch`);
   } else {
     ctx.logger.info(`[dsh-updater] dsh is current: ${latest}`);
@@ -98,4 +106,4 @@ function apply(ctx) {
   ctx.effect(() => () => clearInterval(interval));
 }
 
-export { apply, name };
+export { apply, checkLatest, name };
