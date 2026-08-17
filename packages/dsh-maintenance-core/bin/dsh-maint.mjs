@@ -12,6 +12,9 @@
 //   dsh-maint checkpoint <incidentId> [--json]    创建恢复点(现场快照:事项/attempts/知识/git)
 //   dsh-maint checkpoint list [--json]            列出恢复点
 //   dsh-maint checkpoint restore <id> [--json]    读取恢复点并验证完整性
+//   dsh-maint knowledge <incidentId> [--json]     查询事项知识(内嵌 + 知识文件)
+//   dsh-maint knowledge add <incidentId> --text <...> [--json]  沉淀修复经验(追加去重)
+//   dsh-maint knowledge list [--json]             列出全部知识
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
@@ -337,6 +340,43 @@ const TOOLS = {
     return out(true, { traceRef, ...d });
   },
 
+  knowledge({ action = "query", id, text, json }) {
+    if (action === "list") {
+      const files = existsSync(KNOWLEDGE) ? readdirSync(KNOWLEDGE).filter((f) => f.endsWith(".md")).sort() : [];
+      const embedded = loadIncidents().filter((i) => i.knowledge).map((i) => ({ id: i.id, note: i.knowledge }));
+      if (!json) { for (const f of files) console.log(f); for (const e of embedded) console.log(e.id + ": " + e.note); }
+      return out(true, { files, embedded });
+    }
+    if (action === "add") {
+      if (!id) return fail("需要事项 ID");
+      if (!text) return fail("需要 --text");
+      const inc = loadIncidents().find((i) => i.id === id || i.id.startsWith(id));
+      if (!inc) return fail("事项不存在: " + id);
+      mkdirSync(KNOWLEDGE, { recursive: true });
+      const p = join(KNOWLEDGE, inc.id + ".md");
+      const existing = existsSync(p) ? readFileSync(p, "utf8") : "";
+      if (existing.includes(text)) {
+        if (!json) console.log("知识已存在,跳过: " + inc.id + ".md");
+        return out(true, { added: false, file: inc.id + ".md" });
+      }
+      const entry = "## " + new Date().toISOString() + "\n" + text + "\n";
+      writeFileSync(p, existing + entry);
+      if (!json) console.log("知识已沉淀: .dsh/knowledge/" + inc.id + ".md");
+      return out(true, { added: true, file: inc.id + ".md" });
+    }
+    // query(默认):内嵌 knowledge + 知识文件
+    if (!id) return fail("需要事项 ID");
+    const inc = loadIncidents().find((i) => i.id === id || i.id.startsWith(id));
+    if (!inc) return fail("事项不存在: " + id);
+    const files = existsSync(KNOWLEDGE) ? readdirSync(KNOWLEDGE).filter((f) => f.endsWith(".md") && (f.includes(inc.taxonomy ?? "") || f.includes(inc.id))) : [];
+    const notes = files.map((f) => ({ file: f, content: readFileSync(join(KNOWLEDGE, f), "utf8") }));
+    if (!json) {
+      if (inc.knowledge) console.log("内嵌: " + inc.knowledge);
+      for (const n of notes) { console.log("--- " + n.file + " ---"); console.log(n.content); }
+    }
+    return out(true, { incidentId: inc.id, embedded: inc.knowledge ?? null, files, notes });
+  },
+
   checkpoint({ action = "create", id, json }) {
     const dir = join(STATE, "checkpoints");
     if (action === "list") {
@@ -468,6 +508,8 @@ for (let i = 0; i < rest.length; i++) {
   else if (cmd === "verify" && !args.scope) args.scope = rest[i];
   else if ((cmd === "replay" || cmd === "benchmark") && !args.traceRef) args.traceRef = rest[i];
   else if (cmd === "checkpoint" && (rest[i] === "list" || rest[i] === "restore" || rest[i] === "create")) args.action = rest[i];
+  else if (cmd === "knowledge" && (rest[i] === "list" || rest[i] === "add")) args.action = rest[i];
+  else if (rest[i] === "--text") args.text = rest[++i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {

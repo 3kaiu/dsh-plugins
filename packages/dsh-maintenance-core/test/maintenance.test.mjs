@@ -1,5 +1,5 @@
 // dsh-maintenance-core 单测:解析/排序/契约/工具
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -312,6 +312,59 @@ console.log("# checkpoint 恢复点(Recovery 最小可用版)");
   const miss = runCk("checkpoint restore nope --json");
   assert.equal(miss.data.restored, false);
   ok("checkpoint restore 不存在 → restored=false");
+}
+console.log("# knowledge 沉淀 + fixtures 兼容契约");
+{
+  const { execSync } = await import("node:child_process");
+  const repo = mkdtempSync(join(tmpdir(), "know-"));
+  const incDir = join(repo, ".dsh", "incidents");
+  mkdirSync(incDir, { recursive: true });
+  writeFileSync(join(incDir, "inc-know.json"), JSON.stringify({
+    id: "INC-KNOW-001", title: "knowledge 测试", severity: "LOW", frequency: 1, taxonomy: "TEST", status: "open",
+    reproduce: { command: "node -e \"process.exit(0)\"", workdir: "." },
+    testCommand: "node -e \"process.exit(0)\"",
+    knowledge: "内嵌知识:这类问题先看 events JSONL"
+  }));
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const runK = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo } }));
+  const TXT = "经验:reproduce 探测要用 existsSync";
+  // 1) 沉淀经验
+  const ad = runK("knowledge add INC-KNOW-001 --text \"" + TXT + "\" --json");
+  assert.equal(ad.data.added, true);
+  assert.equal(ad.data.file, "INC-KNOW-001.md");
+  assert.ok(readFileSync(join(repo, ".dsh", "knowledge", "INC-KNOW-001.md"), "utf8").includes(TXT));
+  // 2) 去重
+  const dup = runK("knowledge add INC-KNOW-001 --text \"" + TXT + "\" --json");
+  assert.equal(dup.data.added, false);
+  const content = readFileSync(join(repo, ".dsh", "knowledge", "INC-KNOW-001.md"), "utf8");
+  assert.equal(content.split(TXT).length - 1, 1); // 只出现一次
+  // 3) 查询:内嵌 + 文件
+  const q = runK("knowledge INC-KNOW-001 --json");
+  assert.equal(q.data.embedded, "内嵌知识:这类问题先看 events JSONL");
+  assert.ok(q.data.files.includes("INC-KNOW-001.md"));
+  assert.ok(q.data.notes[0].content.includes(TXT));
+  // 4) 列表
+  const ls = runK("knowledge list --json");
+  assert.ok(ls.data.files.includes("INC-KNOW-001.md"));
+  assert.equal(ls.data.embedded.length, 1);
+  ok("knowledge 沉淀/去重/查询/列表");
+  // 5) fixtures:复制样例到 tmp 仓库,loadIncidents/loadContract 可解析
+  const fx = fileURLToPath(new URL("../../../.dsh/fixtures", import.meta.url));
+  for (const f of ["inc-open.json", "inc-fixed.json"]) {
+    writeFileSync(join(incDir, f), readFileSync(join(fx, "incidents", f), "utf8"));
+  }
+  writeFileSync(join(repo, ".dsh", "autopilot.yml"), readFileSync(join(fx, "autopilot.yml"), "utf8"));
+  const { loadIncidents: li2 } = await import("../lib/incidents.mjs");
+  const { loadContract: lc2 } = await import("../lib/contract.mjs");
+  const incs = li2(repo);
+  assert.ok(incs.some((i) => i.id === "INC-FIXTURE-OPEN-001" && i.status === "open"));
+  assert.ok(incs.some((i) => i.id === "INC-FIXTURE-FIXED-001" && i.status === "fixed" && i.mergedRefs.length === 1));
+  const c = lc2(repo);
+  assert.equal(c.budget.maxRunsPerDay, 3);
+  assert.equal(c.budget.maxAttemptsPerIssue, 3);
+  assert.equal(c.budget.maxRuntimeMin, "15"); // yaml-mini 解析为字符串(既有行为)
+  ok("fixtures 兼容契约:incidents(open/fixed)+ autopilot.yml 均可解析");
 }
 }
 
