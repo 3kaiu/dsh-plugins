@@ -12,7 +12,7 @@
 //
 // 用法: 先 `pnpm build`,再 `node scripts/install-local.mjs`
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,7 +38,9 @@ if (!existsSync(join(profileDir, "package.json"))) {
 // 1. 安装依赖
 for (const plugin of PLUGINS) {
   const abs = join(root, "packages", plugin.dir);
-  if (!existsSync(join(abs, "dist", "index.js"))) {
+  // dist 必须已提交进仓库(GitHub 直装模式):esbuild 包看 index.js,
+  // console 是前端产物(index.html/assets),统一检查"目录非空"。
+  if (!existsSync(abs) || !existsSync(join(abs, "dist")) || readdirSync(join(abs, "dist")).length === 0) {
     console.error(`dist missing for ${plugin.pkg}; run \`pnpm build\` first`);
     process.exit(1);
   }
