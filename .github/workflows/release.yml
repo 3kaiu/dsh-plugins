@@ -1,51 +1,37 @@
-name: build-plugins
-
+name: release-workbench
+# Console 工作台发行构建(plugins 仓库产物):workflow_dispatch 或 tag v* 触发
+# 边界:启动器/官方 Harness 生命周期属 3kaiu/dsh-launcher(独立仓库,自有 release.yml)
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-
+    inputs:
+      version:
+        description: 版本号(如 0.1.0;留空用 console package.json)
+        required: false
+        type: string
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
 jobs:
-  pack:
+  bundle:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
+          node-version: 24
+      - name: pnpm
+        run: npm install -g pnpm@9.15.0
+      - name: install
         run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Pack tarballs
+      - name: build console(PWA 产物)
+        run: pnpm --filter @3kaiu/dsh-console build
+      - name: bundle(TS 发行脚本)
+        run: node scripts/release.ts "${{ github.event_name == 'workflow_dispatch' && format('--version {0}', inputs.version) || '' }}"
+      - name: 创建/更新 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p out
-          for d in packages/llm-opencode-zen packages/harness-updater packages/layout-infer; do
-            (cd "$d" && pnpm pack --pack-destination ../../out)
-          done
-          ls -la out
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: plugin-tarballs
-          path: out/*.tgz
-
-      - name: Attach to GitHub Release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: out/*.tgz
-          generate_release_notes: true
+          VER=$(node -e "console.log(require('./packages/dsh-console/package.json').version)")
+          gh release create "workbench-v$VER" dist-release/dsh-workbench-$VER.zip dist-release/SHA256SUMS --title "DSH Workbench v$VER" --notes "Console 工作台:解压 → ./start.sh → 打开 http://127.0.0.1:3090(Safari 添加到程序坞 = PWA)。官方 Harness(3080)用 3kaiu/dsh-launcher。" || gh release upload "workbench-v$VER" dist-release/dsh-workbench-$VER.zip dist-release/SHA256SUMS --clobber

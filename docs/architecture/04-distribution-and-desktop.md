@@ -1,6 +1,6 @@
 # 04 · 发行层与桌面集成(Distribution & Desktop)
 
-> 状态:**部分执行(§6 第 1 项 dshctl console start/stop/status/open 已落地,实测见 11 篇 §23;profile install / pin check / 菜单栏 App 待桌面环境验证)** · v0.3 重写
+> 状态:**部分执行(发行边界确认:启动器归 3kaiu/dsh-launcher 独立仓库;plugins 侧发行包 dsh-workbench 已落地——Console PWA 补全 + release.ts 打包 + GitHub Release 流水线,实测见 11 篇 §24;profile install / pin check / 菜单栏 App 待桌面环境验证)** · v0.3 重写
 > v0.3 变更:桌面侧从"一个 PWA"升级为**两个 Web App**——官方 Harness Web
 > (聊天/Agent 工作,零修改)与 DSH Console(驾驶舱,自建 PWA)。
 
@@ -65,7 +65,7 @@ personal(日常稳定组合)/ dev(实验调试组合),互不污染;升级仅走 
 
 ## 6. dsh-launcher 增量计划(Phase 1/4)
 
-1. `dshctl console start|stop|status` —— 管理 dsh-runtime + console(3090);
+1. `dshctl console start|stop|status` —— 管理 dsh-runtime + console(3090);**【落地】发行包内 start.sh/stop.sh 先行承担(11 篇 §23/§24);launcher 仓库 dshctl 扩展 console 子命令为后续项**;
 2. `dshctl profile install personal` —— 按 manifest 装 profile + 插件;
 3. `dshctl pin check` / `dshctl matrix` —— 版本校验与兼容性显示;
 4. 菜单栏 App:增加 reliability/维护状态摘要;
