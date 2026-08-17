@@ -26,9 +26,9 @@ jobs:
         run: pnpm build
       - name: pack 插件 tarball
         run: |
-          mkdir -p dist-release
+          mkdir -p dist-tgz
           for p in dsh-console dsh-github-sync dsh-runtime-events harness-updater layout-infer llm-opencode-zen; do
-            (cd packages/$p && pnpm pack --pack-destination ../../dist-release/)
+            (cd packages/$p && pnpm pack --pack-destination ../../dist-tgz/)
           done
       - name: workbench 独立发行包(console 独立形态 + 维护工具)
         run: node scripts/release.ts
@@ -37,5 +37,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER=$(node -e "console.log(require('./packages/dsh-console/package.json').version)")
-          gh release create "v$VER" dist-release/* --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README;workbench 独立发行见包内 README" || gh release upload "v$VER" dist-release/* --clobber
+          gh release create "v$VER" dist-tgz/*.tgz dist-release/*.zip dist-release/SHA256SUMS --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README;workbench 独立发行见包内 README" || gh release upload "v$VER" dist-tgz/*.tgz dist-release/*.zip dist-release/SHA256SUMS --clobber
 
