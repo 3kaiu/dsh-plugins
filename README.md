@@ -27,26 +27,22 @@
 ### 安装(推荐:tarball,无需 npm 发布)
 
 GitHub Actions 在**云端直接构建产物**并生成 tarball 挂到 Release
-(不依赖 npm 发布/账号,不提交 dist):
+(不依赖 npm 发布/账号,不提交 dist)。安装/更新一条命令:
 
 ```sh
-# 发布(维护者):git tag v0.3.0 && git push origin v0.3.0
-#   → Actions 自动:pnpm build → pnpm pack → 上传 Release
-
-# 安装(用户):
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-console-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-github-sync-0.1.0.tgz
-dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-runtime-events-0.1.0.tgz
+git clone https://github.com/3kaiu/dsh-plugins.git && cd dsh-plugins
+node scripts/install-local.mjs --release
+#   从 GitHub Release 下载最新 tarball,自动注册 dsh.profile.bundles
+# 更新:git pull && node scripts/install-local.mjs --release
 ```
 
-> profile 是 pnpm workspace 根(官方 dsh 生成),`dsh plugin add` 撞
-> `ERR_PNPM_ADDING_TO_ROOT` 时,等价命令:
-> `cd ~/.dsh/profiles/web && pnpm add -w <上面的 tgz URL>`
-> 两种方式都会自动 reconcile `dsh.profile.bundles`(dsh plugin add 自动做;
-> pnpm 直装需手动补,或使用下方本地脚本)。
+> 维护者发布(可选,不发布也能用源码模式):`git tag v0.3.0 && git push origin v0.3.0`
+> → Actions 自动:pnpm build → pnpm pack(6 个 tarball)→ 上传 Release。
+>
+> 等价命令(逐个装):`dsh plugin --profile web add <tgz URL>`;
+> profile 是 pnpm workspace 根,`dsh plugin add` 撞 `ERR_PNPM_ADDING_TO_ROOT` 时用
+> `cd ~/.dsh/profiles/web && pnpm add -w <tgz URL>`(记得把包名补进 `dsh.profile.bundles`,
+> 或直接用上面的 `--release` 脚本,它会自动 reconcile)。
 
 ### 本地开发安装(源码模式)
 
@@ -57,11 +53,12 @@ node scripts/install-local.mjs   # 先 pnpm build(脚本会校验 dist)
 ```
 
 `install-local.mjs` 对 `$DSH_HOME/profiles/web`:
-1. 用 `pnpm add file:<abs>` 把全部插件装进 profile 的 node_modules;
+1. 用 `pnpm add -w file:<abs>`(源码)/ `pnpm add -w <tgz URL>`(--release)装进 profile;
 2. 把声明了 `dsh.bundle` 的依赖 reconcile 进 `dsh.profile.bundles`;
 3. 清理 profile patch 中旧的插件条目(插件注册改由 bundle 层 patch 提供)。
 
 重启 dsh(或等 HMR)后生效。
+
 
 
 ## 配置
