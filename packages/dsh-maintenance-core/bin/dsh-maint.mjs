@@ -18,12 +18,14 @@
 //   dsh-maint trace <incidentId> --from <eventsFile> [--json]  会话事件流落盘为事项 trace
 //   dsh-maint guard --pr <PR号> [--json]             guarded auto-merge 判定(维护分支+verified+无needs-human+attempts<3+CI全绿)
 //   dsh-maint guard --mock <PR数据json> [--json]     注入 PR 数据判定(测试/DoD 实测用)
+//   dsh-maint benchmark <trace> --record [--incident <id>] [--json]  评分落盘(Agent Score 聚合输入)
+//   dsh-maint score [--gate <阈值>] [--json]           Agent Score:聚合/趋势/下降归因 + 发行门禁(默认阈值 60)
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
 // 统一返回:{ ok, data, diagnostics }
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, basename } from "node:path";
 import { loadIncidents, sortIncidents, findByPrefix, scoreOf } from "../lib/incidents.mjs";
 import { loadContract, checkDiff } from "../lib/contract.mjs";
 import { runCommand } from "../lib/run.mjs";
@@ -483,7 +485,7 @@ const TOOLS = {
     return out(true, { checkpoint: snap });
   },
 
-  benchmark({ traceRef, json, before, after }) {
+  benchmark({ traceRef, json, before, after, record, incident }) {
     if (before && after) {
       const c = compareBenchmarks(before, after);
       if (!c.exists) return out(true, { exists: false, before: c.a, after: c.b }, ["before/after trace 至少一个不存在"]);
@@ -515,7 +517,71 @@ const TOOLS = {
       pad("reason", m.metrics.reason ?? "-");
       pad("quality", m.quality + "/100 (" + m.verdict + ")");
     }
+    if (record) {
+      // --record:评分落盘,供 Agent Score/Analytics 聚合(Phase 4)
+      const bDir = join(STATE, "benchmarks");
+      mkdirSync(bDir, { recursive: true });
+      const incId = incident || (traceRef ? basename(traceRef).replace(/\.jsonl?$/, "") : "unknown");
+      const rec = { at: new Date().toISOString(), trace: traceRef, quality: m.quality, verdict: m.verdict, metrics: m.metrics };
+      const file = join(bDir, incId + ".json");
+      const list = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+      list.push(rec);
+      writeFileSync(file, JSON.stringify(list, null, 2));
+      if (!json) console.log("评分已记录: .dsh/state/benchmarks/" + incId + ".json (" + list.length + " 条)");
+      return out(true, { traceRef, ...m, recorded: { incidentId: incId, runs: list.length } });
+    }
     return out(true, { traceRef, ...m });
+  },
+
+  score({ json, gate, id }) {
+    // Agent Score/Analytics:聚合全部 benchmark 记录,含趋势与下降归因;--gate <阈值> 做发行门禁
+    const bDir = join(STATE, "benchmarks");
+    const files = existsSync(bDir) ? readdirSync(bDir).filter((f) => f.endsWith(".json")) : [];
+    const all = [];
+    for (const f of files) {
+      const recs = (() => { try { return JSON.parse(readFileSync(join(bDir, f), "utf8")); } catch { return []; } })();
+      for (const r of recs) all.push({ incidentId: f.replace(/\.json$/, ""), ...r });
+    }
+    all.sort((a, b) => (a.at ?? "").localeCompare(b.at ?? ""));
+    const runs = all.length;
+    const avgQuality = runs ? Math.round(all.reduce((s, r) => s + r.quality, 0) / runs) : 0;
+    const last = all[runs - 1];
+    const byIncident = [...new Set(all.map((r) => r.incidentId))].map((incId) => {
+      const recs = all.filter((r) => r.incidentId === incId);
+      const regressions = [];
+      for (let i = 1; i < recs.length; i++) {
+        const prev = recs[i - 1], cur = recs[i];
+        const drop = prev.quality - cur.quality;
+        if (drop >= 20) {
+          // 归因:三个指标中变化贡献最大的为主因
+          const dF = (cur.metrics?.failureRate ?? 0) - (prev.metrics?.failureRate ?? 0);
+          const dR = (cur.metrics?.llmRetries ?? 0) - (prev.metrics?.llmRetries ?? 0);
+          const dE = (cur.metrics?.errorDensity ?? 0) - (prev.metrics?.errorDensity ?? 0);
+          const maxAbs = Math.max(Math.abs(dF), Math.abs(dR), Math.abs(dE));
+          const cause = maxAbs === 0 ? "综合" : Math.abs(dF) === maxAbs ? "failureRate" : Math.abs(dR) === maxAbs ? "llmRetries" : "errorDensity";
+          regressions.push({ at: cur.at, from: prev.quality, to: cur.quality, drop, cause, detail: "失败率 " + dF.toFixed(2) + " / 重试 " + dR.toFixed(1) + " / 错误密度 " + dE.toFixed(2) });
+        }
+      }
+      return { id: incId, runs: recs.length, avgQuality: Math.round(recs.reduce((s, r) => s + r.quality, 0) / recs.length), lastQuality: recs[recs.length - 1].quality, trend: recs.map((r) => r.quality), regressions };
+    });
+    const byTaxonomy = [...new Set(loadIncidents().filter((i) => all.some((r) => r.incidentId.startsWith(i.id))).map((i) => i.taxonomy ?? "UNKNOWN"))].map((t) => {
+      const ids = loadIncidents().filter((i) => (i.taxonomy ?? "UNKNOWN") === t).map((i) => i.id);
+      const recs = all.filter((r) => ids.some((x) => r.incidentId.startsWith(x)));
+      return { taxonomy: t, runs: recs.length, avgQuality: recs.length ? Math.round(recs.reduce((s, r) => s + r.quality, 0) / recs.length) : 0 };
+    });
+    const threshold = gate != null ? Number(gate) : 60;
+    // 发行门禁看"最新一次评分"(历史失败已修复不惩罚当前);avg 仅作趋势展示
+    const pass = runs > 0 && (last?.quality ?? 0) >= threshold && (last?.metrics?.reason ?? "completed") === "completed";
+    if (!json) {
+      console.log("=== Agent Score(" + runs + " 次评分,平均 " + avgQuality + "/100) ===");
+      for (const b of byIncident) {
+        console.log("  " + b.id + ": " + b.runs + " 次,avg " + b.avgQuality + ",trend [" + b.trend.join(" → ") + "]");
+        for (const rg of b.regressions) console.log("    ⚠ 下降 " + rg.from + "→" + rg.to + "(" + rg.drop + ") 主因 " + rg.cause + " [" + rg.detail + "]");
+      }
+      for (const t of byTaxonomy) console.log("  分类 " + t.taxonomy + ": " + t.runs + " 次,avg " + t.avgQuality);
+      console.log("gate: " + threshold + " → " + (pass ? "通过 ✅" : "不通过 ❌"));
+    }
+    return out(true, { runs, avgQuality, last: last ? { at: last.at, quality: last.quality, reason: last.metrics?.reason ?? null, incidentId: last.incidentId } : null, byIncident, byTaxonomy, gate: { threshold, pass } });
   },
 
   verify({ scope = "contract", json, claim, incident }) {
@@ -568,6 +634,9 @@ for (let i = 0; i < rest.length; i++) {
   else if (rest[i] === "--text") args.text = rest[++i];
   else if (rest[i] === "--pr") args.pr = rest[++i];
   else if (rest[i] === "--mock") args.mock = rest[++i];
+  else if (rest[i] === "--record") args.record = true;
+  else if (rest[i] === "--gate") args.gate = rest[++i];
+  else if (rest[i] === "--incident") args.incident = rest[++i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {

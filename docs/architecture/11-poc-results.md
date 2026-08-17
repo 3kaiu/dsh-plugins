@@ -429,3 +429,29 @@ $ dsh-maint guard --mock deny-branch.json --json
 
 **budget 全量覆盖**:max_attempts_per_issue=3 → guard 拦截 + issue 打 needs-human(workflow issue 步骤原有);max_changed_files/max_diff_lines → verify contract 把关(原有);max_runtime → job timeout 45min + agent timeout 600s(原有);max_runs_per_day → schedule 每日 1 次(原有)。全部已接线。
 **剩余**:真实 PR 上的 guard+merge 走通(依赖真实 headless 会话,Phase 4 无人值守演示一并做);auto repair 循环(schedule 自然重试,attempts 标签驱动)。
+
+## 16. 附:Agent Score/Analytics/归因 + 无人值守演示实测(Phase 4 首件,2026-08-17)
+
+**能力**:
+- `dsh-maint benchmark <trace> --record [--incident <id>]`:评分落盘 `.dsh/state/benchmarks/<incidentId>.json`(累积数组,Agent Score 的输入侧);
+- `dsh-maint score [--gate <阈值>]`:聚合全部评分——运行数/平均质量/按事项聚合(趋势 + 回归检测)+ 按 taxonomy 分布;回归归因:单次降幅 ≥20 时,比较 failureRate/llmRetries/errorDensity 三个指标的变化,变化最大者为主因;发行门禁:最新一次评分 ≥ 阈值(默认 60)且 reason=completed 才通过(历史失败不惩罚当前,avg 仅作趋势展示)。
+
+**无人值守演示** `scripts/demo-unattended.mjs`(压缩时间线,全走真实 CLI):
+
+```text
+===== 无人值守维护演示(压缩时间线) =====
+[00:00] 失败:quality 0 (poor, reason=failed)
+[01:00] 恢复点:INC-U-001-20260817T032346(attempts=0, head=2a728c6)
+[02:00] 修复:quality 100 (good, reason=completed)
+[02:20] evidence 闸门:放行 ✅
+[02:30] guard 判定:放行 ✅
+[02:40] 合入(模拟 squash merge)+ 知识:INC-U-001.md
+----- Agent Score -----
+  运行 2 次,avg 50/100,趋势 [0 → 100]
+  发行门禁(阈值 60):通过 ✅
+===== 无人值守演示 通过 ✅ =====
+```
+
+**归因实测**(单测注入 90→60 下降,失败率 +0.4):score 输出 `⚠ 下降 90→60(30) 主因 failureRate [+0.40 / 重试 0.0 / 错误密度 0.00]`——能解释一次下降 ✅(DoD 第二项)。
+**门禁语义决策**:发行门禁看"最新一次"而非平均——修复后历史失败已不惩罚当前(否则 00:00 失败会永久拖累门禁);avg 仅作趋势展示。
+**DoD 达成**:00:00 失败 → 02:40 修复合入一次走通 ✅;score 归因能解释一次下降 ✅(测试 32 项全过)。
