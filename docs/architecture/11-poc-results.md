@@ -223,3 +223,35 @@ DoD"matrix ≥3 组合 CI 自动跑"达成(run 31988172463,4/4 success)。
 **工程含义**:matrix 让"本地能过、CI 挂"的隐藏耦合(硬编码路径、依赖未合入 API、git 身份)全部显性化;
 后续每次 PR/push 都在 4 组合上自动验证,官方 breaking changes 也更早暴露(风险对策表"官方 breaking changes"行)。
 
+
+## 10. 附:Trace/Replay 深度回放实测(Phase 2 第三件,2026-08-17)
+
+**能力**:dsh-maint replay 从"摘要"升级为完整会话回放,三种用法:
+- `replay <traceRef> [--json]`:单 trace 深度回放——会话元数据(标题/模型/turns/tokens/结果)、工具调用序列(与 tool.started→completed 配对:tool/input/exitCode/latencyMs/output)、错误聚合(taxonomy/severity/occurrences)、llmRetries、人类可读 timeline;
+- `replay --before <ref> --after <ref> [--json]`:修复前后行为对比——工具序列差异(added/removed/changed)、同工具 exitCode 变化、错误总数 before→after、会话结果变化(failed→completed);
+- traceRef 解析:仓库 .dsh/state/traces/<ref>.jsonl、仓库内相对路径、绝对路径;事件**两种形态兼容**:五族包络(tool.started/completed/failed、error.recorded、llm/retry、session.*)与原始 firehose(tool/call+tool/result、turn/start|end、request/context)。
+
+**实测**(构造 fixture:修复前=五族包络失败现场,修复后=原始形态成功现场,单测 4 项新增,共 13 项全过):
+
+```text
+$ dsh-maint replay before.jsonl
+=== 回放: .../before.jsonl (8 事件) ===
+会话: 修复 README 缺失 | 模型: deepseek-chat | turns: 3 | tokens: 1200/340 | 结果: failed
+03:00:00 session 开始 · 修复 README 缺失
+03:00:01 请求上下文: deepseek / deepseek-chat (window 131072)
+03:00:02 turn 开始
+03:00:03 → bash ls docs exit=1 (512ms) 「README 缺失」
+03:00:05 错误: REPRODUCE_FAILED (LOW ×2)
+03:00:06 LLM 重试: rate limited
+03:00:10 session 完成: failed turns=3 tokens=1200/340
+
+$ dsh-maint replay --before before.jsonl --after after.jsonl
+=== 回放对比: before.jsonl (修复前) vs after.jsonl (修复后) ===
+工具序列 A: bash
+工具序列 B: bash
+  [1] 结果变化: bash exit 1 → 0
+错误: 2 → 0 (failed → completed)
+```
+
+**发现**:当前 .dsh/incidents 的 traceRef 指向文件从未写入(维护闭环还没落 trace)——深度回放已就绪,待 headless 会话接入 trace 落盘后即可对真实修复做 before/after 对比。
+**工程含义**:回放是"复盘"能力的地基:假完成拦截管"修没修对",回放管"过程怎么走的";后续 Agent Benchmark 可直接消费 trace 计算行为指标(工具调用效率、重试率、错误密度)。

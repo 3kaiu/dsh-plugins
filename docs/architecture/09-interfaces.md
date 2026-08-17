@@ -121,11 +121,12 @@ interface CompletionVerdict { goalSummary: string;
   },
   {
     "name": "dsh_maintenance_replay",
-    "description": "用历史 trace 回放整个会话,对比修复前后行为差异。",
+    "description": "用历史 trace 深度回放整个会话,对比修复前后行为差异。traceRef 支持 .dsh/state/traces/<ref>.jsonl、仓库内相对路径、绝对路径;事件兼容五族包络(tool.started/completed/failed、error.recorded、llm/retry、session.*)与原始 firehose(tool/call+tool/result、turn/start|end、request/context)两种形态。单 trace 输出:session 元数据(标题/模型/turns/tokens/结果)、工具调用序列(tool/input/exitCode/latencyMs/output,配对 tool.started→completed)、错误聚合(taxonomy/severity/occurrences)、llmRetries、人类可读 timeline。给 --before+--after 时输出修复前后对比:工具序列差异(added/removed/changed)、同工具 exitCode 变化、错误总数变化(before→after)、会话结果变化(failed→completed 等)。",
     "parameters": { "type": "object",
-      "properties": { "traceRef": { "type": "string" },
-                      "before": { "type": "string" }, "after": { "type": "string" } },
-      "required": ["traceRef"] }
+      "properties": { "traceRef": { "type": "string", "description": "单 trace 深度回放;与 --before/--after 二选一" },
+                      "before": { "type": "string", "description": "对比:修复前 trace" },
+                      "after": { "type": "string", "description": "对比:修复后 trace" } },
+      "required": [] }
   },
   {
     "name": "dsh_maintenance_verify",

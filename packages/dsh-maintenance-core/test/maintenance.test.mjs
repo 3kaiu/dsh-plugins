@@ -140,5 +140,70 @@ console.log("# evidence 证据核验(假完成拦截)");
   assert.equal(d.ok, true);
   ok("D 真实修复 → 放行(全部核验 pass)");
 }
+console.log("# replay 深度回放(修复前后对比)");
+{
+  const { execSync } = await import("node:child_process");
+  const dir = mkdtempSync(join(tmpdir(), "replay-"));
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  // 修复前 trace:五族包络形态(失败现场)
+  const before = [
+    { seq: 1, type: "session.started", at: "2026-08-17T03:00:00.000Z", sessionId: "s1", data: { title: "修复 README 缺失" } },
+    { seq: 2, type: "request/context", at: "2026-08-17T03:00:01.000Z", sessionId: "s1", data: { provider: "deepseek", model: "deepseek-chat", contextWindow: 131072 } },
+    { seq: 3, type: "turn/start", at: "2026-08-17T03:00:02.000Z", sessionId: "s1", data: {} },
+    { seq: 4, type: "tool.started", at: "2026-08-17T03:00:03.000Z", sessionId: "s1", data: { tool: "bash", inputSummary: "ls docs" } },
+    { seq: 5, type: "tool.completed", at: "2026-08-17T03:00:04.000Z", sessionId: "s1", data: { tool: "bash", exitCode: 1, latencyMs: 512, stdoutTail: "README 缺失" } },
+    { seq: 6, type: "error.recorded", at: "2026-08-17T03:00:05.000Z", sessionId: "s1", data: { taxonomy: "REPRODUCE_FAILED", severity: "LOW", occurrences: 2 } },
+    { seq: 7, type: "llm/retry", at: "2026-08-17T03:00:06.000Z", sessionId: "s1", data: { error: "rate limited" } },
+    { seq: 8, type: "session.completed", at: "2026-08-17T03:00:10.000Z", sessionId: "s1", data: { reason: "failed", turns: 3, tokens: { in: 1200, out: 340 }, durationMs: 10000 } }
+  ].map((e) => JSON.stringify(e)).join("\n");
+  const beforePath = join(dir, "before.jsonl");
+  writeFileSync(beforePath, before + "\n");
+  // 修复后 trace:原始 firehose 形态(成功现场)
+  const after = [
+    { type: "session.started", at: "2026-08-17T03:30:00.000Z", data: { title: "修复 README 缺失(重试)" } },
+    { type: "tool/call", at: "2026-08-17T03:30:01.000Z", data: { name: "bash", arguments: "ls docs" } },
+    { type: "tool/result", at: "2026-08-17T03:30:02.000Z", data: { exitCode: 0, message: { content: ["README.md"] } } },
+    { type: "session.completed", at: "2026-08-17T03:30:05.000Z", data: { reason: "completed", turns: 1, tokens: { in: 900, out: 120 } } }
+  ].map((e) => JSON.stringify(e)).join("\n");
+  const afterPath = join(dir, "after.jsonl");
+  writeFileSync(afterPath, after + "\n");
+  const runReplay = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: dir, encoding: "utf8" }));
+  // 1) 五族形态深度回放
+  const rp = runReplay("replay " + beforePath + " --json");
+  assert.equal(rp.data.exists, true);
+  assert.equal(rp.data.session.model, "deepseek-chat");
+  assert.equal(rp.data.session.reason, "failed");
+  assert.equal(rp.data.session.turns, 3);
+  assert.equal(rp.data.calls.length, 1);
+  assert.equal(rp.data.calls[0].tool, "bash");
+  assert.equal(rp.data.calls[0].exitCode, 1);
+  assert.equal(rp.data.calls[0].output, "README 缺失");
+  assert.equal(rp.data.errors[0].taxonomy, "REPRODUCE_FAILED");
+  assert.equal(rp.data.llmRetries, 1);
+  assert.ok(rp.data.timeline.length >= 6);
+  ok("replay 五族形态:会话元数据/工具配对/错误聚合/timeline");
+  // 2) 原始形态回放
+  const ra = runReplay("replay " + afterPath + " --json");
+  assert.equal(ra.data.calls[0].tool, "bash");
+  assert.equal(ra.data.calls[0].exitCode, 0);
+  assert.equal(ra.data.calls[0].output, '["README.md"]'); // 结构化 content 原样 JSON 化
+  assert.equal(ra.data.session.reason, "completed");
+  ok("replay 原始形态:tool/call+tool/result 配对");
+  // 3) 修复前后对比
+  const df = runReplay("replay --before " + beforePath + " --after " + afterPath + " --json");
+  assert.equal(df.data.exists, true);
+  assert.deepEqual(df.data.seqA, ["bash"]);
+  assert.deepEqual(df.data.seqB, ["bash"]);
+  assert.equal(df.data.changes.length, 0);
+  assert.equal(df.data.resultChanges[0].exitCode, "1 → 0");
+  assert.equal(df.data.errors.total, "2 → 0");
+  assert.equal(df.data.reason.before, "failed");
+  assert.equal(df.data.reason.after, "completed");
+  ok("replay 对比:工具序列一致、结果 1→0、错误 2→0、failed→completed");
+  // 4) 不存在的 trace
+  const miss = runReplay("replay nope.jsonl --json");
+  assert.equal(miss.data.exists, false);
+  ok("replay 不存在 trace → exists=false");
+}
 
 console.log("\npassed", passed, "checks");
