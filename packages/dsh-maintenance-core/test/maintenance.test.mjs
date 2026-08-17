@@ -469,10 +469,10 @@ console.log("# Agent Score/Analytics/归因(Phase 4)");
   const sc3 = runS("score --gate 60 --json");
   assert.equal(sc3.data.gate.pass, false);
   ok("score 门禁:avg<60 或 reason≠completed → 不通过");
-  // 6) report:状态总览 + Score 集成(本 repo:1 fixed 事项、无 open/checkpoint)
+  // 6) report:状态总览 + Score 集成(本 repo:2 fixed 事项(INC-SCORE-001 + INC-20260817-003)、无 open/checkpoint)
   const rp = runS("report --json");
   assert.equal(rp.data.incidents.open, 0);
-  assert.equal(rp.data.incidents.fixed, 1);
+  assert.equal(rp.data.incidents.fixed, 2);
   assert.equal(rp.data.score.runs, 1);                // 与 score 同一聚合源
   assert.equal(rp.data.score.gate.pass, false);
   assert.equal(rp.data.checkpoints.length, 0);
