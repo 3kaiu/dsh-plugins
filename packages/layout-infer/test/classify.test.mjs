@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { classifyDsl, kindOf, sizingOf, positionOf, svgOf } from "../src/classify.js";
+import { classifyDsl, kindOf, sizingOf, positionOf, svgOf } from "../dist/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PREFIX = join(__dirname, "..", "fixtures", "mg-magic-sample.json");
@@ -159,7 +159,7 @@ test("classifyDsl: 低置信度容器进 unresolved, assets.inlineSvg 含 svg �
 });
 
 test("spacingOf: 直读 flexContainerInfo gap/padding/justifyContent 优先于几何反推", async () => {
-  const { spacingOf } = await import("../src/classify.js");
+  const { spacingOf } = await import("../dist/index.js");
   const node = {
     type: "FRAME",
     layoutStyle: { width: 580, height: 329, relativeX: 0, relativeY: 738 },

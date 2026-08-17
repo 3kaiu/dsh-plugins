@@ -162,3 +162,19 @@ test("ghApi: 非 200 → 抛错", async () => {
     /403/,
   );
 });
+
+test('pruneKnown 墓碑:被裁 completed run 重现不重复发事件', () => {
+  const known = { runs: { '1': 'completed:success', '2': 'completed:success' }, prs: {} };
+  const trimmed = structuredClone(known);
+  pruneKnown(trimmed, 1);
+  assert.deepEqual(Object.keys(trimmed.runs), ['2']);
+  assert.equal(trimmed.seen['runs:1'], 'completed:success');
+  const { events } = planEvents(trimmed, [run({ id: 1, status: 'completed', conclusion: 'success' })], []);
+  assert.equal(events.length, 0, '墓碑应抑制重复 completed');
+  const legacy = { runs: { '2': 'completed:success' }, prs: {} };
+  const { events: ev2 } = planEvents(legacy, [run({ id: 1, status: 'completed', conclusion: 'success' })], []);
+  assert.equal(ev2.length, 1, '无墓碑旧行为会重发');
+  const q = { runs: {}, prs: {}, seen: { 'runs:9': '__started__' } };
+  const { events: ev3 } = planEvents(q, [run({ id: 9, status: 'completed', conclusion: 'failure' })], []);
+  assert.deepEqual(ev3.map((e) => e.type), ['test.completed']);
+});

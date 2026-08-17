@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { annotate } from "../src/annotate.js";
+import { annotate } from "../dist/index.js";
 import { inferLayout } from "@3kaiu/dsh-plugin-kit";
 
 const PREFIX = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "mg-pure-sec-");

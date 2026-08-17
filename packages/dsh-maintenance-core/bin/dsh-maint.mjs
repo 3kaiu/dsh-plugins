@@ -202,10 +202,18 @@ function compareBenchmarks(beforeRef, afterRef) {
 }
 
 // 契约类闸门(contract):diff 范围 + 禁止路径 + 行数
+// 拼接进 shell 的输入白名单:git ref(字母数字 + ._/-^~)/ PR 号(纯数字)。
+// 这些值会被 runCommand(shell:true) 执行,任何其它字符一律拒绝。
+const REF_SAFE = /^[0-9a-zA-Z._\-\/^~]+$/;
+const assertSafeArg = (label, value) => {
+  if (!REF_SAFE.test(String(value))) throw new Error("非法 " + label + ": " + String(value).slice(0, 40));
+};
+
 function contractChecks(contract, diffBase) {
   const checks = [];
   let files = [];
   if (diffBase) {
+    assertSafeArg("diffBase", diffBase);
     const r = runCommand("git diff --name-only " + diffBase, { cwd: REPO, timeoutMs: 30000 });
     files = r.stdout.split("\n").filter(Boolean);
     checks.push(...checkDiff(files, contract, REPO).checks);
@@ -395,6 +403,7 @@ const TOOLS = {
     // guarded auto-merge 判定:维护分支 + verified 标签 + 无 needs-human + attempts<3 + CI 全绿
     // --pr <PR号> 走真实 gh 数据;--mock <json> 注入 PR 数据(单测/DoD 实测用)
     if (!pr && !mock) return fail("需要 --pr <PR号> 或 --mock <PR数据JSON>");
+    if (pr && !/^\d+$/.test(pr)) return fail("无效 PR 号(须为纯数字): " + pr);
     let info;
     if (mock) {
       if (!existsSync(mock)) return fail("mock 文件不存在: " + mock);

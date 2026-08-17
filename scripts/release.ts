@@ -19,7 +19,7 @@ const STAGE = join(OUT, "dsh-workbench-" + VER);
 const ZIP = join(OUT, "dsh-workbench-" + VER + ".zip");
 
 const dist = join(CONSOLE, "dist");
-for (const p of [dist, join(CONSOLE, "server.mjs")]) {
+for (const p of [dist, join(CONSOLE, "dist", "server.mjs")]) {
   if (!existsSync(p)) throw new Error("缺失: " + p + "(先 pnpm --filter @3kaiu/dsh-console build)");
 }
 const WS = join(CONSOLE, "node_modules", "ws");
@@ -30,7 +30,7 @@ mkdirSync(join(STAGE, "dsh-maint", "bin"), { recursive: true });
 mkdirSync(join(STAGE, "dsh-maint", "lib"), { recursive: true });
 mkdirSync(join(STAGE, "node_modules"), { recursive: true });
 cpSync(dist, join(STAGE, "dist"), { recursive: true });
-cpSync(join(CONSOLE, "server.mjs"), join(STAGE, "server.mjs"));
+cpSync(join(CONSOLE, "dist", "server.mjs"), join(STAGE, "server.mjs"));
 cpSync(join(ROOT, "scripts", "morning-report.mjs"), join(STAGE, "morning-report.mjs"));
 cpSync(join(ROOT, "packages", "dsh-maintenance-core", "bin", "dsh-maint.mjs"), join(STAGE, "dsh-maint", "bin", "dsh-maint.mjs"));
 cpSync(join(ROOT, "packages", "dsh-maintenance-core", "lib"), join(STAGE, "dsh-maint", "lib"), { recursive: true });

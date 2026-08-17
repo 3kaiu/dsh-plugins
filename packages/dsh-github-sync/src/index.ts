@@ -205,8 +205,11 @@ function prNextKnown(pr) {
 function planEvents(known, runs, prs) {
   const events = [];
   const nextKnown = { ...known };
+  // 墓碑恢复:pruneKnown 裁剪掉的条目若被 API 重新返回,
+  // 用墓碑状态恢复已知值,避免重复发 started/completed。
+  const restore = (section, id) => known.seen?.[section + ":" + id];
   for (const run of runs) {
-    const k = known.runs?.[run.id];
+    const k = known.runs?.[run.id] ?? restore("runs", run.id);
     events.push(...mapRunState(k, run).map((e) => ({ ...e, key: "run:" + run.id })));
     nextKnown.runs = { ...(nextKnown.runs ?? {}), [run.id]: runNextKnown(k, run) };
   }
@@ -219,12 +222,22 @@ function planEvents(known, runs, prs) {
 }
 
 function pruneKnown(nextKnown, limit = 500) {
+  // 墓碑:被裁剪的条目按 "section:id → 状态" 记入 seen(随 stateFile 持久化)。
+  // GitHub API 只返回最近 ~20 条,known 达上限后裁剪的多为已归档的老记录,
+  // 正常情况下不会重现;万一重现(如排序/分页变化),墓碑能保证不重复发事件。
+  const seen = nextKnown.seen ?? (nextKnown.seen = {});
   for (const section of ["runs", "prs"]) {
     const obj = nextKnown[section];
     if (!obj) continue;
     const entries = Object.entries(obj);
     if (entries.length <= limit) continue;
+    const trimmed = entries.slice(0, entries.length - limit);
+    for (const [id, state] of trimmed) seen[section + ":" + id] = state;
     nextKnown[section] = Object.fromEntries(entries.slice(-limit));
+    const keys = Object.keys(seen);
+    if (keys.length > limit * 2) {
+      for (const k of keys.slice(0, keys.length - limit)) delete seen[k];
+    }
   }
 }
 //#endregion

@@ -2,7 +2,7 @@
 // 随官方 dsh web 进程启动 Console 工作台(事件库 REST/WS + 前端,默认 3090)。
 // 安装:dsh plugin --profile <name> add @3kaiu/dsh-console(或 install-local)
 // 之后重启 dsh web 即生效,无需单独进程。
-import { createConsoleServer } from "./server.mjs";
+import { createConsoleServer } from "./server.ts";
 
 const name = "dsh-console";
 

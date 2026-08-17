@@ -1,4 +1,4 @@
-// @3kaiu/dsh-harness-updater 构建: 零外部依赖,纯 node 内置
+// @3kaiu/dsh-plugin-kit 构建: esbuild 打包 src/index.ts → dist/index.js(压缩)
 import { buildBundle } from "../../scripts/esbuild-common.mjs";
 
 await buildBundle("src/index.ts", "dist/index.js");

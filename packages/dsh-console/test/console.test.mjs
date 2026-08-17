@@ -21,7 +21,7 @@ const evt = (seq, family, type, at) => JSON.stringify({
   source: "test", data: {},
 });
 
-const { createConsoleServer } = await import("../server.mjs");
+const { createConsoleServer } = await import("../dist/server.mjs");
 
 function startServer() {
   const { server } = createConsoleServer({ port: 0, logger: () => {} });
