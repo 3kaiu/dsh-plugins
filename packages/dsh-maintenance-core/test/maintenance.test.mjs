@@ -100,7 +100,7 @@ console.log("# evidence 证据核验(假完成拦截)");
     reproduce: { command: "node -e \"process.exit(require('fs').existsSync('x.txt') ? 1 : 0)\"", workdir: "." },
     testCommand: "node -e \"const t=require('fs').readFileSync('x.txt','utf8');if(!t.includes('FIXED'))process.exit(1);console.log('ok')\""
   }));
-  execSync("git init -q && git add -A && git commit -qm base", { cwd: repo });
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
   const runEv = (claim) => JSON.parse(execSync(
     "node " + fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url)) + " verify evidence --claim " + claim + " --incident INC-TEST-001 --json",
     { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo, DSH_MAINT_DIFF_BASE: "HEAD" } }));
