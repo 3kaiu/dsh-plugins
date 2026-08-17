@@ -26,6 +26,7 @@
 > Phase 4 进度(2026-08-17):**Agent Score/Analytics/归因完成**——dsh-maint benchmark --record 评分落盘(.dsh/state/benchmarks/);dsh-maint score 聚合(运行数/平均质量/按事项趋势/按 taxonomy 分布)+ 回归归因(单次降幅 ≥20 归因到 failureRate/llmRetries/errorDensity 变化最大者)+ 发行门禁 --gate(默认 60:最新评分 ≥60 且 reason=completed;历史失败不惩罚当前);scripts/demo-unattended.mjs 无人值守演示:时间线 00:00 失败(0/poor)→ 01:00 恢复点 → 02:00 修复(100/good)→ 02:20 evidence 放行 → 02:30 guard 放行 → 02:40 合入,趋势 [0 → 100],发行门禁通过;DoD 走通 00:00 失败 → 02:40 修复合入 ✅;测试 32 项全过(实测见 11 篇 §16)。
 > Phase 4 收尾(2026-08-17):**Console 维护报告完成**——dsh-maint report(状态总览 open/fixed + Agent Score 同源聚合/回归告警/门禁 + 运行痕迹:最近恢复点 + 知识文件数,--gate 透传);**真实 PR guarded merge 端到端实测完成**——PR #6(INC-20260817-002:scripts/ 缺 README)真实修复 → evidence 全过 → verified 标签 → CI 4 组合全绿 → guard --pr 真实 gh 数据放行 → squash 合入 b7086d2,M4 在真实 PR 上再次验证;测试 34 项全过(实测见 11 篇 §18/§19)。
 > 成功指标收口(2026-08-17):**doctor 兼容健康检查完成**——dsh-maint doctor 权重计分(incidents/契约/state/工具清单对齐/trace/CI matrix/knowledge),实测 100/100 healthy,缺陷注入 70-85 warning(测试 38 项全过,实测见 11 篇 §20);**维护早报完成**——scripts/morning-report.mjs(report → 早报 markdown,支持 --stdout/--out,实测见 11 篇 §21);05 §6 成功指标全表收口:仅剩 needs-human 升级率/闭环时长两项需真实维护周期统计。
+> 部署/呈现收尾(2026-08-17):**早报接入 Console 首页**——server.mjs 新增 /api/morning-report 端点 + Dashboard 维护早报卡片(极简 markdown 渲染 + 刷新,实测见 11 篇 §22);**CI 健康门禁**——ci.yml 4 组合矩阵末尾跑 doctor 断言 ≥90(fail 即构建失败);05 §6 全表:仅剩 needs-human 升级率/闭环时长两项需真实维护周期统计。
 | 2 | **变聪明** | Verify/Replay/Recovery/Knowledge/Benchmark(原 reliability 深化)+ 兼容 matrix | gate 拦截一次"假完成";matrix ≥3 组合 CI 自动跑 |
 | 3 | **自动化** | auto repair / auto PR / auto regression / guarded auto-merge + budget 全量 | 0 误合并(1 放行 + 1 拦截) |
 | 4 | **分析** | Agent Score/Analytics/归因 + 无人值守演示 + 发行门禁 | "00:00 失败 → 02:40 修复合入"一次走通;score 归因能解释一次下降 |
@@ -83,7 +84,7 @@
 
 | 指标 | 目标 | 现状(2026-08-17) |
 | --- | --- | --- |
-| **Console 日活** | = 你自己每天打开(定性:早上看早报、晚上看维护报告) | 待你每天打开(早报/报告就绪:scripts/morning-report.mjs + report CLI,11 篇 §19/§21) |
+| **Console 日活** | = 你自己每天打开(定性:早上看早报、晚上看维护报告) | 早报已入 Console 首页(11 篇 §22);待你每天打开 |
 | 事件回放补齐成功率 | 100%(断线重连无缺口) | ✅ 事件桥 + 补齐(11 篇 §2-4) |
 | 事件库 secrets 泄漏 | 0(scrub 自测) | ✅ scrub 自测通过(11 篇 §3) |
 | 无人值守闭环数 | 稳定后每周 ≥1 | ✅ 接线中(maintenance.yml 每日 cron + guarded merge) |
