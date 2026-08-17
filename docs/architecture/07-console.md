@@ -1,6 +1,7 @@
 # 07 · DSH Console:个人 Agent 工作台(驾驶舱)
 
 > 状态:**已执行(Console 四页 MVP + 维护早报面板落地,实测见 11 篇 §19/§22);日活指标待真实使用周期统计** · v0.3 新增
+> 运行形态(v0.4 收口):**dsh web 插件**——随官方运行时启动(默认 3090),无需单独进程;独立 bin `dsh-console` 保留(workbench 场景)
 > 定位转变:不做"另一个 Harness UI",而是 **OpenCode 的驾驶舱**——
 > OpenCode 负责开车,你看仪表盘。官方 Harness Web(3080)继续承担聊天/Agent
 > 交互;DSH Console(3090)承担**感知与控制**。

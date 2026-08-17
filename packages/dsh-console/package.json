@@ -1,11 +1,18 @@
 {
   "name": "@3kaiu/dsh-console",
   "version": "0.1.0",
-  "description": "DSH Console: agent workbench for DeepSeek Harness — event library server (REST + WS, protocol per docs/09) and four-page MVP frontend (Preact), served on 3090.",
+  "description": "DSH Console: dsh web 插件——事件库(REST+WS)+ 四页工作台前端,随官方运行时启动(默认 3090);也可独立运行",
   "type": "module",
-  "bin": { "dsh-console": "server.mjs" },
-  "main": "server.mjs",
-  "files": [ "server.mjs", "dist" ],
+  "bin": {
+    "dsh-console": "server.mjs"
+  },
+  "main": "plugin.mjs",
+  "files": [
+    "plugin.mjs",
+    "server.mjs",
+    "dist",
+    "cordis.patch.yml"
+  ],
   "scripts": {
     "build": "vite build",
     "dev": "vite",
@@ -21,6 +28,20 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   },
-  "keywords": [ "dsh", "console", "dashboard", "events", "agent-workbench" ],
-  "license": "MIT"
+  "keywords": [
+    "dsh",
+    "console",
+    "dashboard",
+    "events",
+    "agent-workbench"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "exports": {
+    ".": "./plugin.mjs"
+  }
 }

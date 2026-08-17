@@ -11,6 +11,7 @@
 | `packages/llm-opencode-zen` | [@3kaiu/dsh-llm-opencode-zen](./packages/llm-opencode-zen) | **LLM 适配器** — 面向 OpenCode Zen 免费额度(`deepseek-v4-flash-free`)的弹性适配:429/402 感知、per-session 冷却隔离、主动 pacing、用量遥测、tool-call JSON 修复、reasoning_content 回传 |
 | `packages/harness-updater` | [@3kaiu/dsh-harness-updater](./packages/harness-updater) | **更新器** — 每天一次 registry 检查 + npx 缓存预热;零运行时依赖 |
 | `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推工具** — 裸坐标反推 flex 语义 + 还原决策分类(`infer_layout` / `annotate_layout` / `classify_design` 三个 dsh 工具) |
+| `packages/dsh-console` | [@3kaiu/dsh-console](./packages/dsh-console) | **Console 工作台(dsh web 插件)** — 事件库(REST+WS)+ 四页 Agent 工作台前端;随官方 dsh web 进程启动(默认 3090),也可独立运行 |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 配额跟踪、并发信号量、布局内核、测试助手;被各插件构建时 bundle 进各自 dist |
 
 每个插件包都是独立的 npm 包,自带 `dsh.bundle` manifest(`cordis.patch.yml`),
@@ -71,6 +72,7 @@ external import 即可解析(已按此流程实测验证)。
 dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen
 dsh plugin --profile web add @3kaiu/dsh-harness-updater
 dsh plugin --profile web add @3kaiu/dsh-layout-infer
+dsh plugin --profile web add @3kaiu/dsh-console   # Console 工作台:随 dsh web 启动(默认 http://127.0.0.1:3090)
 ```
 
 ## 配置

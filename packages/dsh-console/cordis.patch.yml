@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-console
+      name: '@3kaiu/dsh-console'
