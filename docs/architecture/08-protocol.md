@@ -1,6 +1,6 @@
 # 08 · dsh-runtime 事件协议与目录底座
 
-> 状态:**设计定稿(未执行)** · v0.3 新增 · 对应路线图 Phase 1(MVP 四件套之二)
+> 状态:**已执行(REST + WS 事件协议落地于 packages/dsh-console/server.mjs;五族事件包络 / 补齐 / scrub 实测见 11 篇 §2-4)** · v0.3 新增
 > 这是当前最重要的一篇:把 **dsh-runtime → Harness(OpenCode)→ PWA →
 > GitHub Autopilot** 的通信协议与目录结构定下来。底座确定后,上层自然长出。
 

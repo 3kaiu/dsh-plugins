@@ -1,6 +1,6 @@
 # 02 · llm-opencode-zen:DeepSeek ↔ OpenCode 兼容层进化设计
 
-> 状态:**设计定稿(未执行)**。对应路线图 Phase 3。
+> 状态:**部分执行(事件桥 v0.1.0 已落地,实测见 11 篇 §6)**。对应路线图 Phase 3(兼容层其余进化项随维护周期延续)。
 > 现状基线:packages/llm-opencode-zen 已有 429/402 感知、per-session 冷却、
 > pacing、retry、用量遥测、tool-call JSON 修复、reasoning_content 回传,
 > 并已有 rate-limit / reasoning-echo 回归测试。**这些全部保留,在其上叠加
