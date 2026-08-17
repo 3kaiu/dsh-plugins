@@ -4,9 +4,11 @@
   "severity": "LOW",
   "frequency": 1,
   "taxonomy": "DOC_MISSING",
-  "status": "open",
+  "status": "fixed",
   "firstSeenAt": "2026-08-17T00:00:00.000Z",
   "lastSeenAt": "2026-08-17T00:00:00.000Z",
+  "fixedAt": "2026-08-17T02:06:00.000Z",
+  "mergedRefs": ["5fb7b2a (PR #4)", "3b4628f (PR #5)"],
   "traceRef": ".dsh/state/traces/inc-001.jsonl",
   "reproduce": {
     "command": "node -e \"process.exit(require('fs').existsSync('packages/dsh-runtime-events/README.md') ? 1 : 0)\"",
@@ -15,3 +17,4 @@
   "testCommand": "node -e \"const fs=require('fs');const t=fs.readFileSync('packages/dsh-runtime-events/README.md','utf8');if(!t.includes('@3kaiu/dsh-runtime-events')||!t.includes('五族')){process.exit(1)}console.log('README ok')\"",
   "knowledge": "docs/architecture/11-poc-results.md §6 记录了事件桥规格与验证方式"
 }
+
