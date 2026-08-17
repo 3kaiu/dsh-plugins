@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// install-local: 把 workspace 内的三个插件包装进本地 web profile。
+// install-local: 把 workspace 内的四个插件包装进本地 web profile。
 //
 // 与官方分发对齐(等价于发布后 `dsh plugin --profile web add <pkg>`):
 // 1. `pnpm add file:<abs>` 把包装进 profile 的 node_modules;
@@ -21,6 +21,7 @@ const PLUGINS = [
   { dir: "llm-opencode-zen", patchIds: ["llm-opencode-zen"], pkg: "@3kaiu/dsh-llm-opencode-zen" },
   { dir: "harness-updater", patchIds: ["dsh-harness-updater"], pkg: "@3kaiu/dsh-harness-updater" },
   { dir: "layout-infer", patchIds: ["dsh-layout-infer"], pkg: "@3kaiu/dsh-layout-infer" },
+  { dir: "dsh-console", patchIds: ["dsh-console"], pkg: "@3kaiu/dsh-console" },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
