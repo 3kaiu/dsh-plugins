@@ -1,5 +1,4 @@
 node_modules
-dist
 *.tgz
 
 # dsh-autopilot 本地飞行记录(不入库)
