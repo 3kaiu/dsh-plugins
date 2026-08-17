@@ -172,6 +172,13 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_score",
+    "description": "Agent Score/Analytics(Phase 4):聚合 .dsh/state/benchmarks/ 全部评分记录——runs/平均质量/按事项聚合(趋势 + 回归检测:单次降幅 ≥20 时归因到 failureRate/llmRetries/errorDensity 中变化最大者)/按 taxonomy 分布;发行门禁 --gate <阈值>(默认 60):最新一次评分 ≥ 阈值且 reason=completed 才通过(历史失败不惩罚当前)。benchmark --record 是输入侧。",
+    "parameters": { "type": "object",
+      "properties": { "gate": { "type": "string", "description": "发行门禁阈值(默认 60)" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

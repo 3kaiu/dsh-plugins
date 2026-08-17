@@ -184,6 +184,7 @@ jobs:
           if [ "$ALLOW" = "true" ]; then
             echo "✅ guard 放行,自动合并 PR #$PR"
             gh pr merge "$PR" --squash --delete-branch
+            gh issue close "${{ steps.issue.outputs.issue_number }}" --comment "修复已自动合入(maintenance 闭环)" || true
           else
             echo "❌ guard 拦截 PR #$PR:"
             echo "$RES" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{for(const r of JSON.parse(s).data.reasons) console.log("  - "+r)}catch{}}) '

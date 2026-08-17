@@ -1,5 +1,5 @@
 // dsh-maintenance-core 单测:解析/排序/契约/工具
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -415,6 +415,60 @@ console.log("# guarded auto-merge 判定(Phase 3)");
   assert.ok(db.data.reasons.some((r) => r.includes("非维护分支")));
   assert.ok(db.data.reasons.some((r) => r.includes("CI 未全绿")));
   ok("guard 拦截:非维护分支 + CI blocked → 双原因拦截");
+}
+console.log("# Agent Score/Analytics/归因(Phase 4)");
+{
+  const repo = mkdtempSync(join(tmpdir(), "score-"));
+  writeFileSync(join(repo, "seed.txt"), "x");
+  const incDir = join(repo, ".dsh", "incidents");
+  mkdirSync(incDir, { recursive: true });
+  writeFileSync(join(incDir, "inc-score.json"), JSON.stringify({ id: "INC-SCORE-001", title: "score 测试", severity: "LOW", frequency: 1, taxonomy: "DOC_MISSING", status: "fixed" }));
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const runS = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo } }));
+  // 1) benchmark --record 落盘
+  const good = join(repo, "good.jsonl");
+  writeFileSync(good, [
+    { seq: 1, type: "session.started", at: "2026-08-17T05:00:00.000Z", sessionId: "g1", data: { title: "t" } },
+    { seq: 2, type: "turn/start", at: "2026-08-17T05:00:01.000Z", sessionId: "g1", data: {} },
+    { seq: 3, type: "tool.started", at: "2026-08-17T05:00:02.000Z", sessionId: "g1", data: { tool: "bash", inputSummary: "fix" } },
+    { seq: 4, type: "tool.completed", at: "2026-08-17T05:00:03.000Z", sessionId: "g1", data: { tool: "bash", exitCode: 0, latencyMs: 10, stdoutTail: "ok" } },
+    { seq: 5, type: "session.completed", at: "2026-08-17T05:00:05.000Z", sessionId: "g1", data: { reason: "completed", turns: 1 } }
+  ].map((e) => JSON.stringify(e)).join("\n") + "\n");
+  const r1 = runS("benchmark " + good + " --record --incident INC-SCORE-001 --json");
+  assert.equal(r1.data.recorded.runs, 1);
+  assert.ok(existsSync(join(repo, ".dsh", "state", "benchmarks", "INC-SCORE-001.json")));
+  // 2) 再记录一次(累积)
+  const r2 = runS("benchmark " + good + " --record --incident INC-SCORE-001 --json");
+  assert.equal(r2.data.recorded.runs, 2);
+  ok("benchmark --record:评分落盘且累积");
+  // 3) score 聚合
+  const sc = runS("score --json");
+  assert.equal(sc.data.runs, 2);
+  assert.equal(sc.data.avgQuality, 100);
+  assert.deepEqual(sc.data.byIncident[0].trend, [100, 100]);
+  assert.equal(sc.data.byTaxonomy[0].taxonomy, "DOC_MISSING");
+  ok("score 聚合:runs/avg/trend/taxonomy");
+  // 4) 归因:注入下降记录(90→60,失败率 +0.4 主导)
+  writeFileSync(join(repo, ".dsh", "state", "benchmarks", "INC-SCORE-001.json"), JSON.stringify([
+    { at: "2026-08-17T05:10:00.000Z", trace: "a", quality: 90, verdict: "good", metrics: { failureRate: 0, llmRetries: 0, errorDensity: 0, reason: "completed" } },
+    { at: "2026-08-17T06:10:00.000Z", trace: "b", quality: 60, verdict: "ok", metrics: { failureRate: 0.4, llmRetries: 0, errorDensity: 0, reason: "completed" } }
+  ]));
+  const sc2 = runS("score --json");
+  const rg = sc2.data.byIncident[0].regressions[0];
+  assert.equal(rg.from, 90);
+  assert.equal(rg.to, 60);
+  assert.equal(rg.cause, "failureRate");
+  ok("score 归因:90→60 下降,主因 failureRate(+0.4)");
+  // 5) 发行门禁:avg 75 ≥ 60 且 reason=completed → pass
+  assert.equal(sc2.data.gate.pass, true);
+  // 低分场景 → fail
+  writeFileSync(join(repo, ".dsh", "state", "benchmarks", "INC-SCORE-001.json"), JSON.stringify([
+    { at: "2026-08-17T05:10:00.000Z", trace: "a", quality: 40, verdict: "poor", metrics: { failureRate: 0.5, llmRetries: 1, errorDensity: 0, reason: "failed" } }
+  ]));
+  const sc3 = runS("score --gate 60 --json");
+  assert.equal(sc3.data.gate.pass, false);
+  ok("score 门禁:avg<60 或 reason≠completed → 不通过");
 }
 }
 
