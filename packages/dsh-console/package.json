@@ -4,19 +4,17 @@
   "description": "DSH Console: dsh web 插件——事件库(REST+WS)+ 四页工作台前端,随官方运行时启动(默认 3090);也可独立运行",
   "type": "module",
   "bin": {
-    "dsh-console": "server.mjs"
+    "dsh-console": "dist/server.mjs"
   },
-  "main": "plugin.mjs",
+  "main": "dist/plugin.mjs",
   "files": [
-    "plugin.mjs",
-    "server.mjs",
     "dist",
     "cordis.patch.yml"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "node build.mjs && vite build",
     "dev": "vite",
-    "start": "node server.mjs",
+    "start": "node dist/server.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
@@ -43,6 +41,6 @@
     }
   },
   "exports": {
-    ".": "./plugin.mjs"
+    ".": "./dist/plugin.mjs"
   }
 }

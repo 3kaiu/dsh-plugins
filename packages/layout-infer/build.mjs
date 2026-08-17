@@ -3,4 +3,4 @@
 import { buildBundle, DSH_EXTERNALS } from "../../scripts/esbuild-common.mjs";
 
 const externals = DSH_EXTERNALS.filter((name) => name === "@deepseek-ai/dsh-tools");
-await buildBundle("src/index.js", "dist/index.js", externals);
+await buildBundle("src/index.ts", "dist/index.js", externals);

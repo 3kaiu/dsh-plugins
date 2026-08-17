@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { createSink, finalizeSession, processEvent, sessionOf, ulid } from "../src/index.js";
+import { createSink, finalizeSession, processEvent, sessionOf, ulid } from "../dist/index.js";
 
 let passed = 0;
 const ok = (name) => { passed += 1; console.log("  ok -", name); };

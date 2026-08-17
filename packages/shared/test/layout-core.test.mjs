@@ -2,7 +2,7 @@
 // simulateFlex 标准公式、inferCrossAlign 对齐判定、inferGrid 容差聚类与
 // 各类边界降级。全部自包含,无外部依赖;
 // 与 layout-infer 包的 layout-infer.test.mjs(真实稿回归)互补。
-import { inferLayout, mode, round1, simulateFlex, clusterByAxis } from "../src/layout-core.js";
+import { inferLayout, mode, round1, simulateFlex, clusterByAxis } from "../dist/index.js";
 
 let failures = 0;
 function check(label, actual, expected) {

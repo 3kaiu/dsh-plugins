@@ -28,7 +28,12 @@ export interface FailureAgg {
   lastAt: string;
 }
 
-const MAX_WINDOW = 5000;
+// 事件窗口可由设置页调整(默认 5000);运行中可改,立即作用于后续 ingest
+let maxWindow = Number(localStorage.getItem("dsh-console.keep")) || 5000;
+export function setMaxWindow(n: number) {
+  maxWindow = Math.max(100, Math.min(50000, n));
+  localStorage.setItem("dsh-console.keep", String(maxWindow));
+}
 const sessionsMap = new Map<string, SessionAgg>();
 const failuresMap = new Map<string, FailureAgg>();
 
@@ -79,7 +84,7 @@ export function ingest(es: Envelope[]) {
     aggSession(e);
     aggFailure(e);
   }
-  events.value = [...events.value, ...es].slice(-MAX_WINDOW);
+  events.value = [...events.value, ...es].slice(-maxWindow);
   if (es.length) { seq.value = es[es.length - 1].seq; lastSyncAt.value = new Date().toISOString(); }
 }
 

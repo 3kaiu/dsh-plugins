@@ -103,6 +103,9 @@ function processEvent(aggregate, emit, opts, session, event) {
       st.reason = d.reason?.kind ?? "completed";
       // headless 单轮会话:进程退出前会有长 quiescence 等待(实测 ~4 分钟);
       // turn/end 后空闲 10s 即视为会话完成,立即补发(续轮会取消)。
+      // 注意:此定时器刻意不做 unref —— headless 进程在 quiescence 等待窗口内
+      // 可能没有其它活动句柄,unref 会让进程提前退出,导致补发的 completed 事件丢失;
+      // 代价是长驻环境(如 dsh web)下至多多存活 idleCompleteMs,可接受。
       if (opts.idleCompleteMs > 0 && !st.completed) {
         if (st.pendingComplete !== void 0) clearTimeout(st.pendingComplete);
         st.pendingComplete = setTimeout(() => {

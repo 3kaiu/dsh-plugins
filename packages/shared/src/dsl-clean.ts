@@ -20,7 +20,7 @@
  * 纯函数, 无副作用。
  */
 
-import { inferLayout, round1 } from './layout-core.js'
+import { inferLayout, round1 } from './layout-core.ts'
 
 const TOL = 2
 

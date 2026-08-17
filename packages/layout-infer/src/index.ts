@@ -3,9 +3,9 @@
 // 辅助 LLM 在做 UI 还原时直接获得布局结构,而不是从坐标猜。
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { inferLayout } from "@3kaiu/dsh-plugin-kit";
-import { annotate } from "./annotate.js";
-import { classifyDsl } from "./classify.js";
-import { applyCleanTool } from "./clean.js";
+import { annotate } from "./annotate.ts";
+import { classifyDsl } from "./classify.ts";
+import { applyCleanTool } from "./clean.ts";
 
 const name = "dsh-layout-infer";
 
@@ -102,3 +102,7 @@ function apply(ctx) {
 }
 
 export { name, apply };
+// 供测试与外部工具直接消费的核心逻辑(构建产物同步导出)
+export { annotate, annotateNode, suggestName } from "./annotate.ts";
+export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "./classify.ts";
+export { applyCleanTool } from "./clean.ts";

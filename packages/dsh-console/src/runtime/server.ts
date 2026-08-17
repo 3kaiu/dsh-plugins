@@ -20,7 +20,12 @@ const MAINT_REPO = process.env.DSH_MAINT_REPO?.length > 0 ? process.env.DSH_MAIN
 const EVENTS_DIR = join(DSH_HOME, "state", "events");
 const ALL_LOG = join(EVENTS_DIR, "all.jsonl");
 const SEQ_FILE = join(EVENTS_DIR, "seq");
-const DIST_DIR = resolve(process.env.DSH_CONSOLE_DIST ?? join(import.meta.dirname, "dist"));
+// 构建产物随包分发(dist/server.mjs)时,前端产物与 server 同目录;
+// workbench 形态(dist 被 cp 到发行包根)时,前端产物在 ../dist。
+const DEFAULT_DIST = existsSync(join(import.meta.dirname, "dist"))
+  ? join(import.meta.dirname, "dist")
+  : import.meta.dirname;
+const DIST_DIR = resolve(process.env.DSH_CONSOLE_DIST ?? DEFAULT_DIST);
 const FAMILIES = new Set(["session", "tool", "error", "test", "completion"]);
 
 //#region 事件库
