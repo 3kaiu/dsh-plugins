@@ -22,8 +22,7 @@
   },
   "devDependencies": {
     "@3kaiu/dsh-plugin-kit": "workspace:*",
-    "esbuild": "^0.24.2",
-    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+    "esbuild": "^0.24.2"
   },
   "keywords": [
     "dsh",

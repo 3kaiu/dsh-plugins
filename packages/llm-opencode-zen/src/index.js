@@ -677,7 +677,13 @@ class OpenCodeZenAdapter extends LlmAdapter {
     // 观察到服务端约每 3 次成功请求后按窗口限流，此处用请求计数窗口压节奏。
     const pacingMs = quota.pacingDelayMs(options.sessionId);
     if (pacingMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, pacingMs));
+      // 等待可被 abort 中断:调用方取消时不用干等满 pacing(≤15s)
+      await new Promise((resolve) => {
+        const onAbort = () => { clearTimeout(timer); finish(); };
+        function finish() { options.signal?.removeEventListener("abort", onAbort); resolve(); }
+        const timer = setTimeout(finish, pacingMs);
+        options.signal?.addEventListener("abort", onAbort, { once: true });
+      });
     }
 
     await this.semaphore.acquire(options.signal);
