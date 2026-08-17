@@ -12,6 +12,7 @@ import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.DSH_CONSOLE_PORT ?? 3090);
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
+const MAINT_REPO = process.env.DSH_MAINT_REPO?.length > 0 ? process.env.DSH_MAINT_REPO : null;
 const EVENTS_DIR = join(DSH_HOME, "state", "events");
 const ALL_LOG = join(EVENTS_DIR, "all.jsonl");
 const SEQ_FILE = join(EVENTS_DIR, "seq");
@@ -87,6 +88,15 @@ const http = createServer((req, res) => {
   if (url.pathname === "/api/health/summary") {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(healthSummary()));
+    return;
+  }
+  if (url.pathname === "/api/morning-report") {
+    // 维护早报(05 §6 Console 日活):读 <DSH_MAINT_REPO>/.dsh/state/morning-report.md,由 scripts/morning-report.mjs 生成
+    if (!MAINT_REPO) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "DSH_MAINT_REPO 未配置" })); return; }
+    const p = join(MAINT_REPO, ".dsh", "state", "morning-report.md");
+    if (!existsSync(p)) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "早报未生成:先跑 scripts/morning-report.mjs" })); return; }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, markdown: readFileSync(p, "utf8"), generatedAt: statSync(p).mtime.toISOString() }));
     return;
   }
   if (url.pathname.startsWith("/api/")) { res.writeHead(404); res.end(JSON.stringify({ error: "unknown api" })); return; }

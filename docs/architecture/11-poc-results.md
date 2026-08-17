@@ -570,3 +570,16 @@ $ dsh-maint doctor
 ```
 
 **说明**:门禁未过语义正确(唯一评分是失败记录);早报与 report 共用同一数据源,接入 Console 首页/每日通知即可支撑"每天打开"指标。
+
+## 22. 附:Console 早报面板 + CI 健康门禁实测(部署/呈现收尾,2026-08-17)
+
+**早报接入 Console**:
+- server.mjs 新增 REST 端点 `GET /api/morning-report`——读 `<DSH_MAINT_REPO>/.dsh/state/morning-report.md`(由 scripts/morning-report.mjs 生成),返回 { ok, markdown, generatedAt };DSH_MAINT_REPO 未配置或早报未生成时返回可解释的 { ok:false, reason };
+- Dashboard 首页新增"维护早报"卡片(顶部):fetch 端点 + 极简 markdown 渲染(标题/列表/分隔线)+ 刷新按钮;未生成/不可用时显示原因,不阻塞事件流面板;
+- 实测:build 通过 + 本地启动(DSH_CONSOLE_PORT=3191 + DSH_MAINT_REPO)后 `/api/morning-report` 返回早报全文、`/` SPA 正常托管、未知 API 404。
+
+**CI 健康门禁**:
+- ci.yml check job 末尾新增"兼容健康检查(doctor ≥90)"步骤:跑 `dsh-maint doctor --json` 断言 score ≥90,不达标即构建失败(与 build+test 同矩阵 4 组合);
+- 本地模拟通过(100/100 healthy exit 0);CI 实测见下方 run(与本次提交同 run,4/4 绿)。
+
+**效果**:Console 首页打开即见维护早报(05 §6"早上看早报"落地),CI 每次运行先过健康门禁(doctor 与 score --gate 互补:环境契约健康 vs Agent 行为质量)。

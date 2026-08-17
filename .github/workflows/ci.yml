@@ -29,3 +29,5 @@ jobs:
         run: pnpm build
       - name: test
         run: pnpm test
+      - name: 兼容健康检查(doctor ≥90)
+        run: node packages/dsh-maintenance-core/bin/dsh-maint.mjs doctor --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('doctor:',j.data.score+'/100',j.data.verdict);if(!j.ok||j.data.score<90)process.exit(1)})"

@@ -1,6 +1,19 @@
 import { Card, StatusDot, ProgressBar, EmptyState, fmtTime, Tag } from "../components/basic";
+import { useEffect, useState } from "preact/hooks";
 import { runningSessions, sessions, failures, events } from "../stores/events";
 import { health } from "../stores/health";
+
+function renderMd(md: string) {
+  // 极简 markdown 渲染(早报格式:# / ## / - / --- / 文本)
+  return md.split("\\n").map((line, i) => {
+    if (line.startsWith("# ")) return <h2 key={i} style="margin:4px 0 6px">{line.slice(2)}</h2>;
+    if (line.startsWith("## ")) return <h3 key={i} style="margin:8px 0 4px">{line.slice(3)}</h3>;
+    if (line.startsWith("- ")) return <div key={i} class="list-item" style="padding:2px 0"><span>{line.slice(2)}</span></div>;
+    if (line.startsWith("---")) return <hr key={i} style="margin:6px 0;border:none;border-top:1px solid var(--border,#ddd)" />;
+    if (!line.trim()) return <div key={i} style="height:4px" />;
+    return <div key={i} class="dim">{line}</div>;
+  });
+}
 
 export function Dashboard() {
   const running = runningSessions.value;
@@ -8,9 +21,25 @@ export function Dashboard() {
   const failCount = failures.value.reduce((n, f) => n + f.count, 0);
   const todayToolCalls = events.value.filter((e) => e.type === "tool.started").length;
   const h = health.value;
+  const [morning, setMorning] = useState<null | string>(null);
+  const [morningNote, setMorningNote] = useState("加载早报…");
+  const loadMorning = () => {
+    setMorning(null);
+    setMorningNote("加载早报…");
+    fetch("/api/morning-report").then((res) => res.json()).then((j) => {
+      if (j.ok) { setMorning(j.markdown); setMorningNote("生成于 " + (j.generatedAt ?? "").slice(0, 19).replace("T", " ")); }
+      else { setMorning(null); setMorningNote(j.reason ?? "早报不可用"); }
+    }).catch(() => { setMorning(null); setMorningNote("早报接口不可用"); });
+  };
+  useEffect(() => { loadMorning(); }, []);
   return (
     <div>
       <h1 style="margin-bottom:14px">工作台总览</h1>
+      <div style="margin-bottom:14px">
+        <Card title="维护早报" extra={<button onClick={loadMorning} style="font-size:12px;padding:2px 8px;cursor:pointer">刷新</button>}>
+          {morning ? <div>{renderMd(morning)}<div class="dim" style="margin-top:6px">{morningNote}</div></div> : <EmptyState text={morningNote} />}
+        </Card>
+      </div>
       <div class="row" style="margin-bottom:14px">
         <Card title="运行中会话">
           {running.length === 0 ? <EmptyState text="暂无运行中会话" /> : running.map((s) => (
