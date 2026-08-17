@@ -96,7 +96,8 @@ function removeEntries(patch, ids) {
   // 清理因此变空的 insert 块
   return out.join("\n").replace(/\n- insert:\s*\n(?=\n|$)/g, "\n");
 }
-const patch = readFileSync(patchFile, "utf8");
+// 用户 patch 层可能尚不存在(launcher 生成过 profile 但从未编辑过 patch)
+const patch = existsSync(patchFile) ? readFileSync(patchFile, "utf8") : "";
 const cleaned = removeEntries(patch, PLUGINS.flatMap((p) => p.patchIds));
 if (cleaned !== patch) {
   writeFileSync(patchFile, cleaned);
