@@ -27,7 +27,7 @@ jobs:
       - name: pack 插件 tarball
         run: |
           mkdir -p dist-tgz
-          for p in dsh-console dsh-github-sync dsh-runtime-events harness-updater layout-infer llm-opencode-zen; do
+          for p in dsh-console dsh-github-sync dsh-runtime-events harness-updater layout-infer llm-opencode-zen dsh-plugins-ui; do
             (cd packages/$p && pnpm pack --pack-destination ../../dist-tgz/)
           done
       - name: workbench 独立发行包(console 独立形态 + 维护工具)
