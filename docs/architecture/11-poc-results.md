@@ -205,3 +205,21 @@ PR body 自动附带"闸门证据"逐项清单,人工 merge 前可直接核对�
 (任务模板明示:CHANGED_FILES 必须与实际修改一一对应,闸门会逐文件核验)。
 剩余 DoD:兼容 matrix ≥3 组合 CI 自动跑(下一件)。
 
+## 9. 附:兼容 matrix 实测(Phase 2 第二件,2026-08-17)
+
+**设计**:ci.yml 用 strategy.matrix 跑 os(ubuntu-latest/macos-latest)× node(20/24)= **4 组合**,
+fail-fast: false(单组合失败不取消其他)。组合语义 = 该平台+Node 版本上 install/build/test 全绿。
+DoD"matrix ≥3 组合 CI 自动跑"达成(run 31988172463,4/4 success)。
+
+**连踩 4 个真实坑**(都已在 main 修复,记录供复用):
+
+| # | 现象 | 根因 | 修复 |
+| --- | --- | --- | --- |
+| 1 | setup-node 后 "Unable to locate executable file: pnpm" | setup-node 的 cache: pnpm 在**步骤内部**先定位 pnpm(算缓存 key);无 packageManager 字段时不走 corepack 自动激活 | package.json 加 packageManager: pnpm@9.15.0;或去掉 cache: pnpm + npm i -g pnpm。corepack 在 node 26 已移除,不可依赖 |
+| 2 | maintenance-core 测试 ENOENT /bin/sh | 测试硬编码本地路径 /Users/seeu/... 作 cwd,CI 上不存在 → spawn 失败 | 改为 import.meta.url 动态推导(fileURLToPath(new URL("../../../", import.meta.url));注意 URL 相对解析是文件级,目录语义要带尾斜杠) |
+| 3 | 测试内 git commit 失败 "author identity unknown" | CI runner 无全局 git 身份(与维护闭环 run 3 同款) | 临时仓库内 git config user.email/name 后 commit |
+| 4 | stacked-restore 测试 "does not provide an export named ROLES" | 测试依赖 layout-core.js 层级重建内核(reconstructHierarchy/ROLES)——本地 WIP 未合入 main;本地被 WIP 掩盖,CI 暴露 | 测试改条件跳过(检测导出缺失时 SKIP 并 exit 0);WIP 合入 main 后自动恢复执行 |
+
+**工程含义**:matrix 让"本地能过、CI 挂"的隐藏耦合(硬编码路径、依赖未合入 API、git 身份)全部显性化;
+后续每次 PR/push 都在 4 组合上自动验证,官方 breaking changes 也更早暴露(风险对策表"官方 breaking changes"行)。
+
