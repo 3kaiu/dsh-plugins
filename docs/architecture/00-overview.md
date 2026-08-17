@@ -1,7 +1,7 @@
 # 00 · 总体架构与原则
 
 > DeepSeek Harness 个人发行体系 — 规划文档集 v0.4
-> 状态:**设计定稿(未执行)** · 2026-08-16
+> 状态:**已执行(Phase 1-4 全部完成,里程碑 M0.5-M5 达成)** · 2026-08-16 定稿,2026-08-17 更新(详见 05 篇状态行与 11 篇实测)
 > v0.3 变更:最终产品从"插件集合"重新定位为 **个人 Agent 工作台(DSH Console)**;
 > 新增 07(产品设计)与 08(事件协议与目录底座);一切组件的消费者链条最终指向你自己。
 > v0.4 变更:补齐实现级接口规范(09)与 Console 组件级设计(10),
@@ -113,7 +113,7 @@ GitHub(Issues/Actions/PR/CI)              OpenCode Zen(大脑)→ DeepSeek
 | --- | --- |
 | 官方 deepseek-harness | 0.1.0-rc.6,developer preview;官方"手脚"已完整,缺口在控制平面与感知 |
 | 3kaiu/dsh-launcher | v0.1.0 已发布;CI 全绿;Release 含 zip + SHA256SUMS |
-| 3kaiu/dsh-plugins | 三插件 + kit;llm-opencode-zen 已有 pacing/cooldown/retry/reasoning echo/tool-call repair |
+| 3kaiu/dsh-plugins | 三插件 + kit;llm-opencode-zen 已有 pacing/cooldown/retry/reasoning echo/tool-call repair;v0.4 收口:dsh-maintenance-core(14 工具:status/inspect/reproduce/test/replay/benchmark/checkpoint/knowledge/trace/guard/score/verify/report/doctor)+ dsh-console 工作台 + dsh-runtime-events 事件库(实测见 11 篇 §1-22) |
 | **Zen 接入事实(源码级已核实)** | 端点 opencode.ai/zen/v1;免费层认证 = 字面 Bearer public(无头 CI 零凭证);可选 OPENCODE_ZEN_API_KEY 提额;UA 可配置(服务端加签名即失效的风险已注明) |
 | 生态信号 | 工具类插件同质化 → 差异化在"可靠性基础设施 + 自维护闭环 + 个人工作台" |
 

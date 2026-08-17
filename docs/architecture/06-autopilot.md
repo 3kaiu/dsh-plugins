@@ -1,6 +1,6 @@
 # 06 · dsh-autopilot:GitHub 托管的自维护闭环
 
-> 状态:**设计定稿(未执行)** · v0.2 新增 · 对应路线图 Phase 0.5 / 1 / 2
+> 状态:**已执行(autopilot.yml 契约 + budget 全量 + guarded auto-merge 落地,实测见 11 篇 §15/§18);maintenance.yml 每日 cron 已接线** · v0.2 新增
 > 目标:0 服务器 / 0 API Key / 0 常驻 Mac。GitHub 提供"身体"
 > (定时器 + 计算 + 存储 + CI + PR),OpenCode Zen 免费模型提供"大脑"。
 > **你唯一需要拥有的资产就是 GitHub 仓库本身。**

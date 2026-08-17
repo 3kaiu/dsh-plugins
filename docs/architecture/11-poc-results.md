@@ -583,3 +583,29 @@ $ dsh-maint doctor
 - 本地模拟通过(100/100 healthy exit 0);CI 实测见下方 run(与本次提交同 run,4/4 绿)。
 
 **效果**:Console 首页打开即见维护早报(05 §6"早上看早报"落地),CI 每次运行先过健康门禁(doctor 与 score --gate 互补:环境契约健康 vs Agent 行为质量)。
+
+## 23. 附:dshctl 发行层生命周期工具实测(04 篇 §6 第 1 项,2026-08-17)
+
+**能力**:`scripts/dshctl.mjs`——`dshctl console start|stop|status|open [--harness]`(04 篇 §6 增量计划第 1 项落地):
+- start:后台拉起 dsh-console server.mjs(detached + pid 落 `~/.local/state/dsh-runtime/console.pid`,日志 `console.log`),端口 `DSH_CONSOLE_PORT`(默认 3090)、维护仓库 `DSH_MAINT_REPO` 可配,启动后轮询 `/api/health/summary` 确认就绪;
+- stop:SIGTERM → 轮询端口退服 → 兜底 SIGKILL,清理 pid 文件;
+- status:pid 存活 + 端口探测 + 事件库摘要(目录/最新 seq);未运行时退出码 1(可脚本化);
+- open:默认打开 Console(3090),`--harness` 打开官方 Harness Web(3080);`DSHCTL_OPEN_PRINT=1` 只打印 URL 不拉起浏览器。
+
+**实测输出**(端口 3192 隔离):
+
+```text
+$ dshctl console start
+console 已启动(pid 13215,端口 3192,事件库 0 条)
+$ dshctl console status
+console: 运行中(pid 13215,端口 3192)
+  事件库目录: /Users/seeu/.dsh/state/events
+  最新 seq: 0
+$ dshctl console stop
+console 已停止(pid 13215)
+$ dshctl console status; echo $?
+console: 未运行(pid 文件 不存在)
+1
+```
+
+**说明**:04 篇 §6 第 1 项完成;profile install / pin check / matrix / 菜单栏 App 其余项待桌面环境验证(需真实安装流,不阻塞仓库内交付)。

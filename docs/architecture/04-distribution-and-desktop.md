@@ -1,6 +1,6 @@
 # 04 · 发行层与桌面集成(Distribution & Desktop)
 
-> 状态:**设计定稿(未执行)** · v0.3 重写
+> 状态:**部分执行(§6 第 1 项 dshctl console start/stop/status/open 已落地,实测见 11 篇 §23;profile install / pin check / 菜单栏 App 待桌面环境验证)** · v0.3 重写
 > v0.3 变更:桌面侧从"一个 PWA"升级为**两个 Web App**——官方 Harness Web
 > (聊天/Agent 工作,零修改)与 DSH Console(驾驶舱,自建 PWA)。
 
