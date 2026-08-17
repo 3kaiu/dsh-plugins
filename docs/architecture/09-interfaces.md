@@ -138,6 +138,15 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_checkpoint",
+    "description": "Recovery/Checkpoint 最小可用版:对维护事项做现场快照,供中断后恢复执行。create(默认):快照 = 事项全文 + attempts 数 + 知识文件列表 + git head/dirty + trace 摘要,写入 .dsh/state/checkpoints/<id>-<ts>.json;list:按时间倒序列出;restore <id>:读取快照并验证完整性(7 个必填字段),返回现场信息。",
+    "parameters": { "type": "object",
+      "properties": { "action": { "enum": ["create", "list", "restore"], "description": "默认 create" },
+                      "incidentId": { "type": "string", "description": "create 必填" },
+                      "id": { "type": "string", "description": "restore 必填:快照 id" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",
