@@ -64,6 +64,9 @@ jobs:
             gh issue edit "$NUM" --add-label needs-human
             exit 0
           fi
+          # 重复 PR 防护:同一事项已有 open PR 修复中 → 跳过(PR #4/#5 双 PR 教训)
+          OPEN_PR=$(gh pr list --state open --json headRefName --jq '.[].headRefName' | grep -F "$ID" | head -1)
+          if [ -n "$OPEN_PR" ]; then echo "事项 $ID 已有 open PR 修复中($OPEN_PR),跳过重复运行"; exit 0; fi
           echo "issue #$NUM attempts=$ATTEMPTS 开始修复"
       - name: provision headless profile
         run: |

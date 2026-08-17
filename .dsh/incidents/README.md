@@ -10,6 +10,8 @@
 | frequency | 出现频次(排序权重 = 严重度权重 × 频次) |
 | taxonomy | 错误分类(与 09 篇 error.recorded 对齐) |
 | status | open / fixing / fixed / wontfix |
+| fixedAt | 修复合入时间(ISO),status=fixed 时填写 |
+| mergedRefs | 修复 PR 的 merge commit 引用(可多个,如并发重复修复) |
 | reproduce.command | 最小复现命令,**退出 0 = 缺陷可复现**(约定) |
 | testCommand | 定向测试命令,退出 0 = 通过 |
 | traceRef | 相关 trace/事件文件路径 |
