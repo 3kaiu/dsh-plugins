@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// dsh-maint —— 维护六工具(协议见 docs/09 §4,布局见 06 §4)+ 证据核验(Phase 2)
+// dsh-maint —— 维护工具集(六工具 + 证据核验/回放/Benchmark/Checkpoint;协议见 docs/09 §4,布局见 06 §4)
 // 用法:
 //   dsh-maint status [--json]                   列出维护事项(严重度×频率排序)
 //   dsh-maint inspect <incidentId> [--json]     查看单个事项完整现场
@@ -9,11 +9,14 @@
 //   dsh-maint replay --before <ref> --after <ref> [--json]  修复前后行为对比
 //   dsh-maint benchmark <traceRef> [--json]      Agent Benchmark:行为指标(失败率/重试/错误密度/质量分)
 //   dsh-maint benchmark --before <ref> --after <ref> [--json]  修复前后指标对比
+//   dsh-maint checkpoint <incidentId> [--json]    创建恢复点(现场快照:事项/attempts/知识/git)
+//   dsh-maint checkpoint list [--json]            列出恢复点
+//   dsh-maint checkpoint restore <id> [--json]    读取恢复点并验证完整性
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
 // 统一返回:{ ok, data, diagnostics }
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadIncidents, sortIncidents, findByPrefix, scoreOf } from "../lib/incidents.mjs";
 import { loadContract, checkDiff } from "../lib/contract.mjs";
@@ -334,6 +337,58 @@ const TOOLS = {
     return out(true, { traceRef, ...d });
   },
 
+  checkpoint({ action = "create", id, json }) {
+    const dir = join(STATE, "checkpoints");
+    if (action === "list") {
+      if (!existsSync(dir)) return out(true, { checkpoints: [] });
+      const items = readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => {
+        try { return JSON.parse(readFileSync(join(dir, f), "utf8")); } catch { return null; }
+      }).filter(Boolean).sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      if (!json) for (const i of items) console.log(i.id + "  " + (i.createdAt ?? "") + "  " + (i.incident?.title ?? "?") + "  attempts=" + i.attempts + "  head=" + String(i.git?.head ?? "?").slice(0, 7));
+      return out(true, { checkpoints: items });
+    }
+    if (action === "restore") {
+      if (!id) return fail("需要快照 id(create 时返回的 id,或文件路径)");
+      const candidates = [join(dir, id), join(dir, id + ".json"), join(REPO, id), id];
+      for (const p of candidates) {
+        if (!existsSync(p)) continue;
+        let snap;
+        try { snap = JSON.parse(readFileSync(p, "utf8")); } catch { continue; }
+        const required = ["id", "incidentId", "createdAt", "incident", "attempts", "knowledge", "git"];
+        const missing = required.filter((k) => !(k in snap));
+        if (!json) {
+          console.log("=== 恢复点 " + snap.id + " (" + (snap.createdAt ?? "?") + ") ===");
+          console.log("事项: " + (snap.incident?.title ?? "?") + " [" + snap.incidentId + "]  status=" + (snap.incident?.status ?? "?"));
+          console.log("attempts: " + snap.attempts + " | knowledge: " + (snap.knowledge ?? []).join(", "));
+          console.log("git: " + (snap.git?.head ?? "?") + (snap.git?.dirty ? " (dirty)" : "") + " | trace: " + (snap.trace?.exists ? snap.trace.eventCount + " 事件" : "无"));
+          console.log("完整性: " + (missing.length === 0 ? "完整 ✅" : "缺失字段 " + missing.join(",")));
+        }
+        return out(true, { restored: missing.length === 0, snapshot: snap, missing });
+      }
+      return out(true, { restored: false }, ["快照不存在"]);
+    }
+    // create(默认):对事项做状态快照,供中断后恢复执行
+    if (!id) return fail("需要事项 ID");
+    const inc = loadIncidents().find((i) => i.id === id || i.id.startsWith(id));
+    if (!inc) return fail("事项不存在: " + id);
+    const attempts = readAttempts().filter((a) => a.incidentId === id);
+    const knowledge = existsSync(KNOWLEDGE) ? readdirSync(KNOWLEDGE) : [];
+    const head = runCommand("git rev-parse HEAD", { cwd: REPO, timeoutMs: 30000 }).stdout.trim();
+    const dirty = runCommand("git status --porcelain", { cwd: REPO, timeoutMs: 30000 }).stdout.trim() !== "";
+    const ts = new Date().toISOString();
+    const snapId = id + "-" + ts.replace(/[^0-9T]/g, "").slice(0, 15);
+    const snap = {
+      id: snapId, incidentId: inc.id, createdAt: ts,
+      incident: inc, attempts: attempts.length, knowledge,
+      trace: inc.traceRef ? traceSummary(inc.traceRef) : null,
+      git: { head, dirty },
+    };
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, snapId + ".json"), JSON.stringify(snap, null, 2));
+    if (!json) console.log("检查点已创建: " + snapId + " (attempts=" + attempts.length + ", head=" + head.slice(0, 7) + (dirty ? ", dirty" : "") + ")");
+    return out(true, { checkpoint: snap });
+  },
+
   benchmark({ traceRef, json, before, after }) {
     if (before && after) {
       const c = compareBenchmarks(before, after);
@@ -412,6 +467,7 @@ for (let i = 0; i < rest.length; i++) {
   // 位置参数:verify 的第一个位置参数是 scope;replay 的是 traceRef;其余命令是 id
   else if (cmd === "verify" && !args.scope) args.scope = rest[i];
   else if ((cmd === "replay" || cmd === "benchmark") && !args.traceRef) args.traceRef = rest[i];
+  else if (cmd === "checkpoint" && (rest[i] === "list" || rest[i] === "restore" || rest[i] === "create")) args.action = rest[i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {

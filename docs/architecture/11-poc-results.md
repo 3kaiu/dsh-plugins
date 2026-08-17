@@ -288,3 +288,57 @@ $ dsh-maint benchmark --before before.jsonl --after after.jsonl
 
 **定位**:benchmark 是"复盘 + 门禁"双用途——复盘:每次修复后看失败率/重试/错误密度是否真的降(与 replay 的过程还原互补);门禁:Phase 3 的 guarded auto-merge 可把"修复后 benchmark ≥ 阈值"纳入放行条件(如 quality ≥ 60 且 reason=completed)。
 **待接入**:真实 headless 会话的 trace 落盘后,benchmark 即可对真实修复打分(当前与 replay 一样,先以 fixture 验证语义)。
+
+## 12. 附:Recovery/Checkpoint 最小可用版实测(Phase 2 第五件,2026-08-17)
+
+**能力**:dsh-maint checkpoint 三个动作:
+- `checkpoint <incidentId>`(默认 create):对事项做现场快照——事项全文 + attempts 数 + 知识文件列表 + git head/dirty + trace 摘要,写入 `.dsh/state/checkpoints/<id>-<ts>.json`;
+- `checkpoint list`:按时间倒序列出全部恢复点;
+- `checkpoint restore <id>`:读取快照并做完整性验证(7 个必填字段: id/incidentId/createdAt/incident/attempts/knowledge/git),返回现场信息。
+
+**实测**(tmp 仓库:incident + attempts.jsonl 1 条 + knowledge 1 文件;单测 4 项新增,共 21 项全过):
+
+```text
+$ dsh-maint checkpoint INC-20260817-001
+检查点已创建: INC-20260817-001-20260817T030038 (attempts=0, head=ce6782a, dirty)
+
+$ dsh-maint checkpoint list
+INC-20260817-001-20260817T030038  2026-08-17T03:00:38.747Z  packages/dsh-runtime-events 缺少 README  attempts=0  head=ce6782a
+
+$ dsh-maint checkpoint restore INC-20260817-001-20260817T030038
+=== 恢复点 INC-20260817-001-20260817T030038 (2026-08-17T03:00:38.747Z) ===
+事项: packages/dsh-runtime-events 缺少 README [INC-20260817-001]  status=fixed
+attempts: 0 | knowledge: 
+git: ce6782ac4685f64c2547302c3f070ccc2ef296ab (dirty) | trace: 无
+完整性: 完整 ✅
+```
+
+**定位**:checkpoint 是恢复执行的地基——headless 会话中断(超时/掉线)后,新会话 restore 快照即可续跑(事项现场/已尝试次数/知识不丢);同时快照的 attempts 数直接服务 budget 的 attempts<3 判定(Phase 3 guarded merge 复用)。
+**下一步**:与维护工作流接线——maintenance.yml 在 agent 任务前后自动 checkpoint,失败重跑前先 restore(待 Phase 3 实战接入)。
+
+## 12. 附:Recovery/Checkpoint 最小可用版实测(Phase 2 第五件,2026-08-17)
+
+**能力**:dsh-maint checkpoint 三个动作:
+- `checkpoint <incidentId>`(默认 create):对事项做现场快照——事项全文 + attempts 数 + 知识文件列表 + git head/dirty + trace 摘要,写入 `.dsh/state/checkpoints/<id>-<ts>.json`;
+- `checkpoint list`:按时间倒序列出全部恢复点;
+- `checkpoint restore <id>`:读取快照并做完整性验证(7 个必填字段: id/incidentId/createdAt/incident/attempts/knowledge/git),返回现场信息。
+
+**实测**(tmp 仓库:incident + attempts.jsonl 1 条 + knowledge 1 文件;单测 4 项新增,共 21 项全过):
+
+```text
+$ dsh-maint checkpoint INC-20260817-001
+检查点已创建: INC-20260817-001-20260817T030038 (attempts=0, head=ce6782a, dirty)
+
+$ dsh-maint checkpoint list
+INC-20260817-001-20260817T030038  2026-08-17T03:00:38.747Z  packages/dsh-runtime-events 缺少 README  attempts=0  head=ce6782a
+
+$ dsh-maint checkpoint restore INC-20260817-001-20260817T030038
+=== 恢复点 INC-20260817-001-20260817T030038 (2026-08-17T03:00:38.747Z) ===
+事项: packages/dsh-runtime-events 缺少 README [INC-20260817-001]  status=fixed
+attempts: 0 | knowledge: 
+git: ce6782ac4685f64c2547302c3f070ccc2ef296ab (dirty) | trace: 无
+完整性: 完整 ✅
+```
+
+**定位**:checkpoint 是恢复执行的地基——headless 会话中断(超时/掉线)后,新会话 restore 快照即可续跑(事项现场/已尝试次数/知识不丢);同时快照的 attempts 数直接服务 budget 的 attempts<3 判定(Phase 3 guarded merge 复用)。
+**下一步**:与维护工作流接线——maintenance.yml 在 agent 任务前后自动 checkpoint,失败重跑前先 restore(待 Phase 3 实战接入)。

@@ -267,6 +267,52 @@ console.log("# benchmark Agent 行为指标(修复前后对比)");
   const miss = runB("benchmark nope.jsonl --json");
   assert.equal(miss.data.exists, false);
   ok("benchmark 不存在 trace → exists=false");
+console.log("# checkpoint 恢复点(Recovery 最小可用版)");
+{
+  const { execSync } = await import("node:child_process");
+  const repo = mkdtempSync(join(tmpdir(), "ckpt-"));
+  const incDir = join(repo, ".dsh", "incidents");
+  mkdirSync(incDir, { recursive: true });
+  writeFileSync(join(incDir, "inc-ckpt.json"), JSON.stringify({
+    id: "INC-CKPT-001", title: "ckpt 测试事项", severity: "LOW", frequency: 1, taxonomy: "TEST", status: "open",
+    reproduce: { command: "node -e \"process.exit(1)\"", workdir: "." },
+    testCommand: "node -e \"process.exit(0)\""
+  }));
+  const stDir = join(repo, ".dsh", "state");
+  mkdirSync(stDir, { recursive: true });
+  writeFileSync(join(stDir, "attempts.jsonl"), JSON.stringify({ incidentId: "INC-CKPT-001", attempt: 1, at: "2026-08-17T05:00:00.000Z" }) + "\n");
+  const kDir = join(repo, ".dsh", "knowledge");
+  mkdirSync(kDir, { recursive: true });
+  writeFileSync(join(kDir, "ckpt-notes.md"), "# 备忘");
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const runCk = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo } }));
+  // 1) 创建恢复点
+  const cr = runCk("checkpoint INC-CKPT-001 --json");
+  assert.equal(cr.ok, true);
+  assert.ok(cr.data.checkpoint.id.startsWith("INC-CKPT-001-"));
+  assert.equal(cr.data.checkpoint.incidentId, "INC-CKPT-001");
+  assert.equal(cr.data.checkpoint.attempts, 1); // attempts.jsonl 1 条
+  assert.deepEqual(cr.data.checkpoint.knowledge, ["ckpt-notes.md"]);
+  assert.ok(cr.data.checkpoint.git.head.length === 40);
+  ok("checkpoint create:快照含事项全文/attempts/知识/git head");
+  const snapId = cr.data.checkpoint.id;
+  // 2) 列出恢复点
+  const ls = runCk("checkpoint list --json");
+  assert.equal(ls.data.checkpoints.length, 1);
+  assert.equal(ls.data.checkpoints[0].id, snapId);
+  ok("checkpoint list:能列出已创建快照");
+  // 3) 恢复点读取 + 完整性验证
+  const rs = runCk("checkpoint restore " + snapId + " --json");
+  assert.equal(rs.data.restored, true);
+  assert.deepEqual(rs.data.missing, []);
+  assert.equal(rs.data.snapshot.incident.title, "ckpt 测试事项");
+  ok("checkpoint restore:完整性验证通过,现场可恢复");
+  // 4) 不存在的快照
+  const miss = runCk("checkpoint restore nope --json");
+  assert.equal(miss.data.restored, false);
+  ok("checkpoint restore 不存在 → restored=false");
+}
 }
 
 console.log("\npassed", passed, "checks");
