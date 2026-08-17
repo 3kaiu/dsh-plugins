@@ -22,6 +22,7 @@ const PLUGINS = [
   { dir: "harness-updater", patchIds: ["dsh-harness-updater"], pkg: "@3kaiu/dsh-harness-updater" },
   { dir: "layout-infer", patchIds: ["dsh-layout-infer"], pkg: "@3kaiu/dsh-layout-infer" },
   { dir: "dsh-console", patchIds: ["dsh-console"], pkg: "@3kaiu/dsh-console" },
+  { dir: "dsh-github-sync", patchIds: ["dsh-github-sync"], pkg: "@3kaiu/dsh-github-sync" },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

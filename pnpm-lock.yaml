@@ -34,6 +34,19 @@ importers:
         specifier: ^5.4.11
         version: 5.4.21
 
+  packages/dsh-github-sync:
+    dependencies:
+      '@deepseek-ai/dsh-settings':
+        specifier: 0.1.0-rc.6
+        version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/schemastery@3.18.1)
+      '@deepseek-ai/schemastery':
+        specifier: 3.18.1
+        version: 3.18.1
+    devDependencies:
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
+
   packages/dsh-maintenance-core: {}
 
   packages/dsh-runtime-events:
