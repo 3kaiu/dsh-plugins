@@ -16,6 +16,8 @@
 //   dsh-maint knowledge add <incidentId> --text <...> [--json]  沉淀修复经验(追加去重)
 //   dsh-maint knowledge list [--json]             列出全部知识
 //   dsh-maint trace <incidentId> --from <eventsFile> [--json]  会话事件流落盘为事项 trace
+//   dsh-maint guard --pr <PR号> [--json]             guarded auto-merge 判定(维护分支+verified+无needs-human+attempts<3+CI全绿)
+//   dsh-maint guard --mock <PR数据json> [--json]     注入 PR 数据判定(测试/DoD 实测用)
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
@@ -344,6 +346,37 @@ const TOOLS = {
     return out(true, { traceRef, ...d });
   },
 
+  guard({ pr, mock, json }) {
+    // guarded auto-merge 判定:维护分支 + verified 标签 + 无 needs-human + attempts<3 + CI 全绿
+    // --pr <PR号> 走真实 gh 数据;--mock <json> 注入 PR 数据(单测/DoD 实测用)
+    if (!pr && !mock) return fail("需要 --pr <PR号> 或 --mock <PR数据JSON>");
+    let info;
+    if (mock) {
+      if (!existsSync(mock)) return fail("mock 文件不存在: " + mock);
+      info = JSON.parse(readFileSync(mock, "utf8"));
+    } else {
+      info = JSON.parse(execSync("gh pr view " + pr + " --json number,title,headRefName,labels,body,mergeable,mergeStateStatus", { encoding: "utf8" }));
+    }
+    const reasons = [];
+    const ok = (cond, msg) => { if (!cond) reasons.push(msg); };
+    const head = String(info.headRefName ?? "");
+    ok(head.startsWith("maintenance/"), "非维护分支: " + (head || "?"));
+    const labels = (info.labels ?? []).map((l) => String(l.name ?? l).toLowerCase());
+    ok(!labels.includes("needs-human"), "存在 needs-human 标签(需人工介入)");
+    ok(labels.includes("verified"), "缺少 verified 标签(evidence 闸门未通过)");
+    const m = String(info.body ?? "").match(/attempts:\s*(\d+)/i);
+    const attempts = m ? parseInt(m[1], 10) : 0;
+    ok(attempts < 3, "attempts=" + attempts + " 达到 budget 上限(≥3)");
+    const mss = String(info.mergeStateStatus ?? "");
+    ok(mss === "CLEAN" || mss === "READY", "CI 未全绿或不可合并(mergeStateStatus=" + (mss || "?") + ")");
+    const allowMerge = reasons.length === 0;
+    if (!json) {
+      if (allowMerge) console.log("✅ 放行合并: PR #" + (info.number ?? pr) + " (" + head + ", attempts=" + attempts + ", CI " + mss + ")");
+      else console.log("❌ 拦截合并: " + reasons.join("; "));
+    }
+    return out(true, { pr: Number(pr || info.number || 0), allowMerge, head, attempts, labels, mergeStateStatus: mss, reasons });
+  },
+
   trace({ id, from, json }) {
     // trace import <incidentId> <eventsFile>:把会话事件流落盘为事项的 trace 文件
     if (!id) return fail("需要事项 ID");
@@ -533,6 +566,8 @@ for (let i = 0; i < rest.length; i++) {
   else if (cmd === "checkpoint" && (rest[i] === "list" || rest[i] === "restore" || rest[i] === "create")) args.action = rest[i];
   else if (cmd === "knowledge" && (rest[i] === "list" || rest[i] === "add")) args.action = rest[i];
   else if (rest[i] === "--text") args.text = rest[++i];
+  else if (rest[i] === "--pr") args.pr = rest[++i];
+  else if (rest[i] === "--mock") args.mock = rest[++i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {

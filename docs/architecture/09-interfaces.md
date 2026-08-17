@@ -164,6 +164,14 @@ interface CompletionVerdict { goalSummary: string;
       "required": ["incidentId", "from"] }
   },
   {
+    "name": "dsh_maintenance_guard",
+    "description": "Guarded auto-merge 判定(Phase 3):条件 = 维护分支(maintenance/ 前缀)+ verified 标签(evidence 闸门全过时 workflow 打上)+ 无 needs-human 标签 + attempts<3(PR body 解析)+ CI 全绿(mergeStateStatus=CLEAN/READY)。输出 allowMerge + 全部拦截原因。--pr 走真实 gh 数据;--mock 注入 PR 数据(单测/DoD 实测)。",
+    "parameters": { "type": "object",
+      "properties": { "pr": { "type": "string", "description": "PR 号(真实 gh 数据)" },
+                      "mock": { "type": "string", "description": "PR 数据 JSON 文件路径(测试用)" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

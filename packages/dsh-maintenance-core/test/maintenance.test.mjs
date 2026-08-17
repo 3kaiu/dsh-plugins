@@ -382,6 +382,40 @@ console.log("# knowledge 沉淀 + fixtures 兼容契约");
   assert.equal(c.budget.maxRuntimeMin, "15"); // yaml-mini 解析为字符串(既有行为)
   ok("fixtures 兼容契约:incidents(open/fixed)+ autopilot.yml 均可解析");
 }
+console.log("# guarded auto-merge 判定(Phase 3)");
+{
+  const repo = mkdtempSync(join(tmpdir(), "guard-"));
+  writeFileSync(join(repo, "seed.txt"), "x");
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const runG = (mockFile) => JSON.parse(execSync("node " + BIN + " guard --mock " + mockFile + " --json", { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo } }));
+  const mkMock = (f, o) => writeFileSync(join(repo, f), JSON.stringify(o));
+  // 1) 放行:维护分支 + verified + attempts 1 + CI 全绿
+  mkMock("allow.json", { number: 42, headRefName: "maintenance/INC-X-20260817-000000", labels: [{ name: "verified" }], body: "Agent 自动修复(INC-X)\n\nattempts: 1", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN" });
+  const al = runG(join(repo, "allow.json"));
+  assert.equal(al.data.allowMerge, true);
+  assert.deepEqual(al.data.reasons, []);
+  ok("guard 放行:维护分支+verified+attempts<3+CI 全绿 → allowMerge");
+  // 2) 拦截:needs-human
+  mkMock("deny-human.json", { number: 43, headRefName: "maintenance/INC-Y-20260817-000000", labels: [{ name: "verified" }, { name: "needs-human" }], body: "attempts: 2", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN" });
+  const dh = runG(join(repo, "deny-human.json"));
+  assert.equal(dh.data.allowMerge, false);
+  assert.ok(dh.data.reasons.some((r) => r.includes("needs-human")));
+  ok("guard 拦截:needs-human 标签 → 不合并");
+  // 3) 拦截:attempts ≥ 3(budget 上限)
+  mkMock("deny-attempts.json", { number: 44, headRefName: "maintenance/INC-Z-20260817-000000", labels: [{ name: "verified" }], body: "attempts: 3", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN" });
+  const da = runG(join(repo, "deny-attempts.json"));
+  assert.equal(da.data.allowMerge, false);
+  assert.ok(da.data.reasons.some((r) => r.includes("attempts=3")));
+  ok("guard 拦截:attempts=3 达 budget 上限 → 不合并");
+  // 4) 拦截:非维护分支 + CI blocked
+  mkMock("deny-branch.json", { number: 45, headRefName: "feature/INC-W", labels: [{ name: "verified" }], body: "attempts: 1", mergeable: "MERGEABLE", mergeStateStatus: "BLOCKED" });
+  const db = runG(join(repo, "deny-branch.json"));
+  assert.equal(db.data.allowMerge, false);
+  assert.ok(db.data.reasons.some((r) => r.includes("非维护分支")));
+  assert.ok(db.data.reasons.some((r) => r.includes("CI 未全绿")));
+  ok("guard 拦截:非维护分支 + CI blocked → 双原因拦截");
+}
 }
 
 console.log("\npassed", passed, "checks");
