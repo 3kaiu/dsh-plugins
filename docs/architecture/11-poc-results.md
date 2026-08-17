@@ -631,3 +631,16 @@ dsh-workbench-0.1.0.zip: OK
 ```
 
 **验收闭环**:下载 → SHA256 校验 → 解压 → start.sh → PWA 资产可达 → Safari 程序坞。
+
+## 25. 附:无人值守闭环首次真实触发与 dogfood 修复(2026-08-17)
+
+**背景**:用户要求"结束后继续 A"——真实触发 `maintenance.yml` workflow_dispatch(run 32001266951),验证无人值守闭环端到端。
+
+**首次真实运行发现缺陷**(这正是闭环的意义:dogfood 自身):
+- 现象:run 失败——`invalid issue format: ""`(agent run 步骤 crash);
+- 根因 ×2:① select 步骤取 status 的 incidents[0],**不区分 open/fixed**(当前仓库无 open 事项,选中已 fixed 的 INC-20260817-001);② issue lookup 步骤内 `exit 0` 只结束该步骤 shell,**后续 provision/agent/verify/PR/merge 步骤无 if 守卫照常执行**,`gh issue view ""` crash;
+- 修复(f4e0df4):select 只选 `status==="open"`;issue_number 为空时后续 5 步全部 `if: steps.issue.outputs.issue_number != ''` 跳过;
+- 验证(run 32001521048):**success**,"选择事项: "(空)→ "无待办事项,退出" → 优雅空转;
+- 经验入库:incident INC-20260817-003(CI_BUG,含 reproduce/testCommand,reproduce 不可复现 + test 通过);知识:步骤内 exit 0 不终止 workflow,跳过必须用 if 条件;incident 命令含引号时外层双引号 + 内部单引号 + 正则单引号用转义序列避免 sh 引号嵌套。
+
+**说明**:本次为"无待办"路径的验证;有 open incident + open issue 时才会走完整修复链路(真实 headless → 契约闸门 → PR → guarded merge,PR #6 已演示过人工合并侧)。05 §6 的 needs-human 升级率/闭环时长指标将随真实待办运行开始积累。
