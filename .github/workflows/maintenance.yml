@@ -40,8 +40,13 @@ jobs:
           (cd packages/dsh-runtime-events && node build.mjs)
       - name: select incident
         id: select
+        # dispatch 输入经 env 传递(GitHub 官方推荐):run 内引用的是运行时
+        # 环境变量,表达式不会再次参与 shell 解析,杜绝输入注入。
+        env:
+          INPUT_ID: ${{ github.event.inputs.incidentId }}
+
         run: |
-          ID="${{ github.event.inputs.incidentId }}"
+          ID="$INPUT_ID"
           if [ -z "$ID" ]; then
             ID=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);const o=(j.data.incidents||[]).find(i=>i.status==="open");console.log(o?.id ?? "")}catch{console.log("")}})')
           fi

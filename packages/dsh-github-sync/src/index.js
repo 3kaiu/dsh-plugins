@@ -25,6 +25,7 @@ const Config = z.object({
   eventsDir: z.string().default(join(DSH_HOME, "state", "events")),
   stateFile: z.string().default(join(DSH_HOME, "state", "github-sync.json")),
   ghApiBase: z.string().default("https://api.github.com"),
+  apiTimeoutMs: z.number().min(1000).max(120000).default(30000),
   maxRunsPerPoll: z.number().min(1).max(100).default(20),
   maxPrsPerPoll: z.number().min(1).max(100).default(10),
 });
@@ -69,6 +70,8 @@ async function ghApi(opts, path, fetchImpl = fetch) {
   const token = process.env[opts.tokenEnv];
   const url = opts.ghApiBase + "/repos/" + owner + "/" + name + path;
   const res = await fetchImpl(url, {
+    // 超时保护:GitHub API 挂起时不能让 ticking 永久卡死轮询
+    signal: AbortSignal.timeout(opts.apiTimeoutMs ?? 30000),
     headers: {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",

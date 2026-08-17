@@ -149,6 +149,8 @@ function processEvent(aggregate, emit, opts, session, event) {
           stdoutTail: text.slice(0, opts.stdoutTailMax),
         }, sid);
       }
+      // 消费即删:长驻进程下 calls 只增不删会持续占用内存
+      aggregate.calls.delete(callId);
       break;
     }
     case "llm/retry":
@@ -225,6 +227,8 @@ function apply(ctx, config) {
 
   const finalizeAll = (interrupted) => {
     for (const [sid, st] of aggregate.sessions) finalizeSession(aggregate, emit, sid, st, Date.now(), interrupted);
+    aggregate.sessions.clear();
+    aggregate.calls.clear();
     sink.flush();
   };
 
@@ -236,7 +240,11 @@ function apply(ctx, config) {
   });
   ctx.on("session/disposed", (session) => {
     const st = aggregate.sessions.get(session.id);
-    if (st !== void 0) finalizeSession(aggregate, emit, session.id, st);
+    if (st !== void 0) {
+      finalizeSession(aggregate, emit, session.id, st);
+      // 会话已终结,立即释放聚合状态(长驻 web 进程防内存增长)
+      aggregate.sessions.delete(session.id);
+    }
   });
 
   // 用量文件增量 → error.recorded(免费层限流/额度)
