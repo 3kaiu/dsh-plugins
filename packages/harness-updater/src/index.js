@@ -93,7 +93,9 @@ function apply(ctx) {
   void checkLatest(ctx);
   const interval = setInterval(() => void checkLatest(ctx), CHECK_INTERVAL_MS);
   interval.unref();
-  ctx.effect(() => clearInterval(interval));
+  // Cordis 语义:ctx.effect(fn) 的 fn 立即执行,返回值才是卸载清理;
+  // 直接写 clearInterval 会让定时器刚创建就被清掉(实测从未定时检查)。
+  ctx.effect(() => () => clearInterval(interval));
 }
 
 export { apply, name };
