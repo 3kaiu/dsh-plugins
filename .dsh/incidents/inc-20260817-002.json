@@ -4,7 +4,7 @@
   "severity": "LOW",
   "frequency": 1,
   "taxonomy": "DOC_MISSING",
-  "status": "open",
+  "status": "fixed",
   "firstSeenAt": "2026-08-17T04:00:00.000Z",
   "lastSeenAt": "2026-08-17T04:00:00.000Z",
   "reproduce": {
@@ -12,5 +12,9 @@
     "workdir": "."
   },
   "testCommand": "node -e \"const t=require('fs').readFileSync('scripts/README.md','utf8');if(!t.includes('demo-maintenance-loop'))process.exit(1);console.log('ok')\"",
-  "knowledge": "docs 缺失类事项:reproduce 用 existsSync 探测(11 篇 §13 经验)"
+  "knowledge": "docs 缺失类事项:reproduce 用 existsSync 探测(11 篇 §13 经验)",
+  "fixedAt": "2026-08-17T05:09:24.591Z",
+  "mergedRefs": [
+    "(待合入)"
+  ]
 }
