@@ -386,6 +386,431 @@ function clusterByAxis(items, posOf, sizeOf, tol) {
   return clusters
 }
 
+// =====================================================================
+// 层级重建内核 (hierarchy reconstruction)
+// ---------------------------------------------------------------------
+// 输入: 画布尺寸 + 一组兄弟节点(绝对坐标)。这些节点可能来自:
+//   - 拍平稿(无 flexContainerInfo, 全部根级兄弟) —— 需要恢复容器树
+//   - 任意 DSL 的某一层
+// 输出: 重建后的语义树: 每节点带 role(语义角色)、bbox、layout(inferLayout
+//   语义, 与官方 flexContainerInfo 对齐)、children(嵌套容器)。
+//
+// 管线(从开源方案提炼, imgcook 的 Y 轴重叠分组 / Locofy 的分组递归 /
+// Allen 区间代数 / Gestalt 预聚类):
+//   0. 分类: 越界元素(off-canvas) / 背景装饰层(background) / 旋转贴纸(sticker)
+//   1. 容器吸收: 视觉容器候选(FRAME/GROUP/INSTANCE, 大尺寸/有特征)吸收
+//      bbox 完全包含的其他节点
+//   2. 带状聚类: 剩余顶层节点按 y 聚类成带(全宽条独立成带; gap 断裂;
+//      y 重叠合并)
+//   3. 带内分组: 每带内按 x 聚类成列
+//   4. 语义角色: status-bar / nav-bar / tab-bar / card / section / row ...
+//   5. 递归: 每个容器 inferLayout 反推 flex 语义
+// =====================================================================
+
+const ROLES = {
+  OFF_CANVAS: 'off-canvas',
+  BACKGROUND: 'background',
+  STICKER: 'sticker',
+  STATUS_BAR: 'status-bar',
+  NAV_BAR: 'nav-bar',
+  TAB_BAR: 'tab-bar',
+  CARD: 'card',
+  SECTION: 'section',
+  ROW: 'row',
+  COLUMN: 'column',
+  ITEM: 'item',
+  UNKNOWN: 'unknown',
+}
+
+/** 归一化节点输入: 兼容 {x,y,width,height} / {layoutStyle:{relativeX,...}} */
+function normRect(n) {
+  const ls = n.layoutStyle || {}
+  const x = n.x != null ? n.x : ls.relativeX != null ? ls.relativeX : 0
+  const y = n.y != null ? n.y : ls.relativeY != null ? ls.relativeY : 0
+  const width = n.width != null ? n.width : ls.width != null ? ls.width : 0
+  const height = n.height != null ? n.height : ls.height != null ? ls.height : 0
+  const rotation = n.rotation != null ? n.rotation : ls.rotate != null ? ls.rotate : 0
+  return { x, y, width, height, rotation }
+}
+
+const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
+
+/** 背景装饰层判定: 全宽 + 渐变/位图填充, 或全宽 + blur/半透明条。
+ *  底部全宽条(高度 ≤ 100, 贴底)不算背景 —— 它是 tab-bar 的背景条,
+ *  应作为 tab-bar 的组成部分参与重建。 */
+function isBackgroundRect(n, rect, canvas) {
+  if (rect.width < canvas.width * 0.8) return false
+  const fill = typeof n._color === 'string' ? n._color : ''
+  if (n.rotation && Math.abs(n.rotation) > 0.5) return false
+  const isBottomStrip = rect.y + rect.height >= canvas.height - 10 && rect.height <= 100
+  if (isBottomStrip) return false
+  if (GRADIENT_RE.test(fill)) return true
+  if (n.effect && /blur|backdrop/i.test(String(n.effect))) return true
+  if (n.opacity != null && n.opacity < 0.5) return true
+  return false
+}
+
+/** 视觉容器候选: FRAME/GROUP/INSTANCE, 无旋转, 有内容体积或视觉特征 */
+function isContainerCandidate(n) {
+  if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
+  if (n.rotation && Math.abs(n.rotation) > 0.5) return false
+  return true
+}
+
+/** 自适应用户可见带聚类: 全宽条独立; gap 断裂; y 重叠合并
+ *
+ *  规则:
+ *  - 全宽条(状态栏/导航栏, width≥0.9×画布宽 且 高≤60)恒独立成带,
+ *    且绝不接受后续节点并入(避免把下方内容吞进状态栏/导航栏带)
+ *  - 普通节点: 与上一带 gap ≤ 12 且上一带非全宽条 → 并入; 否则新带
+ */
+function clusterBandsAdaptive(items, canvas, tol = 2) {
+  const sorted = [...items].sort((a, b) => a._y - b._y)
+  const bands = []
+  for (const n of sorted) {
+    const isFullWidthStrip = n.width >= canvas.width * 0.9 && n.height <= 60
+    const end = n._y + n.height
+    const last = bands[bands.length - 1]
+    const gap = last ? n._y - last.maxEnd : 0
+    if (isFullWidthStrip) {
+      bands.push({ items: [n], maxEnd: end, fullWidth: true })
+      continue
+    }
+    if (last && !last.fullWidth && gap <= 12) {
+      last.items.push(n)
+      last.maxEnd = Math.max(last.maxEnd, end)
+    } else {
+      bands.push({ items: [n], maxEnd: end, fullWidth: false })
+    }
+  }
+  return bands
+}
+
+/** 带内 x 聚类成列 */
+function clusterCols(items, tol = 12) {
+  const sorted = [...items].sort((a, b) => a._x - b._x)
+  const cols = []
+  for (const n of sorted) {
+    const end = n._x + n.width
+    const last = cols[cols.length - 1]
+    if (last && n._x - last.maxEnd <= tol) {
+      last.items.push(n)
+      last.maxEnd = Math.max(last.maxEnd, end)
+    } else {
+      cols.push({ items: [n], maxEnd: end })
+    }
+  }
+  return cols
+}
+
+/** 带语义角色: 全宽条按位置(顶/底)区分, 否则按内容分布 */
+function bandRoleOf(band, canvas) {
+  const first = band.items[0]
+  // 带内含贴底全宽背景条(高度≤110) → TabBar(即使背景条未触发全宽条独立带规则)
+  const bottomBg = band.items.find((n) => n._width >= canvas.width * 0.9 && n._y + n._height >= canvas.height - 12 && n._height <= 110)
+  if (bottomBg && band.items.length >= 3) return ROLES.TAB_BAR
+  if (band.fullWidth) {
+    if (first._y <= 30) return ROLES.STATUS_BAR
+    if (first._y + first.height >= canvas.height - 10) return ROLES.TAB_BAR
+    return ROLES.NAV_BAR
+  }
+  if (band.items.length === 1) {
+    const n = band.items[0]
+    if (n._fill || n._radius || n._shadow) return ROLES.CARD
+    return ROLES.UNKNOWN
+  }
+  return ROLES.SECTION
+}
+
+/** icon+label 配对(TabBar 项): 每个小方形图标 + 其下方最近的文本 */
+function pairIconLabels(icons, labels, tol = 40) {
+  const pairs = []
+  const usedLabels = new Set()
+  for (const ic of icons) {
+    let best = null
+    let bestDist = Infinity
+    for (const lb of labels) {
+      if (usedLabels.has(lb.id)) continue
+      const dx = Math.abs(lb._x + lb.width / 2 - (ic._x + ic.width / 2))
+      const dy = lb._y - (ic._y + ic.height)
+      if (dx <= tol && dy >= -4 && dy < bestDist) {
+        best = lb
+        bestDist = dy
+      }
+    }
+    if (best) {
+      usedLabels.add(best.id)
+      pairs.push({ icon: ic, label: best })
+    } else {
+      pairs.push({ icon: ic, label: null })
+    }
+  }
+  return pairs
+}
+
+/**
+ * 层级重建主入口
+ *
+ * @param {object} opts
+ * @param {{width:number,height:number}} opts.canvas 画布尺寸
+ * @param {Array} opts.nodes 兄弟节点(绝对坐标或 layoutStyle)
+ * @returns {{tree:Array, stats:object, warnings:Array}}
+ */
+function reconstructHierarchy({ canvas, nodes }) {
+  const warnings = []
+  const stats = { total: nodes.length, offCanvas: 0, background: 0, sticker: 0, container: 0, band: 0, row: 0, column: 0, item: 0, section: 0 }
+
+  // ---- 0. 归一化 + 分类 ----
+  const prepared = nodes.map((n, i) => {
+    const r = normRect(n)
+    const fill = typeof n._color === 'string' ? n._color : Array.isArray(n._color) ? String(n._color[0]) : ''
+    return {
+      ...n,
+      _x: r.x,
+      _y: r.y,
+      _width: r.width,
+      _height: r.height,
+      _rotation: r.rotation,
+      _fill: fill,
+      _radius: n.borderRadius || n._radius || null,
+      _shadow: n.effect || n._shadow || null,
+      _idx: i,
+    }
+  })
+
+  const offCanvas = prepared.filter((n) => n._x + n._width > canvas.width + 8 || n._x < -8 || n._y < -8 || n._y + n._height > canvas.height + 8)
+  stats.offCanvas = offCanvas.length
+  const onCanvas = prepared.filter((n) => !offCanvas.includes(n))
+
+  const backgrounds = onCanvas.filter((n) => isBackgroundRect(n, n, canvas))
+  stats.background = backgrounds.length
+  let rest = onCanvas.filter((n) => !backgrounds.includes(n))
+
+  // 注意: 旋转贴纸组不在此处提前移除 —— 它们可能被卡片吸收
+  // (贴纸卡内含 parking/LOVE/milk tea 等旋转贴纸), 吸收后再把
+  // 未被吸收的旋转节点标记为顶层 sticker。
+
+  // ---- 1. 大容器分类: 吸收子节点的容器 / 有视觉特征的独立容器, 均不参与带状聚类 ----
+  const absorbed = new Map() // containerId -> [childIds]
+  const assigned = new Set() // 被吸收的子节点
+  const absorbedContainers = new Set() // 吸收过子节点的容器(独立成块)
+  const standaloneContainers = new Set() // 无子节点但有阴影/填充/圆角的容器(独立成块)
+  const containers = rest.filter(isContainerCandidate).sort((a, b) => a._width * a._height - b._width * b._height)
+  for (const c of containers) {
+    if (assigned.has(c.id) || absorbedContainers.has(c.id) || standaloneContainers.has(c.id)) continue
+    const kids = rest.filter((n) => {
+      if (n === c || assigned.has(n.id) || absorbedContainers.has(n.id) || standaloneContainers.has(n.id)) return false
+      // 旋转贴纸组(parking/LOVE 等)允许被卡片吸收: 用未旋转的轴对齐 bbox
+      // 做包含判断, 吸收后角色标 sticker(见 buildLeaf 分支)
+      const inside = n._x >= c._x - 2 && n._y >= c._y - 2 && n._x + n._width <= c._x + c._width + 2 && n._y + n._height <= c._y + c._height + 2
+      if (!inside) return false
+      return n._width * n._height < c._width * c._height * 0.9
+    })
+    if (kids.length > 0) {
+      absorbed.set(c.id, kids.map((k) => k.id))
+      for (const k of kids) assigned.add(k.id)
+      absorbedContainers.add(c.id)
+      stats.container++
+    } else if (c._shadow || c._fill || c._radius) {
+      standaloneContainers.add(c.id)
+      stats.container++
+    }
+  }
+
+  // 独立块(吸收容器 + 独立容器)转成容器节点
+  const containerBlocks = []
+  for (const c of rest.filter((n) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))) {
+    const kids = (absorbed.get(c.id) || []).map((id) => prepared.find((x) => x.id === id)).filter(Boolean)
+    containerBlocks.push({
+      id: c.id,
+      name: c.name || '',
+      type: c.type,
+      role: c._shadow ? ROLES.CARD : ROLES.SECTION,
+      bbox: { x: round1(c._x), y: round1(c._y), width: round1(c._width), height: round1(c._height) },
+      layout: kids.length > 0
+        ? inferLayout({
+            container: { width: c._width, height: c._height },
+            children: kids.map((k) => ({ id: k.id, x: k._x - c._x, y: k._y - c._y, width: k._width, height: k._height, rotation: k._rotation })),
+          })
+        : null,
+      children: kids.map((k) =>
+        Math.abs(k._rotation || 0) > 0.5 ? { ...buildLeaf(k), role: ROLES.STICKER } : buildLeaf(k),
+      ),
+    })
+  }
+
+  // 剩余全部(容器 + 叶子)统一参与带状聚类; 被吸收的节点从顶层移除
+  const floaters = rest.filter((n) => !assigned.has(n.id) && !absorbedContainers.has(n.id) && !standaloneContainers.has(n.id))
+
+  // 未被吸收的旋转节点 → 顶层 sticker(参与带状聚类前剔除)
+  const stickers = floaters.filter((n) => Math.abs(n._rotation || 0) > 0.5)
+  stats.sticker = stickers.length
+  const bandFloaters = floaters.filter((n) => !stickers.includes(n))
+
+  // ---- 2. 带状聚类 + 带内分组 ----
+  const bands = clusterBandsAdaptive(bandFloaters, canvas)
+  stats.band = bands.length
+
+  const children = []
+  const pushNode = (n) => children.push(buildLeaf(n))
+  for (const band of bands) {
+    const role = bandRoleOf(band, canvas)
+    // TabBar 特判: 全宽背景条 + icon/label 对
+    if (role === ROLES.TAB_BAR) {
+      const bg = band.items.filter((n) => n._width >= canvas.width * 0.9)
+      const items = band.items.filter((n) => !bg.includes(n))
+      const icons = items.filter((n) => n.type !== 'TEXT' && n._height <= 30 && n._height >= 14 && n._width <= 40)
+      const labels = items.filter((n) => n.type === 'TEXT')
+      const restItems = items.filter((n) => !icons.includes(n) && !labels.includes(n))
+      const pairs = pairIconLabels(icons, labels)
+      const tabItems = pairs.map((p) => ({
+        id: 'synthetic:tab-item:' + p.icon.id,
+        name: p.label ? p.label.name || p.icon.name : p.icon.name,
+        type: 'GROUP',
+        role: ROLES.ITEM,
+        bbox: { x: round1(p.icon._x), y: round1(Math.min(p.icon._y, p.label ? p.label._y : p.icon._y)), width: round1(p.icon._width), height: round1(p.label ? p.label._y + p.label._height - p.icon._y : p.icon._height) },
+        children: [
+          buildLeaf(p.icon),
+          ...(p.label ? [buildLeaf(p.label)] : []),
+        ],
+      }))
+      const leftover = labels.filter((l) => !pairs.some((p) => p.label && p.label.id === l.id))
+      const bgLeaf = bg.length > 0 ? { ...buildLeaf(bg[0]), role: ROLES.BACKGROUND } : null
+      const bandKids = [...tabItems, ...restItems.map((n) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height }))]
+      children.push({
+        id: 'synthetic:tab-bar:' + band.items[0].id,
+        name: 'tab-bar',
+        type: band.items[0].type,
+        role,
+        bbox: bandBBox(band),
+        layout: inferLayout({ container: bandSize(band), children: bandKids }),
+        children: [...(bgLeaf ? [bgLeaf] : []), ...tabItems, ...restItems.map(buildLeaf), ...leftover.map(buildLeaf)],
+      })
+      stats.item += tabItems.length
+      continue
+    }
+    // 单节点带: 叶子直接输出; 容器(全宽条/卡片)保持独立容器
+    if (band.items.length === 1) {
+      const n = band.items[0]
+      if (n.type === 'TEXT') {
+        pushNode(n)
+      } else {
+        children.push(buildContainer(n, role))
+      }
+      continue
+    }
+    // 多节点带: 委托 inferLayout 判定方向(row/column/absolute)
+    const relKids = band.items.map((n) => ({
+      id: n.id,
+      x: n._x - bandMinX(band),
+      y: n._y - bandMinY(band),
+      width: n._width,
+      height: n._height,
+      rotation: n._rotation,
+    }))
+    const layout = inferLayout({ container: bandSize(band), children: relKids })
+    const groupRole =
+      layout.position === 'flex' && layout.flexDirection === 'column'
+        ? ROLES.COLUMN
+        : layout.position === 'flex' && layout.flexDirection === 'row'
+          ? ROLES.ROW
+          : ROLES.SECTION
+    stats[groupRole === ROLES.ROW ? 'row' : groupRole === ROLES.COLUMN ? 'column' : 'section']++
+    children.push({
+      id: 'synthetic:' + groupRole + ':' + band.items[0].id,
+      name: groupRole === ROLES.ROW ? 'row-group' : groupRole === ROLES.COLUMN ? 'column-group' : 'section',
+      type: 'GROUP',
+      role: groupRole,
+      bbox: bandBBox(band),
+      layout,
+      children: clusterCols(band.items).map((c) => {
+        const sorted = [...c.items].sort((a, b) => a._y - b._y || a._x - b._x)
+        if (sorted.length === 1) return buildLeaf(sorted[0])
+        return {
+          id: 'synthetic:column-group:' + sorted[0].id,
+          name: 'column-group',
+          type: 'GROUP',
+          role: ROLES.COLUMN,
+          bbox: colBBox(sorted),
+          layout: inferLayout({
+            container: colSize(sorted),
+            children: sorted.map((n) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height })),
+          }),
+          children: sorted.map(buildLeaf),
+        }
+      }),
+    })
+  }
+
+  // ---- 最终树: 背景 + 独立块 + 带块按 y 排序 ----
+  const backgroundLeaves = backgrounds.map((n) => ({ ...buildLeaf(n), role: ROLES.BACKGROUND }))
+  const stickerLeaves = stickers.map((n) => ({ ...buildLeaf(n), role: ROLES.STICKER }))
+  const offCanvasLeaves = offCanvas.map((n) => ({ ...buildLeaf(n), role: ROLES.OFF_CANVAS }))
+  const allBlocks = [...backgroundLeaves, ...containerBlocks, ...children, ...stickerLeaves].sort((a, b) => a.bbox.y - b.bbox.y)
+  const tree = [...allBlocks, ...offCanvasLeaves]
+
+  return { tree, stats, warnings }
+}
+
+function buildLeaf(n) {
+  return {
+    id: n.id,
+    name: n.name || '',
+    type: n.type,
+    role: ROLES.UNKNOWN,
+    bbox: { x: round1(n._x), y: round1(n._y), width: round1(n._width), height: round1(n._height) },
+    children: [],
+  }
+}
+
+function buildContainer(n, role) {
+  return {
+    id: n.id,
+    name: n.name || '',
+    type: n.type,
+    role: role || ROLES.CARD,
+    bbox: { x: round1(n._x), y: round1(n._y), width: round1(n._width), height: round1(n._height) },
+    layout: null,
+    children: [],
+  }
+}
+
+function bandBBox(band) {
+  const minX = Math.min(...band.items.map((n) => n._x))
+  const minY = Math.min(...band.items.map((n) => n._y))
+  const maxX = Math.max(...band.items.map((n) => n._x + n._width))
+  const maxY = Math.max(...band.items.map((n) => n._y + n._height))
+  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
+}
+
+function bandSize(band) {
+  const b = bandBBox(band)
+  return { width: b.width, height: b.height }
+}
+
+function bandMinX(band) {
+  return Math.min(...band.items.map((n) => n._x))
+}
+
+function bandMinY(band) {
+  return Math.min(...band.items.map((n) => n._y))
+}
+
+function colBBox(items) {
+  const minX = Math.min(...items.map((n) => n._x))
+  const minY = Math.min(...items.map((n) => n._y))
+  const maxX = Math.max(...items.map((n) => n._x + n._width))
+  const maxY = Math.max(...items.map((n) => n._y + n._height))
+  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
+}
+
+function colSize(items) {
+  const b = colBBox(items)
+  return { width: b.width, height: b.height }
+}
+
+export { inferLayout, mode, round1, simulateFlex, clusterByAxis, reconstructHierarchy, ROLES }
+
 /** 网格推断: 规整行列矩阵 → flexWrap wrap */
 function inferGrid(children, tol) {
   const rows = clusterByAxis(children, (k) => k.y, (k) => k.height, tol)
@@ -409,5 +834,3 @@ function inferGrid(children, tol) {
     crossSizing: 'auto',
   }
 }
-
-export { inferLayout, mode, round1, simulateFlex, clusterByAxis }
