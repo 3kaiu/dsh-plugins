@@ -78,7 +78,24 @@ node scripts/install-local.mjs   # 先 pnpm build(脚本会校验 dist)
 | `locale` | `zh` | 错误消息语言:`zh` / `en` |
 | `userAgent` | `opencode/1.18.18 …` | 发给 OpenCode Zen 的 User-Agent(默认模拟官方 CLI;服务端若校验 UA 可在此覆盖) |
 
+### 设置弹窗(浏览器 UI)
+
+dsh web(≥ 0.1.0-rc.7)的设置弹窗自带「插件」tab,已注册 settings
+namespace 的插件各显示一张配置卡,与官方 AgentLoop/Bash/WebSearch 卡并列:
+
+- 打开 dsh web → 设置 → **插件** → **可配置**
+- 卡内按 schema 渲染字段(文本/数字/开关/下拉/嵌套对象/JSON 数组),
+  保存写回 `settings.yaml`(带 revision 乐观锁,冲突会提示);
+  「已覆盖」标记表示该字段相对默认值被用户改过
+- 已覆盖字段改回默认值时自动清除覆盖(继承默认层)
+- 「重启后生效」徽章:端口类配置(如 dsh-console 的 port)需重启 dsh web
+
+实现是 `packages/dsh-plugins-ui` 的 browser half(closure-factory bundle,
+经 `dsh.client` 声明被 host 自动注入,launcher / dsh web 零改动):
+未来插件补 `installSettingsSection` 后,卡自动出现,无需改 UI 包。
+
 ## 开发
+
 
 ```sh
 pnpm build   # 各包 esbuild minify -> dist/(@3kaiu/dsh-plugin-kit 被 bundle 进各插件 dist)
