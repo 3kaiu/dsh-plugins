@@ -263,7 +263,23 @@ console.log("# benchmark Agent 行为指标(修复前后对比)");
   assert.equal(cp.data.verdict.after, "good");
   assert.ok(cp.data.verdict.improved.includes("failureRate"));
   ok("benchmark 对比:失败率 0.5→0、重试 2→0、质量 20→100,poor→good");
-  // 4) 不存在
+  // 4) 探测失败不计失败率(read exit 1 + bash exit 0 → failureRate 0)
+  const probe = join(dir, "probe.jsonl");
+  writeFileSync(probe, [
+    { seq: 1, type: "session.started", at: "2026-08-17T03:00:00.000Z", sessionId: "p1", data: { title: "t" } },
+    { seq: 2, type: "turn/start", at: "2026-08-17T03:00:01.000Z", sessionId: "p1", data: {} },
+    { seq: 3, type: "tool.started", at: "2026-08-17T03:00:02.000Z", sessionId: "p1", data: { tool: "read", inputSummary: "missing.txt" } },
+    { seq: 4, type: "tool.completed", at: "2026-08-17T03:00:03.000Z", sessionId: "p1", data: { tool: "read", exitCode: 1, latencyMs: 5, stdoutTail: "ENOENT" } },
+    { seq: 5, type: "tool.started", at: "2026-08-17T03:00:04.000Z", sessionId: "p1", data: { tool: "bash", inputSummary: "echo x > missing.txt" } },
+    { seq: 6, type: "tool.completed", at: "2026-08-17T03:00:05.000Z", sessionId: "p1", data: { tool: "bash", exitCode: 0, latencyMs: 8, stdoutTail: "" } },
+    { seq: 7, type: "session.completed", at: "2026-08-17T03:00:06.000Z", sessionId: "p1", data: { reason: "completed", turns: 1 } },
+  ].map((e) => JSON.stringify(e)).join("\n") + "\n");
+  const pr = runB("benchmark " + probe + " --json");
+  assert.equal(pr.data.metrics.failedCalls, 0);
+  assert.equal(pr.data.metrics.failureRate, 0);
+  assert.equal(pr.data.quality, 100);
+  ok("benchmark:探测失败(read exit 1)不计失败率,质量分 100");
+  // 5) 不存在
   const miss = runB("benchmark nope.jsonl --json");
   assert.equal(miss.data.exists, false);
   ok("benchmark 不存在 trace → exists=false");

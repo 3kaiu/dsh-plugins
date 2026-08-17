@@ -371,3 +371,28 @@ $ dsh-maint knowledge INC-20260817-001
 
 **定位**:knowledge 是"经验记忆"——同类事项再次出现时,agent 先 query 再动手,避免重复踩坑;checkpoint 快照已含 knowledge 列表,中断续跑不丢记忆。
 **至此 Phase 2 全部六件完成**(Verify/Replay/Benchmark/Checkpoint/Knowledge/matrix+fixtures),剩余:真实 headless 实战验证(Phase 3 前的地基)。
+
+## 14. 附:真实链路实战验证实测(Phase 2 收尾,2026-08-17)
+
+**目的**:把"各件已就绪"变成"一条真实链路可走通"——不依赖真实 LLM 会话,但全部走真实 CLI 代码路径,可重复、可进演示/CI。
+
+**新增能力**:
+- `dsh-maint trace <incidentId> --from <eventsFile>`:把会话事件流(五族包络/原始 firehose 的 JSONL)落盘到事项 traceRef 路径,落盘后 replay/benchmark 直接消费;
+- benchmark 语义修正:只读探测类工具(read/glob/grep/ls/cat/find/stat)**exit 1 视为探测结果**(目标不存在是 agent 正常探索路径),不计执行失败——只有执行类工具非 0 退出才算失败。
+
+**端到端演示** `scripts/demo-maintenance-loop.mjs`(exit 0 = 链路通过):
+
+```text
+===== 维护闭环链路演示(tmp 仓库 …/maint-loop-*) =====
+  trace 落盘       8 事件 → .dsh/state/traces/inc-loop.jsonl
+  evidence 闸门    放行 ✅ (7/7 项 pass)
+  checkpoint      INC-LOOP-001-20260817T031604
+  knowledge       已沉淀: INC-LOOP-001.md
+  replay          工具调用 2 次,结果 completed
+  benchmark       质量分 100/100 (good)
+===== 链路演示 通过 ✅ =====
+```
+
+**链路覆盖**:incident 构造 → 模拟 agent 修复(改文件 + 声明)→ 事件流生成 → trace 落盘 → evidence 闸门(7 项全 pass)→ checkpoint 快照 → knowledge 沉淀 → replay 回放(2 次调用 completed)→ benchmark 评分(100/good)。
+**语义修正的动机**:真实会话中"先 read 探测(ENOENT)→ 再创建"是标准流程,若探测失败计入失败率,质量分会误伤正常修复;修正后 demo 链路从 50/poor 变为 100/good。
+**Phase 2 至此全部完成**(六件 + matrix + fixtures + 真实链路),进入 Phase 3。
