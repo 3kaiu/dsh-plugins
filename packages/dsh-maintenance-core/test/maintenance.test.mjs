@@ -2,6 +2,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { parseMiniYaml } from "../lib/yaml-mini.mjs";
 import { loadIncidents, sortIncidents, scoreOf } from "../lib/incidents.mjs";
@@ -72,7 +73,7 @@ console.log("# contract 默认值 + diff 检查");
 console.log("# 六工具冒烟(仓库内)")
 {
   const { execSync } = await import("node:child_process");
-  const root = "/Users/seeu/dev/dsh-opencode-zen";
+  const root = fileURLToPath(new URL("../../../", import.meta.url));
   const run = (args) => JSON.parse(execSync("node packages/dsh-maintenance-core/bin/dsh-maint.mjs " + args, { cwd: root, encoding: "utf8" }));
   const st = run("status --json");
   assert.equal(st.ok, true);
@@ -81,7 +82,7 @@ console.log("# 六工具冒烟(仓库内)")
   const ins = run("inspect INC-20260817-001 --json");
   assert.equal(ins.data.incident.id, "INC-20260817-001");
   const rep = run("reproduce INC-20260817-001 --json");
-  assert.equal(rep.data.reproduced, true); // README 缺失 → 退出 0 → 可复现
+  assert.equal(rep.data.reproduced, false); // README 已合入 main(PR #4/#5)→ 不可复现
   const vf = run("verify contract --json");
   assert.equal(vf.ok, true);
   ok("status/inspect/reproduce/verify 契约冒烟");
@@ -101,7 +102,7 @@ console.log("# evidence 证据核验(假完成拦截)");
   }));
   execSync("git init -q && git add -A && git commit -qm base", { cwd: repo });
   const runEv = (claim) => JSON.parse(execSync(
-    "node /Users/seeu/dev/dsh-opencode-zen/packages/dsh-maintenance-core/bin/dsh-maint.mjs verify evidence --claim " + claim + " --incident INC-TEST-001 --json",
+    "node " + fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url)) + " verify evidence --claim " + claim + " --incident INC-TEST-001 --json",
     { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo, DSH_MAINT_DIFF_BASE: "HEAD" } }));
   const claimOf = (o) => { const p = join(repo, "claim.json"); writeFileSync(p, JSON.stringify(o)); return p; };
 
