@@ -54,8 +54,10 @@ jobs:
           echo "选择事项: $ID"
       - name: issue lookup + guards
         id: issue
+        env:
+          INCIDENT_ID: ${{ steps.select.outputs.incident_id }}
         run: |
-          ID="${{ steps.select.outputs.incident_id }}"
+          ID="$INCIDENT_ID"
           if [ -z "$ID" ]; then echo "无待办事项,退出"; exit 0; fi
           NUM=$(gh issue list --state open --label maintenance --search "$ID" --json number --jq '.[0].number // empty')
           echo "issue_number=$NUM" >> "$GITHUB_OUTPUT"
@@ -92,9 +94,12 @@ jobs:
       - name: agent run
         id: agent
         if: steps.issue.outputs.issue_number != ''
+        env:
+          INCIDENT_ID: ${{ steps.select.outputs.incident_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.issue_number }}
         run: |
-          ID="${{ steps.select.outputs.incident_id }}"
-          NUM="${{ steps.issue.outputs.issue_number }}"
+          ID="$INCIDENT_ID"
+          NUM="$ISSUE_NUM"
           BODY=$(gh issue view "$NUM" --json body --jq .body)
           CTX=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs inspect "$ID" --json)
           TASK=$(node -e 'console.log(JSON.stringify(
@@ -118,8 +123,10 @@ jobs:
       - name: verify gate (contract + 修复验证)
         id: verify
         if: steps.issue.outputs.issue_number != ''
+        env:
+          INCIDENT_ID: ${{ steps.select.outputs.incident_id }}
         run: |
-          ID="${{ steps.select.outputs.incident_id }}"
+          ID="$INCIDENT_ID"
           git add -A
           DSH_MAINT_DIFF_BASE=origin/main node packages/dsh-maintenance-core/bin/dsh-maint.mjs verify contract --json > /tmp/verify.json
           node -e '
@@ -154,9 +161,13 @@ jobs:
       - name: commit + PR
         id: pr
         if: steps.issue.outputs.issue_number != ''
+        env:
+          INCIDENT_ID: ${{ steps.select.outputs.incident_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.issue_number }}
+          ATTEMPTS_NUM: ${{ steps.issue.outputs.attempts }}
         run: |
-          ID="${{ steps.select.outputs.incident_id }}"
-          NUM="${{ steps.issue.outputs.issue_number }}"
+          ID="$INCIDENT_ID"
+          NUM="$ISSUE_NUM"
           git config user.name "dsh-maintenance[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
@@ -176,7 +187,7 @@ jobs:
             const j = JSON.parse(require("fs").readFileSync("/tmp/evidence.json", "utf8"));
             console.log(j.data.checks.map((c) => "- " + (c.result === "pass" ? "✅" : "❌") + " " + c.name + (c.detail ? " (" + c.detail + ")" : "")).join("\n"));
           ')
-          ATTEMPTS="${{ steps.issue.outputs.attempts }}"
+          ATTEMPTS="$ATTEMPTS_NUM"
           gh pr create --title "fix(${ID}): maintenance agent fix" --body "$(printf 'Agent 自动修复(%s)\n\nattempts: %s\n\n%s\n\n**闸门证据**\n%s' "$ID" "${ATTEMPTS:-0}" "$BODY" "$EV")" 2>&1 | tee /tmp/pr-link.txt
           PR=$(cat /tmp/pr-link.txt | grep -o 'https://github.com/[^ ]*pull/[0-9]*' | head -1)
           if [ -z "$PR" ]; then echo "PR 创建失败,输出见上"; exit 1; fi
@@ -185,8 +196,10 @@ jobs:
           echo "PR #$PR 已打 verified 标签(evidence 闸门全过)"
       - name: guarded merge (Phase 3 auto-merge)
         if: steps.issue.outputs.issue_number != ''
+        env:
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          ISSUE_NUM: ${{ steps.issue.outputs.issue_number }}
         run: |
-          PR_URL="${{ steps.pr.outputs.pr_url }}"
           PR=$(echo "$PR_URL" | grep -o '[0-9]*$')
           if [ -z "$PR" ]; then echo "无 PR,跳过"; exit 0; fi
           RES=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs guard --pr "$PR" --json)
@@ -194,7 +207,7 @@ jobs:
           if [ "$ALLOW" = "true" ]; then
             echo "✅ guard 放行,自动合并 PR #$PR"
             gh pr merge "$PR" --squash --delete-branch
-            gh issue close "${{ steps.issue.outputs.issue_number }}" --comment "修复已自动合入(maintenance 闭环)" || true
+            gh issue close "$ISSUE_NUM" --comment "修复已自动合入(maintenance 闭环)" || true
           else
             echo "❌ guard 拦截 PR #$PR:"
             echo "$RES" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{for(const r of JSON.parse(s).data.reasons) console.log("  - "+r)}catch{}}) '
@@ -203,18 +216,25 @@ jobs:
           fi
       - name: comment issue
         if: always()
+        env:
+          INCIDENT_ID: ${{ steps.select.outputs.incident_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.issue_number }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
         run: |
-          ID="${{ steps.select.outputs.incident_id }}"
-          NUM="${{ steps.issue.outputs.issue_number }}"
-          PR="${{ steps.pr.outputs.pr_url }}"
+          ID="$INCIDENT_ID"
+          NUM="$ISSUE_NUM"
+          PR="$PR_URL"
           if [ -n "$NUM" ]; then
             gh issue comment "$NUM" --body "维护运行 $(date -u +%Y-%m-%dT%H:%MZ) — PR: ${PR:-未创建} — 详情见 Actions run $GITHUB_RUN_ID"
           fi
       - name: attempt label
         if: failure()
+        env:
+          ISSUE_NUM: ${{ steps.issue.outputs.issue_number }}
+          ATTEMPTS_NUM: ${{ steps.issue.outputs.attempts }}
         run: |
-          NUM="${{ steps.issue.outputs.issue_number }}"
-          ATTEMPTS="${{ steps.issue.outputs.attempts }}"
+          NUM="$ISSUE_NUM"
+          ATTEMPTS="$ATTEMPTS_NUM"
           if [ -n "$NUM" ] && [ -n "$ATTEMPTS" ]; then
             N=$((ATTEMPTS + 1))
             gh issue edit "$NUM" --add-label "auto-attempt-$N"

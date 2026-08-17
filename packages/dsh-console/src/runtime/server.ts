@@ -8,10 +8,10 @@
 //   DSH_CONSOLE_PORT(默认 3090) DSH_HOME(默认 ~/.dsh)
 //   DSH_CONSOLE_DIST(默认 packages/dsh-console/dist,相对本文件所在包)
 import { createServer } from "node:http";
-import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, statSync, readdirSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, extname, normalize, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.DSH_CONSOLE_PORT ?? 3090);
@@ -83,7 +83,13 @@ const MIME = {
   ".woff2": "font/woff2", ".map": "application/json",
 };
 function serveStatic(req, res, urlPath) {
-  let rel = decodeURIComponent(urlPath);
+  // 畸形 % 编码会让 decodeURIComponent 抛 URIError;HTTP request listener 抛异常
+  // = uncaughtException,会崩掉整个 console 进程(本地 DoS:任意能访问
+  // 127.0.0.1:PORT 的进程发一个 /%zz 即可打死服务)。
+  let rel;
+  try { rel = decodeURIComponent(urlPath); } catch {
+    res.writeHead(400); res.end("bad request"); return;
+  }
   if (rel === "/") rel = "/index.html";
   const file = normalize(join(DIST_DIR, rel));
   if (!file.startsWith(DIST_DIR)) { res.writeHead(403); res.end("forbidden"); return; }
@@ -188,9 +194,13 @@ export function createConsoleServer(opts = {}) {
 }
 
 //#region 独立运行形态(bin dsh-console / node server.mjs)
+// 注意: import.meta.url 与 process.argv[1] 的符号链接规范化不一致
+// (macOS 的 /tmp → /private/tmp 等),直接字符串比较会静默不启动;
+// 两边都 realpath 后再比。
+import { realpathSync } from "node:fs";
 const isDirect =
   typeof process.argv[1] === "string" &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(resolve(process.argv[1]));
 if (isDirect) {
   const { server, port } = createConsoleServer();
   server.listen(port, "127.0.0.1", () => {
