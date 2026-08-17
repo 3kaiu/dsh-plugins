@@ -130,7 +130,7 @@ interface CompletionVerdict { goalSummary: string;
   },
   {
     "name": "dsh_maintenance_benchmark",
-    "description": "Agent Benchmark:消费 trace 计算行为指标并给出质量分,用于复盘/门禁。单 trace 输出 metrics(turns/toolCalls/toolKinds/avgLatencyMs/failedCalls/failureRate/llmRetries/errors/errorDensity/reason)+ quality 分(100 - 失败率 - 0.15×重试 - 0.1×错误密度,全可解释)+ verdict(good/ok/poor)。给 --before+--after 时输出修复前后指标对比:每项 delta + 改善项列表 + 判定变化。",
+    "description": "Agent Benchmark:消费 trace 计算行为指标并给出质量分,用于复盘/门禁。单 trace 输出 metrics(turns/toolCalls/toolKinds/avgLatencyMs/failedCalls/failureRate/llmRetries/errors/errorDensity/reason)+ quality 分(100 - 失败率 - 0.15×重试 - 0.1×错误密度,全可解释)+ verdict(good/ok/poor)。失败率语义:只读探测类工具(read/glob/grep/ls/cat/find/stat)exit 1 = 探测结果(目标不存在),不计执行失败。给 --before+--after 时输出修复前后指标对比:每项 delta + 改善项列表 + 判定变化。",
     "parameters": { "type": "object",
       "properties": { "traceRef": { "type": "string", "description": "单 trace 评分;与 --before/--after 二选一" },
                       "before": { "type": "string", "description": "对比:修复前 trace" },
@@ -154,6 +154,14 @@ interface CompletionVerdict { goalSummary: string;
                       "incidentId": { "type": "string", "description": "query/add 必填" },
                       "text": { "type": "string", "description": "add 必填:经验文本" } },
       "required": [] }
+  },
+  {
+    "name": "dsh_maintenance_trace",
+    "description": "Trace 落盘:把会话事件流(五族包络/原始 firehose 的 JSONL)写入事项的 traceRef 路径(.dsh/state/traces/<incidentId>.jsonl),落盘后 replay/benchmark 即可消费。事件文件需逐行合法 JSON。",
+    "parameters": { "type": "object",
+      "properties": { "incidentId": { "type": "string", "description": "必填" },
+                      "from": { "type": "string", "description": "必填:事件文件路径" } },
+      "required": ["incidentId", "from"] }
   },
   {
     "name": "dsh_maintenance_verify",

@@ -15,12 +15,13 @@
 //   dsh-maint knowledge <incidentId> [--json]     查询事项知识(内嵌 + 知识文件)
 //   dsh-maint knowledge add <incidentId> --text <...> [--json]  沉淀修复经验(追加去重)
 //   dsh-maint knowledge list [--json]             列出全部知识
+//   dsh-maint trace <incidentId> --from <eventsFile> [--json]  会话事件流落盘为事项 trace
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
 // 统一返回:{ ok, data, diagnostics }
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
 import { loadIncidents, sortIncidents, findByPrefix, scoreOf } from "../lib/incidents.mjs";
 import { loadContract, checkDiff } from "../lib/contract.mjs";
 import { runCommand } from "../lib/run.mjs";
@@ -144,7 +145,10 @@ function benchmarkMetrics(traceRef) {
   if (!d.exists) return { exists: false };
   const calls = d.calls;
   const toolCalls = calls.length;
-  const failedCalls = calls.filter((c) => (c.exitCode ?? 0) !== 0).length;
+  // 探测类工具(read/glob/grep/ls/cat/find/stat)exit 1 = "目标不存在"的探测结果,
+  // 是 agent 正常探索路径的一部分,不计为执行失败;其余工具非 0 退出才是失败
+  const PROBE_TOOLS = new Set(["read", "glob", "grep", "ls", "cat", "find", "stat"]);
+  const failedCalls = calls.filter((c) => (c.exitCode ?? 0) !== 0 && !(PROBE_TOOLS.has(c.tool) && (c.exitCode ?? 0) === 1)).length;
   const failureRate = toolCalls ? failedCalls / toolCalls : 0;
   const toolKinds = new Set(calls.map((c) => c.tool)).size;
   const errorCount = d.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
@@ -340,6 +344,23 @@ const TOOLS = {
     return out(true, { traceRef, ...d });
   },
 
+  trace({ id, from, json }) {
+    // trace import <incidentId> <eventsFile>:把会话事件流落盘为事项的 trace 文件
+    if (!id) return fail("需要事项 ID");
+    if (!from) return fail("需要 --from <事件文件路径>");
+    const inc = loadIncidents().find((i) => i.id === id || i.id.startsWith(id));
+    if (!inc) return fail("事项不存在: " + id);
+    if (!existsSync(from)) return fail("事件文件不存在: " + from);
+    const lines = readFileSync(from, "utf8").split("\n").filter(Boolean).filter((l) => { try { JSON.parse(l); return true; } catch { return false; } });
+    if (!lines.length) return fail("事件文件没有合法 JSON 行");
+    const dest = inc.traceRef ? join(REPO, inc.traceRef) : join(STATE, "traces", inc.id + ".jsonl");
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, lines.join("\n") + "\n");
+    const summary = traceSummary(dest);
+    if (!json) console.log("trace 已落盘: " + dest + " (" + summary.eventCount + " 事件)");
+    return out(true, { incidentId: inc.id, dest, eventCount: summary.eventCount });
+  },
+
   knowledge({ action = "query", id, text, json }) {
     if (action === "list") {
       const files = existsSync(KNOWLEDGE) ? readdirSync(KNOWLEDGE).filter((f) => f.endsWith(".md")).sort() : [];
@@ -507,6 +528,8 @@ for (let i = 0; i < rest.length; i++) {
   // 位置参数:verify 的第一个位置参数是 scope;replay 的是 traceRef;其余命令是 id
   else if (cmd === "verify" && !args.scope) args.scope = rest[i];
   else if ((cmd === "replay" || cmd === "benchmark") && !args.traceRef) args.traceRef = rest[i];
+  else if (cmd === "trace" && rest[i] !== "--from" && !args.id) args.id = rest[i];
+  else if (rest[i] === "--from") args.from = rest[++i];
   else if (cmd === "checkpoint" && (rest[i] === "list" || rest[i] === "restore" || rest[i] === "create")) args.action = rest[i];
   else if (cmd === "knowledge" && (rest[i] === "list" || rest[i] === "add")) args.action = rest[i];
   else if (rest[i] === "--text") args.text = rest[++i];
