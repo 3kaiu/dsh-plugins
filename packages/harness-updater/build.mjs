@@ -1,4 +1,4 @@
-// @3kaiu/dsh-harness-updater 构建: 零外部依赖,纯 node 内置
-import { buildBundle } from "../../scripts/esbuild-common.mjs";
+// @3kaiu/dsh-harness-updater 构建: @deepseek-ai/* 由宿主 profile 解析(与 llm/runtime-events 一致)
+import { buildBundle, DSH_EXTERNALS } from "../../scripts/esbuild-common.mjs";
 
-await buildBundle("src/index.ts", "dist/index.js");
+await buildBundle("src/index.ts", "dist/index.js", DSH_EXTERNALS);

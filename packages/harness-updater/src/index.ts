@@ -2,9 +2,11 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import z from "@deepseek-ai/schemastery";
+import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 const PACKAGE = "@deepseek-ai/dsh";
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const NS = settingsNamespace("harness-updater");
 const HISTORY_LIMIT = 20;
 const REGISTRY_URL = "https://registry.npmjs.org/@deepseek-ai%2Fdsh/latest";
 const FETCH_TIMEOUT_MS = 10000;
@@ -93,17 +95,38 @@ async function checkLatest(ctx, deps = {}) {
 
 const name = "dsh-harness-updater";
 
-function apply(ctx) {
+const Config = z.object({
+  checkIntervalMs: z.number().min(60000).max(7 * 24 * 60 * 60 * 1000).default(24 * 60 * 60 * 1000),
+});
+
+function apply(ctx, config) {
+  let lastGood;
+  const current = () => {
+    try {
+      const next = Config(config ?? {});
+      lastGood = next;
+      return next;
+    } catch (error) {
+      if (lastGood === void 0) throw error;
+      ctx.logger?.error("[dsh-updater] keeping the last good configuration");
+      ctx.logger?.error(error);
+      return lastGood;
+    }
+  };
   const state = readState();
   ctx.logger.info(
     `[dsh-updater] last check: ${state.lastCheckAtIso ?? "never"}; latest known: ${state.latest ?? "unknown"}`,
   );
   void checkLatest(ctx);
-  const interval = setInterval(() => void checkLatest(ctx), CHECK_INTERVAL_MS);
+  const interval = setInterval(() => void checkLatest(ctx), current().checkIntervalMs);
   interval.unref();
   // Cordis 语义:ctx.effect(fn) 的 fn 立即执行,返回值才是卸载清理;
   // 直接写 clearInterval 会让定时器刚创建就被清掉(实测从未定时检查)。
   ctx.effect(() => () => clearInterval(interval));
+
+  installSettingsSection(ctx, NS, Config, config, {
+    setSource: (source) => { config = source; },
+  });
 }
 
-export { apply, checkLatest, name };
+export { Config, apply, checkLatest, name };

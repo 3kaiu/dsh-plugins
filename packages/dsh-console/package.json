@@ -18,6 +18,8 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "3.18.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {

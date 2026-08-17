@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-plugins-ui
+      name: '@3kaiu/dsh-plugins-ui'
