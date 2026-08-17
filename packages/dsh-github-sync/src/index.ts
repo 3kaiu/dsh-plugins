@@ -321,6 +321,7 @@ function apply(ctx, config) {
 
   installSettingsSection(ctx, NS, Config, config, {
     setSource: (source) => { config = source; },
+    onChange: () => {},
   });
 }
 
