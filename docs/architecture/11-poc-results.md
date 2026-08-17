@@ -342,3 +342,32 @@ git: ce6782ac4685f64c2547302c3f070ccc2ef296ab (dirty) | trace: 无
 
 **定位**:checkpoint 是恢复执行的地基——headless 会话中断(超时/掉线)后,新会话 restore 快照即可续跑(事项现场/已尝试次数/知识不丢);同时快照的 attempts 数直接服务 budget 的 attempts<3 判定(Phase 3 guarded merge 复用)。
 **下一步**:与维护工作流接线——maintenance.yml 在 agent 任务前后自动 checkpoint,失败重跑前先 restore(待 Phase 3 实战接入)。
+
+## 13. 附:Knowledge 深化 + fixtures 兼容契约实测(Phase 2 第六件,2026-08-17)
+
+**能力**:dsh-maint knowledge 三个动作:
+- `knowledge add <incidentId> --text <...>`:修复经验沉淀到 `.dsh/knowledge/<incidentId>.md`(时间戳头、相同文本去重);
+- `knowledge <incidentId>`(query):返回事项内嵌 knowledge 字段 + 知识文件全文;
+- `knowledge list`:列出全部知识文件与内嵌条目。
+
+**.dsh/fixtures/ 兼容契约资产**(与真实结构一致,测试与后续场景复用):
+- `incidents/inc-open.json`、`incidents/inc-fixed.json`:open/fixed 状态样例(含 knowledge、fixedAt/mergedRefs 字段);
+- `autopilot.yml`:budget + permissions 契约样例(注意:yaml-mini 只支持行内列表 `[a, b]`,不支持 `- item` 形式);
+- 用法:复制到 tmp 仓库对应位置即可被 loadIncidents/loadContract 解析(测试已覆盖)。
+
+**实测**(tmp 仓库:knowledge 沉淀/去重/查询/列表 4 项 + fixtures 解析 1 项;单测新增 5 项,共 23 项全过):
+
+```text
+$ dsh-maint knowledge add INC-20260817-001 --text "修复经验:README 缺失类事项,reproduce 用 existsSync 探测"
+知识已沉淀: .dsh/knowledge/INC-20260817-001.md
+$ dsh-maint knowledge add INC-20260817-001 --text "修复经验:README 缺失类事项,reproduce 用 existsSync 探测"
+知识已存在,跳过: INC-20260817-001.md   ← 去重
+$ dsh-maint knowledge INC-20260817-001
+内嵌: docs/architecture/11-poc-results.md §6 记录了事件桥规格与验证方式
+--- INC-20260817-001.md ---
+## 2026-08-17T03:10:10.725Z
+修复经验:README 缺失类事项,reproduce 用 existsSync 探测,evidence 闸门会自动核验
+```
+
+**定位**:knowledge 是"经验记忆"——同类事项再次出现时,agent 先 query 再动手,避免重复踩坑;checkpoint 快照已含 knowledge 列表,中断续跑不丢记忆。
+**至此 Phase 2 全部六件完成**(Verify/Replay/Benchmark/Checkpoint/Knowledge/matrix+fixtures),剩余:真实 headless 实战验证(Phase 3 前的地基)。

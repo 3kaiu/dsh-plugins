@@ -147,6 +147,15 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_knowledge",
+    "description": "工程记忆读写:query(默认)返回事项内嵌 knowledge 字段 + .dsh/knowledge/ 匹配文件全文;add 把修复经验沉淀到 .dsh/knowledge/<incidentId>.md(时间戳头、相同文本去重);list 列出全部知识文件与内嵌条目。知识随 checkpoint 快照一起保存,支持恢复续跑。",
+    "parameters": { "type": "object",
+      "properties": { "action": { "enum": ["query", "add", "list"], "description": "默认 query" },
+                      "incidentId": { "type": "string", "description": "query/add 必填" },
+                      "text": { "type": "string", "description": "add 必填:经验文本" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

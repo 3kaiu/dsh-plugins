@@ -1,0 +1,15 @@
+{
+  "id": "INC-FIXTURE-FIXED-001",
+  "title": "fixture 样例:fixed 状态事项",
+  "severity": "LOW",
+  "frequency": 1,
+  "taxonomy": "DOC_MISSING",
+  "status": "fixed",
+  "firstSeenAt": "2026-08-17T00:00:00.000Z",
+  "lastSeenAt": "2026-08-17T00:00:00.000Z",
+  "fixedAt": "2026-08-17T02:00:00.000Z",
+  "mergedRefs": ["abc1234 (PR #9)"],
+  "traceRef": ".dsh/state/traces/inc-fixture-fixed.jsonl",
+  "reproduce": { "command": "node -e \"process.exit(1)\"", "workdir": "." },
+  "testCommand": "node -e \"process.exit(0)\""
+}
