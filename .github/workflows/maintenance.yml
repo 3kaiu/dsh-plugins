@@ -43,7 +43,7 @@ jobs:
         run: |
           ID="${{ github.event.inputs.incidentId }}"
           if [ -z "$ID" ]; then
-            ID=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(j.data.incidents[0]?.id ?? "")}catch{console.log("")}})')
+            ID=$(node packages/dsh-maintenance-core/bin/dsh-maint.mjs status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);const o=(j.data.incidents||[]).find(i=>i.status==="open");console.log(o?.id ?? "")}catch{console.log("")}})')
           fi
           echo "incident_id=$ID" >> "$GITHUB_OUTPUT"
           echo "选择事项: $ID"
@@ -69,6 +69,7 @@ jobs:
           if [ -n "$OPEN_PR" ]; then echo "事项 $ID 已有 open PR 修复中($OPEN_PR),跳过重复运行"; exit 0; fi
           echo "issue #$NUM attempts=$ATTEMPTS 开始修复"
       - name: provision headless profile
+        if: steps.issue.outputs.issue_number != ''
         run: |
           dsh --profile headless --help >/dev/null 2>&1
           cd "$DSH_HOME/profiles/headless"
@@ -85,6 +86,7 @@ jobs:
           printf 'agent-default-model:\n  provider: opencode-zen\n  model: deepseek-v4-flash-free\n' > "$DSH_HOME/settings.yaml"
       - name: agent run
         id: agent
+        if: steps.issue.outputs.issue_number != ''
         run: |
           ID="${{ steps.select.outputs.incident_id }}"
           NUM="${{ steps.issue.outputs.issue_number }}"
@@ -110,6 +112,7 @@ jobs:
           grep -q 'SUMMARY:' /tmp/agent-output.txt && echo "agent 完成,含 SUMMARY"
       - name: verify gate (contract + 修复验证)
         id: verify
+        if: steps.issue.outputs.issue_number != ''
         run: |
           ID="${{ steps.select.outputs.incident_id }}"
           git add -A
@@ -145,6 +148,7 @@ jobs:
           echo "verify gate 全通过(contract + evidence)"
       - name: commit + PR
         id: pr
+        if: steps.issue.outputs.issue_number != ''
         run: |
           ID="${{ steps.select.outputs.incident_id }}"
           NUM="${{ steps.issue.outputs.issue_number }}"
@@ -175,6 +179,7 @@ jobs:
           echo "pr_url=$PR" >> "$GITHUB_OUTPUT"
           echo "PR #$PR 已打 verified 标签(evidence 闸门全过)"
       - name: guarded merge (Phase 3 auto-merge)
+        if: steps.issue.outputs.issue_number != ''
         run: |
           PR_URL="${{ steps.pr.outputs.pr_url }}"
           PR=$(echo "$PR_URL" | grep -o '[0-9]*$')
