@@ -179,6 +179,13 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_report",
+    "description": "Console 维护报告(Phase 4 收尾):状态总览(open/fixed 事项计数 + open 列表)+ Agent Score 聚合(与 score 同一数据源,趋势/回归/门禁)+ 运行痕迹(最近 3 个恢复点 + 知识文件数);--gate 透传门禁阈值;Console 早报/维护报告的 CLI 输入侧。",
+    "parameters": { "type": "object",
+      "properties": { "gate": { "type": "string", "description": "发行门禁阈值(默认 60,透传给 score)" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

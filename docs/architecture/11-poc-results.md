@@ -475,3 +475,45 @@ quality: 100 | verdict: good | reason: completed
 
 **结论**:真实 headless 会话事件(schema:1)与 replay/benchmark 完全兼容——部署环境(headless 会话 + 事件桥 + trace 落盘 + 评分)全链路已验证,真实修复走的是同一条管道。
 **边界说明**:本机会话无工具调用(最小任务),tool 族事件的真实兼容性由 §10 的五族 fixture 覆盖(同一 deepReplay 消费者);完整真实修复会话(含工具调用)在 CI maintenance 工作流中每日运行。
+
+## 18. 附:真实 PR 上的 guarded merge 端到端实测(2026-08-17)
+
+**动机**:§15 用 mock PR 数据验证了 guard 判定;本节在 3kaiu/dsh-plugins 用**真实 PR 数据**走完整闭环(此前 guard 调用均为 --mock 注入)。
+
+**过程**(PR #6,分支 maintenance/INC-20260817-002-20260817040000):
+
+1. 登记真实事项 INC-20260817-002(scripts/ 演示脚本缺 README,reproduce 用 existsSync 探测 → main ead82ed);
+2. Agent 修复:新增 scripts/README.md + 事项状态置 fixed(maintenance/ 分支 25018c3);
+3. evidence 全过(verify full:contract 2 项 + pnpm test + build)→ PR body 附闸门证据 + attempts: 0(首次尝试),PR #6 创建;
+4. 打 verified 标签(workflow 中由 verify gate 步骤执行;本地首次发现仓库无此标签 → gh label create verified,与 needs-human 一并预置);
+5. CI 4 组合全绿(§17 同款 matrix)→ mergeStateStatus=CLEAN;
+6. dsh-maint guard --pr 6(**真实 gh 数据**):
+
+```text
+$ dsh-maint guard --pr 6 --json
+{ "ok": true, "data": { "pr": 6, "allowMerge": true,
+  "head": "maintenance/INC-20260817-002-20260817040000", "attempts": 0,
+  "labels": ["verified"], "mergeStateStatus": "CLEAN", "reasons": [] } }
+```
+
+7. 按 workflow guarded merge 步骤行为真实合入:gh pr merge 6 --squash --delete-branch → state=MERGED,mergeCommit b7086d2;
+8. 收尾:incident mergedRefs 更新为 b7086d2 (PR #6)(main 17ec31e)。
+
+**结论**:guard 在真实 PR 数据下放行正确(无误放行);真实修复经 evidence 闸门 → verified 标签 → CI 全绿 → guard 放行 → squash 合入的完整链路跑通,与 CI maintenance 工作流同构。**M4(guarded auto-merge 0 误合并)在真实 PR 上再次验证**。
+
+## 19. 附:Console 维护报告实测(Phase 4 收尾,2026-08-17)
+
+**能力**:dsh-maint report [--gate <阈值>] [--json]——状态总览(open/fixed 计数 + open 列表)+ Agent Score(与 score 同一聚合源:runs/avg/最新/门禁/回归告警)+ 运行痕迹(最近 3 个恢复点 + 知识文件数);Console 早报/维护报告的 CLI 输入侧。
+
+**实测输出**(仓库 3kaiu/dsh-plugins @ 17ec31e):
+
+```text
+$ dsh-maint report
+=== 维护报告 2026-08-17 ===
+事项: 0 open / 2 fixed(知识 1 条)
+Agent Score: 1 次,avg 0,最新 0/100,发行门禁 未过 ❌
+运行痕迹: 最近恢复点 1 个(INC-20260817-001-20260817T030038)
+```
+
+**说明**:门禁未过是正确语义——唯一评分是历史失败记录(quality 0, reason=failed),尚未产生修复后评分;发行门禁看最新一次,修复产生新评分后自动放行(§16 演示过该路径)。
+**DoD**:report 命令实现 + 34 项测试全过(新增 2 项:状态总览/Score 集成 + --gate 透传)。
