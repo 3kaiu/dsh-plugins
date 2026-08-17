@@ -12,7 +12,8 @@
     "cordis.patch.yml"
   ],
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dsh": {
     "bundle": {
