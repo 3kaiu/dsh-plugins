@@ -5,6 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "description": "DSH Console:Agent 工作台——事件流 / 会话 / 失败 / 健康 / 维护(仅 127.0.0.1:3090)",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
   "icons": [ { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" } ]

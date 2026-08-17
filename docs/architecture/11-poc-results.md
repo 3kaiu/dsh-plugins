@@ -584,28 +584,38 @@ $ dsh-maint doctor
 
 **效果**:Console 首页打开即见维护早报(05 §6"早上看早报"落地),CI 每次运行先过健康门禁(doctor 与 score --gate 互补:环境契约健康 vs Agent 行为质量)。
 
-## 23. 附:dshctl 发行层生命周期工具实测(04 篇 §6 第 1 项,2026-08-17)
+## 23. 边界修正与 Console 生命周期(发行层分离确认,2026-08-17)
 
-**能力**:`scripts/dshctl.mjs`——`dshctl console start|stop|status|open [--harness]`(04 篇 §6 增量计划第 1 项落地):
-- start:后台拉起 dsh-console server.mjs(detached + pid 落 `~/.local/state/dsh-runtime/console.pid`,日志 `console.log`),端口 `DSH_CONSOLE_PORT`(默认 3090)、维护仓库 `DSH_MAINT_REPO` 可配,启动后轮询 `/api/health/summary` 确认就绪;
-- stop:SIGTERM → 轮询端口退服 → 兜底 SIGKILL,清理 pid 文件;
-- status:pid 存活 + 端口探测 + 事件库摘要(目录/最新 seq);未运行时退出码 1(可脚本化);
-- open:默认打开 Console(3090),`--harness` 打开官方 Harness Web(3080);`DSHCTL_OPEN_PRINT=1` 只打印 URL 不拉起浏览器。
+**边界确认(重要)**:启动器/生命周期层属独立仓库 **3kaiu/dsh-launcher**(已有 bash `dshctl`:install/start/stop/restart/status/logs/open/update/doctor/watch/agent-install,管官方 Harness 3080;菜单栏 App Swift + launchd + 自有 release.yml 发 macOS zip)。**plugins 仓库不重复实现 dshctl**——曾临时在 scripts/ 实现 `dshctl console` 子命令并加 release.yml,经核对 launcher 仓库已存在同类职责后**撤销删除**,回归分层边界(04 篇 §1)。
 
-**实测输出**(端口 3192 隔离):
+**Console(3090)生命周期归属**:Console 是 plugins 仓库资产(dsh-console),其启动/停止由**发行包内极简 start.sh / stop.sh** 承担(pid 落 `~/.local/state/dsh-runtime/console.pid`,尊重 `DSH_CONSOLE_PORT`);后续可扩展 launcher 的 dshctl 增加 `console` 子命令统一管理(待定,不阻塞)。
+
+**实测**(发行包内 start.sh / stop.sh,端口 3193 隔离):start 打印 pid 与 URL、/api/health/summary 200;stop 后端口退服、pid 文件清理。
+
+## 24. 附:Console 工作台发行包实测(GitHub 构建产物 + PWA,2026-08-17)
+
+**目标落地**:用户需求"GitHub 构建出产物、下载即用、含 PWA"。产物 = `dsh-workbench-<ver>.zip`(plugins 仓库 GitHub Release;启动器/官方 Harness 由 3kaiu/dsh-launcher 独立提供)。
+
+**PWA 补全**(dsh-console):
+- `public/sw.js`:Service Worker——静态资源预缓存、导航网络优先离线回退、`/api/*` 永不缓存;
+- `apple-touch-icon.png`(180×180,程序生成) + index.html 注册 SW + apple-touch-icon link;
+- manifest 补 display_override + description;build 后 dist 含 manifest/sw.js/icon。
+
+**发行流水线**:
+- `scripts/release.ts`(TypeScript,node ≥24 原生 type-stripping 运行):校验 build 产物 → 组装 staging(Console server.mjs + dist + node_modules/ws(唯一外部依赖)+ dsh-maint 工具集 + morning-report + start.sh/stop.sh + package.json/versions.json/README)→ zip + SHA256SUMS;
+- `.github/workflows/release.yml`(ubuntu,node 24):workflow_dispatch(可传版本)或 tag `v*` 触发 → pnpm build console → `node scripts/release.ts` → `gh release create/upload`(`workbench-v<ver>` Release + SHA256SUMS)。
+
+**本地实测**(打包 → 解压 → 运行):
 
 ```text
-$ dshctl console start
-console 已启动(pid 13215,端口 3192,事件库 0 条)
-$ dshctl console status
-console: 运行中(pid 13215,端口 3192)
-  事件库目录: /Users/seeu/.dsh/state/events
-  最新 seq: 0
-$ dshctl console stop
-console 已停止(pid 13215)
-$ dshctl console status; echo $?
-console: 未运行(pid 文件 不存在)
-1
+$ node scripts/release.ts --version 0.1.0
+OK dsh-workbench-0.1.0.zip(87 KB)
+$ unzip -q dsh-workbench-0.1.0.zip && cd dsh-workbench-0.1.0
+$ DSH_CONSOLE_PORT=3193 bash start.sh
+console 已启动(pid 14240,http://127.0.0.1:3193)
+$ for p in / /manifest.webmanifest /sw.js /apple-touch-icon.png /api/health/summary; do ... 200 全部可达
+$ bash stop.sh
+console 已停止
 ```
 
-**说明**:04 篇 §6 第 1 项完成;profile install / pin check / matrix / 菜单栏 App 其余项待桌面环境验证(需真实安装流,不阻塞仓库内交付)。
+**使用**:下载 zip(仓库 Releases 页)→ 解压 → `./start.sh` → http://127.0.0.1:3090 → Safari 添加到程序坞(独立 App 体验);官方 Harness(3080)用 dsh-launcher 发行包。**边界**:本包不含官方代码与启动器(零 fork 零修改);发行包内 doctor 15/100 为"无维护仓库上下文"的正确语义(在维护仓库中为 100,见 §20)。

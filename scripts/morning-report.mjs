@@ -2,11 +2,14 @@
 // morning-report.mjs —— 维护早报:report --json 转 markdown(状态总览 + 发行门禁 + 回归告警 + 待办 + 运行痕迹)
 // 用法: node scripts/morning-report.mjs [--stdout] [--out <path>](默认 .dsh/state/morning-report.md)
 import { execSync } from "node:child_process";
-import { writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dir = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(process.env.DSH_MAINT_REPO ?? process.cwd());
-const BIN = resolve("packages/dsh-maintenance-core/bin/dsh-maint.mjs");
+// 发行包布局(dsh-maint 与早报同目录)优先;仓库布局兜底
+const BIN = existsSync(join(__dir, "dsh-maint", "bin", "dsh-maint.mjs")) ? join(__dir, "dsh-maint", "bin", "dsh-maint.mjs") : resolve("packages/dsh-maintenance-core/bin/dsh-maint.mjs");
 const rp = JSON.parse(execSync("node " + BIN + " report --json", { cwd: REPO, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: REPO } }));
 if (!rp.ok) { console.error("report 失败: " + (rp.diagnostics ?? []).join("; ")); process.exit(1); }
 const d = rp.data;
