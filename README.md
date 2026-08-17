@@ -54,6 +54,7 @@ git tag v0.2.0 && git push origin v0.2.0
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-llm-opencode-zen-0.2.0.tgz
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-console-0.1.0.tgz
 ```
 
 tarball 内已含构建产物(`dist/` + `cordis.patch.yml`),运行时依赖
