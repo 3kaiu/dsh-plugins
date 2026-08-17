@@ -66,7 +66,7 @@ async function checkLatest(ctx, deps = {}) {
       clearTimeout(timer);
     }
   } catch (error) {
-    ctx.logger.warn(`[dsh-updater] version check failed: ${error.message}`);
+    ctx.logger.warn(`[dsh-updater] version check failed: ${String(error?.message ?? error)}`);
     return;
   }
   if (typeof latest !== "string" || latest.length === 0) return;
