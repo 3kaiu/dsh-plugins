@@ -1,0 +1,20 @@
+{
+  "id": "INC-20260817-003",
+  "title": "maintenance.yml 缺步骤守卫:无待办时后续步骤照跑导致 crash",
+  "severity": "MEDIUM",
+  "frequency": 1,
+  "taxonomy": "CI_BUG",
+  "status": "fixed",
+  "firstSeenAt": "2026-08-17T06:21:34.000Z",
+  "lastSeenAt": "2026-08-17T06:21:34.000Z",
+  "reproduce": {
+    "command": "node -e \"const y=require('fs').readFileSync('.github/workflows/maintenance.yml','utf8');const m=y.match(/if: steps\\.issue\\.outputs\\.issue_number != \\x27\\x27/g);process.exit(m&&m.length>=5?0:1)\"",
+    "workdir": "."
+  },
+  "testCommand": "node -e \"const y=require('fs').readFileSync('.github/workflows/maintenance.yml','utf8');const n=String.fromCharCode(34);if(!y.includes('find(i=>i.status==='+n+'open'+n+')'))process.exit(1);const m=y.match(/if: steps\\.issue\\.outputs\\.issue_number != \\x27\\x27/g)||[];if(m.length<5)process.exit(1);console.log('ok')\"",
+  "knowledge": "GitHub Actions 步骤内 exit 0 只结束该步骤 shell,不终止后续步骤;跳过逻辑必须用 if: 条件;incident 命令含引号时外层双引号 + 内部单引号 + 正则单引号用 \\x27 转义,避免 sh 引号嵌套冲突(11 篇 §25 经验)",
+  "fixedAt": "2026-08-17T06:24:00.000Z",
+  "mergedRefs": [
+    "f4e0df4"
+  ]
+}
