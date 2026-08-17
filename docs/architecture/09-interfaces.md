@@ -186,6 +186,12 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_doctor",
+    "description": "兼容健康检查(成功指标 05 §6 的兼容分):权重计分 0-100,≥90 = healthy——incidents 加载(15)/autopilot.yml 契约(30)/state 目录完整(10)/工具清单与 09 §4 对齐(20)/trace 可回放(10)/CI matrix 存在(10)/knowledge 可读(5);输出逐项明细,用于发行前与 CI 前健康门禁。",
+    "parameters": { "type": "object",
+      "properties": {}, "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

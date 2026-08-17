@@ -1,5 +1,5 @@
 // dsh-maintenance-core 单测:解析/排序/契约/工具
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -482,6 +482,56 @@ console.log("# Agent Score/Analytics/归因(Phase 4)");
   assert.equal(rp2.data.score.gate.threshold, 40);
   assert.equal(rp2.data.score.gate.pass, false);
   ok("report --gate:阈值透传(40 仍不通过:reason=failed)");
+}
+console.log("# 兼容健康检查 doctor(成功指标收口)");
+{
+  const repo = mkdtempSync(join(tmpdir(), "doctor-"));
+  writeFileSync(join(repo, "seed.txt"), "x");
+  const incDir = join(repo, ".dsh", "incidents");
+  const fxDir = join(repo, ".dsh", "fixtures");
+  const stDir = join(repo, ".dsh", "state");
+  mkdirSync(incDir, { recursive: true });
+  mkdirSync(fxDir, { recursive: true });
+  mkdirSync(join(stDir, "benchmarks"), { recursive: true });
+  mkdirSync(join(stDir, "checkpoints"), { recursive: true });
+  mkdirSync(join(stDir, "traces"), { recursive: true });
+  mkdirSync(join(repo, ".dsh", "knowledge"), { recursive: true });
+  mkdirSync(join(repo, "docs", "architecture"), { recursive: true });
+  mkdirSync(join(repo, ".github", "workflows"), { recursive: true });
+  writeFileSync(join(incDir, "inc-d.json"), JSON.stringify({ id: "INC-D-001", title: "doctor 测试", severity: "LOW", frequency: 1, taxonomy: "X", status: "open" }));
+  writeFileSync(join(repo, ".dsh", "autopilot.yml"), "version: 1\nagent: { provider: opencode-zen, model: m }\nschedule: { cron: \"0 2 * * *\", tz: Asia/Shanghai }\nselection: { max_tasks_per_run: 1 }\nrepair: { max_attempts: 3, max_changed_files: 15, max_diff_lines: 500, max_runtime: 15m }\nverification: { required: [typecheck, test, regression] }\ngit: { strategy: pull_request, branch_prefix: maintenance/ }\nmerge: { mode: guarded }\npermissions:\n  allow: [packages/**, tests/**, fixtures/**, .dsh/knowledge/**, docs/**]\n  deny: [.github/workflows/release.yml, .dsh/autopilot.yml, LICENSE, secrets/**]\n");
+  const root = fileURLToPath(new URL("../../../", import.meta.url));
+  copyFileSync(join(root, "docs", "architecture", "09-interfaces.md"), join(repo, "docs", "architecture", "09-interfaces.md"));
+  copyFileSync(join(root, ".github", "workflows", "ci.yml"), join(repo, ".github", "workflows", "ci.yml"));
+  execSync("git init -q && git config user.email maint-test@local && git config user.name maint-test && git add -A && git commit -qm base", { cwd: repo });
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const runD = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: repo, encoding: "utf8", env: { ...process.env, DSH_MAINT_REPO: repo } }));
+  // 1) 健康仓库 → 100 healthy
+  const d1 = runD("doctor --json");
+  assert.equal(d1.data.score, 100);
+  assert.equal(d1.data.verdict, "healthy");
+  assert.equal(d1.data.checks.filter((c) => c.result === "pass").length, 7);
+  ok("doctor:健康仓库 100/100 healthy(7/7)");
+  // 2) autopilot.yml 损坏 → 契约 fail
+  writeFileSync(join(repo, ".dsh", "autopilot.yml"), "version: 1\n  bad indent: [x");
+  const d2 = runD("doctor --json");
+  assert.equal(d2.data.score, 70);
+  assert.equal(d2.data.verdict, "warning");
+  ok("doctor:autopilot.yml 损坏 → 70 warning");
+  // 3) 09-interfaces.md 缺失 → 工具清单 fail
+  rmSync(join(repo, "docs", "architecture", "09-interfaces.md"));
+  writeFileSync(join(repo, ".dsh", "autopilot.yml"), "version: 1\nagent: { provider: opencode-zen, model: m }\nschedule: { cron: \"0 2 * * *\", tz: Asia/Shanghai }\nselection: { max_tasks_per_run: 1 }\nrepair: { max_attempts: 3, max_changed_files: 15, max_diff_lines: 500, max_runtime: 15m }\nverification: { required: [typecheck, test, regression] }\ngit: { strategy: pull_request, branch_prefix: maintenance/ }\nmerge: { mode: guarded }\npermissions:\n  allow: [packages/**, tests/**, fixtures/**, .dsh/knowledge/**, docs/**]\n  deny: [.github/workflows/release.yml, .dsh/autopilot.yml, LICENSE, secrets/**]\n");
+  const d3 = runD("doctor --json");
+  assert.equal(d3.data.score, 80);
+  assert.equal(d3.data.verdict, "warning");
+  ok("doctor:09 缺失 → 工具清单 fail → 80 warning");
+  // 4) incidents 空 → 15 fail
+  rmSync(join(incDir, "inc-d.json"));
+  copyFileSync(join(root, "docs", "architecture", "09-interfaces.md"), join(repo, "docs", "architecture", "09-interfaces.md"));
+  const d4 = runD("doctor --json");
+  assert.equal(d4.data.score, 85);
+  assert.equal(d4.data.verdict, "warning");
+  ok("doctor:incidents 空 → 85 warning");
 }
 }
 
