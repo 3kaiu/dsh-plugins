@@ -396,3 +396,36 @@ $ dsh-maint knowledge INC-20260817-001
 **链路覆盖**:incident 构造 → 模拟 agent 修复(改文件 + 声明)→ 事件流生成 → trace 落盘 → evidence 闸门(7 项全 pass)→ checkpoint 快照 → knowledge 沉淀 → replay 回放(2 次调用 completed)→ benchmark 评分(100/good)。
 **语义修正的动机**:真实会话中"先 read 探测(ENOENT)→ 再创建"是标准流程,若探测失败计入失败率,质量分会误伤正常修复;修正后 demo 链路从 50/poor 变为 100/good。
 **Phase 2 至此全部完成**(六件 + matrix + fixtures + 真实链路),进入 Phase 3。
+
+## 15. 附:Guarded auto-merge 实测(Phase 3 首件,2026-08-17)
+
+**能力**:`dsh-maint guard` 判定工具——条件(全过才放行):维护分支(`maintenance/` 前缀)+ verified 标签(evidence 闸门全过时 workflow 打上)+ 无 needs-human 标签 + attempts<3(PR body 解析)+ CI 全绿(`mergeStateStatus=CLEAN/READY`)。输出 allowMerge + 全部拦截原因,全程可解释。
+
+**maintenance.yml 接线**(Phase 3):
+- PR body 附 `attempts: N`(budget 判定输入);
+- PR 创建即打 `verified` 标签(evidence 已全过);
+- 新增 **guarded merge** 步骤:guard 放行 → `gh pr merge --squash --delete-branch`;拦截 → 打 `needs-human` + 输出原因 + 步骤失败;
+- agent 指令强化:修复验证通过后更新 `.dsh/incidents/<id>.json` 的 status=fixed/fixedAt(随 PR 合并进 main,闭环收口)。
+
+**DoD 实测:0 误合并 ✅**(mock 注入 PR 数据,单测 4 项新增,共 28 项全过):
+
+```text
+$ dsh-maint guard --mock allow.json --json
+{ "ok": true, "data": { "allowMerge": true, "attempts": 1, "labels": ["verified"], "mergeStateStatus": "CLEAN", "reasons": [] } }
+  ← 放行:maintenance/ 分支 + verified + attempts 1 + CI 全绿
+
+$ dsh-maint guard --mock deny-human.json --json
+{ "ok": true, "data": { "allowMerge": false, "reasons": ["存在 needs-human 标签(需人工介入)"] } }
+  ← 拦截:needs-human(人工介入标记)
+
+$ dsh-maint guard --mock deny-attempts.json --json
+{ "ok": true, "data": { "allowMerge": false, "attempts": 3, "reasons": ["attempts=3 达到 budget 上限(≥3)"] } }
+  ← 拦截:attempts 达 budget 上限
+
+$ dsh-maint guard --mock deny-branch.json --json
+{ "ok": true, "data": { "allowMerge": false, "reasons": ["非维护分支: feature/INC-W", "CI 未全绿或不可合并(mergeStateStatus=BLOCKED)"] } }
+  ← 拦截:非维护分支 + CI blocked(双原因)
+```
+
+**budget 全量覆盖**:max_attempts_per_issue=3 → guard 拦截 + issue 打 needs-human(workflow issue 步骤原有);max_changed_files/max_diff_lines → verify contract 把关(原有);max_runtime → job timeout 45min + agent timeout 600s(原有);max_runs_per_day → schedule 每日 1 次(原有)。全部已接线。
+**剩余**:真实 PR 上的 guard+merge 走通(依赖真实 headless 会话,Phase 4 无人值守演示一并做);auto repair 循环(schedule 自然重试,attempts 标签驱动)。
