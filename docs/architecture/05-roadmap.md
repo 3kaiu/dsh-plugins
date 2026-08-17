@@ -36,7 +36,7 @@
 | 件 | 做 | 不做 |
 | --- | --- | --- |
 | ① llm-opencode-zen | 现有稳定性收尾(pacing/cooldown/reasoning/tool-call) | 协议合同化(Phase 2)、benchmark |
-| ② dsh-runtime | **事件桥 v0.1.0 已落地(2026-08-17,见 11 篇 §6)**:firehose 订阅面实测 + 五族归一化 JSONL(session/tool/error 有真实数据,test/completion 留 GitHub 侧);待续:WS + 事件库消费侧 + GitHub sync(读) | verify/replay 等扩展族、daemon 化 |
+| ② dsh-runtime | **事件桥 v0.1.0 已落地(2026-08-17,见 11 篇 §6)**:firehose 订阅面实测 + 五族归一化 JSONL(session/tool/error 有真实数据);**GitHub sync(读)完成(2026-08-17)**:@3kaiu/dsh-github-sync 增量拉取 CI runs + PR 状态 → 事件库 test/completion 族(实测:20 条真实 test.completed,重启幂等) | verify/replay 等扩展族、daemon 化 |
 | ③ DSH Console | Dashboard 实时 + Sessions(活动流+timeline 只读)+ Failures(聚合+Inspect)+ Health 摘要 | Score 完整版、Analytics、原生壳 |
 | ④ GitHub 维护闭环 | Issue → agent → PR → CI → 人工 merge;budget 四项 | guarded auto-merge、一次修多任务 |
 

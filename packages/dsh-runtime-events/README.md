@@ -18,8 +18,8 @@ DeepSeek Harness 插件:**运行时事件桥(runtime event bridge)** v0.1.0。
 | `session` | `session.started` / `session.title` / `session.completed` | firehose 的 `session/title`、`request/context`、`session/disposed` 与退出兜底 |
 | `tool` | `tool.started` / `tool.completed` / `tool.failed` | `tool/call` + `tool/result`(`isError` 派生 `exitCode=0/1`) |
 | `error` | `error.recorded` | `llm/retry`(LLM_RETRY/LOW)+ 用量文件增量(RATE_LIMITED / QUOTA_EXCEEDED) |
-| `test` | `test.completed` | 保留,由 GitHub 侧(`source=github`)填充 |
-| `completion` | `completion.proposed` / `completion.verdict` | 保留,由 GitHub 侧(`source=github`)填充 |
+| `test` | `test.started` / `test.completed` | 由 `@3kaiu/dsh-github-sync` 填充(GitHub Actions runs,`source=github`) |
+| `completion` | `completion.proposed` / `completion.verdict` | 由 `@3kaiu/dsh-github-sync` 填充(PR 开/合/关,`source=github`) |
 
 每条包络(envelope)格式(`schema=1`):
 

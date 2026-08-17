@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-github-sync
+      name: '@3kaiu/dsh-github-sync'

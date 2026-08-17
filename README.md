@@ -12,6 +12,8 @@
 | `packages/harness-updater` | [@3kaiu/dsh-harness-updater](./packages/harness-updater) | **更新器** — 每天一次 registry 检查 + npx 缓存预热;零运行时依赖 |
 | `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推工具** — 裸坐标反推 flex 语义 + 还原决策分类(`infer_layout` / `annotate_layout` / `classify_design` 三个 dsh 工具) |
 | `packages/dsh-console` | [@3kaiu/dsh-console](./packages/dsh-console) | **Console 工作台(dsh web 插件)** — 事件库(REST+WS)+ 四页 Agent 工作台前端;随官方 dsh web 进程启动(默认 3090),也可独立运行 |
+| `packages/dsh-github-sync` | [@3kaiu/dsh-github-sync](./packages/dsh-github-sync) | **GitHub sync(读侧)** — CI workflow runs + PR 状态增量拉进事件库,填充 test/completion 族(source=github);幂等轮询,匿名/token 均可用 |
+| `packages/dsh-runtime-events` | [@3kaiu/dsh-runtime-events](./packages/dsh-runtime-events) | **运行时事件桥** — 官方 session firehose → 五族事件 JSONL(事件库) |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 配额跟踪、并发信号量、布局内核、测试助手;被各插件构建时 bundle 进各自 dist |
 
 每个插件包都是独立的 npm 包,自带 `dsh.bundle` manifest(`cordis.patch.yml`),
@@ -30,7 +32,7 @@ pnpm install:local   # = pnpm build && node scripts/install-local.mjs
 ```
 
 `install-local.mjs` 对 `$DSH_HOME/profiles/web`:
-1. 用 `pnpm add file:<abs>` 把三个插件装进 profile 的 node_modules(与发布后
+1. 用 `pnpm add file:<abs>` 把全部插件装进 profile 的 node_modules(与发布后
    `dsh plugin --profile web add <pkg>` 等效);
 2. 把声明了 `dsh.bundle` 的依赖 reconcile 进 `dsh.profile.bundles`
    (即 `dsh plugin add` 在安装后自动做的那一步);
@@ -55,6 +57,7 @@ dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/lates
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-harness-updater-0.1.0.tgz
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-layout-infer-0.2.0.tgz
 dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-console-0.1.0.tgz
+dsh plugin --profile web add https://github.com/3kaiu/dsh-plugins/releases/latest/download/3kaiu-dsh-github-sync-0.1.0.tgz
 ```
 
 tarball 内已含构建产物(`dist/` + `cordis.patch.yml`),运行时依赖
@@ -73,7 +76,8 @@ external import 即可解析(已按此流程实测验证)。
 dsh plugin --profile web add @3kaiu/dsh-llm-opencode-zen
 dsh plugin --profile web add @3kaiu/dsh-harness-updater
 dsh plugin --profile web add @3kaiu/dsh-layout-infer
-dsh plugin --profile web add @3kaiu/dsh-console   # Console 工作台:随 dsh web 启动(默认 http://127.0.0.1:3090)
+dsh plugin --profile web add @3kaiu/dsh-console      # Console 工作台:随 dsh web 启动(默认 http://127.0.0.1:3090)
+dsh plugin --profile web add @3kaiu/dsh-github-sync  # GitHub sync(读):CI runs + PR 状态 → 事件库 test/completion 族
 ```
 
 ## 配置
