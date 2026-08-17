@@ -15,6 +15,6 @@
   "knowledge": "docs 缺失类事项:reproduce 用 existsSync 探测(11 篇 §13 经验)",
   "fixedAt": "2026-08-17T05:09:24.591Z",
   "mergedRefs": [
-    "(待合入)"
+    "b7086d2 (PR #6)"
   ]
 }
