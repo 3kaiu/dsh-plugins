@@ -64,8 +64,12 @@ jobs:
           printf 'agent-default-model:\n  provider: opencode-zen\n  model: deepseek-v4-flash-free\n' > "$DSH_HOME/settings.yaml"
 
       - name: 无头 Agent 执行任务(预算:单任务,20min 上限)
+        # dispatch 输入经 env 传递:任务文本对 shell 完全不可见(不做任何解析)
+        env:
+          INPUT_TASK: ${{ github.event.inputs.task }}
+
         run: |
-          dsh --profile headless "${{ github.event.inputs.task }}" | tee /tmp/agent-output.txt
+          dsh --profile headless "$INPUT_TASK" | tee /tmp/agent-output.txt
           test -s /tmp/agent-output.txt && echo "[agent-loop] 输出非空 OK"
 
       - name: 校验 Agent 产物

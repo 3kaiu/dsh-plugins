@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const args = process.argv.slice(2);
 const home = args.includes("--home") ? args[args.indexOf("--home") + 1] : (process.env.DSH_HOME?.length ? process.env.DSH_HOME : join(homedir(), ".dsh"));
@@ -19,8 +19,11 @@ const ERR_LOG = join(home, "state", "events", "error.jsonl");
 const INC_DIR = join(REPO, ".dsh", "incidents");
 
 function now() { return new Date().toISOString(); }
-function sh(cmd) {
-  try { return execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
+// 数组参数 + execFileSync:不走 shell,title/body/搜索词里的任何字符
+// (引号、$()、反引号等)都不会被当作命令执行 —— 错误消息来自 LLM/工具
+// 输出,属于不可信数据,绝不能拼进命令字符串。
+function sh(args) {
+  try { return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
   catch (e) { return (e.stdout ?? "") + (e.stderr ?? ""); }
 }
 
@@ -92,7 +95,7 @@ for (const { inc, group } of out) {
 if (!dryRun) {
   for (const { inc } of out) {
     const title = "[" + inc.id + "] " + inc.title;
-    const found = sh("gh issue list --state open --label maintenance --search \"" + inc.id + "\" --json number --jq '.[0].number // empty'");
+    const found = sh(["issue", "list", "--state", "open", "--label", "maintenance", "--search", inc.id, "--json", "number", "--jq", ".[0].number // empty"]);
     if (found) {
       console.log("  issue 已存在 #" + found + "(" + title + ")");
     } else {
@@ -109,7 +112,7 @@ if (!dryRun) {
         "> 自动建档自运行时 error.recorded(scripts/incidents.mjs)。",
         "> 维护循环:maintenance workflow 每日扫描 → Agent 修复 → PR → 人工 merge。",
       ].join("\n");
-      const num = sh("gh issue create --label maintenance --title \"" + title + "\" --body \"" + body.replace(/"/g, '\\"') + "\"");
+      const num = sh(["issue", "create", "--label", "maintenance", "--title", title, "--body", body]);
       console.log("  → 已创建 issue: " + num);
     }
   }
