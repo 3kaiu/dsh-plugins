@@ -129,6 +129,15 @@ interface CompletionVerdict { goalSummary: string;
       "required": [] }
   },
   {
+    "name": "dsh_maintenance_benchmark",
+    "description": "Agent Benchmark:消费 trace 计算行为指标并给出质量分,用于复盘/门禁。单 trace 输出 metrics(turns/toolCalls/toolKinds/avgLatencyMs/failedCalls/failureRate/llmRetries/errors/errorDensity/reason)+ quality 分(100 - 失败率 - 0.15×重试 - 0.1×错误密度,全可解释)+ verdict(good/ok/poor)。给 --before+--after 时输出修复前后指标对比:每项 delta + 改善项列表 + 判定变化。",
+    "parameters": { "type": "object",
+      "properties": { "traceRef": { "type": "string", "description": "单 trace 评分;与 --before/--after 二选一" },
+                      "before": { "type": "string", "description": "对比:修复前 trace" },
+                      "after": { "type": "string", "description": "对比:修复后 trace" } },
+      "required": [] }
+  },
+  {
     "name": "dsh_maintenance_verify",
     "description": "跑契约或证据核验。contract:diff 范围+禁止路径+行数(默认);evidence:agent 声明 vs 磁盘事实——summary 非空、声明文件真实出现在 diff、无未声明文件、reproduce 转不可复现、test 通过,拦截'假完成';full:再加 pnpm test+build。这是修复完成前的最后一道闸,全部通过才算 Fixed。",
     "parameters": { "type": "object",

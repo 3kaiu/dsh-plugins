@@ -205,5 +205,68 @@ console.log("# replay 深度回放(修复前后对比)");
   assert.equal(miss.data.exists, false);
   ok("replay 不存在 trace → exists=false");
 }
+console.log("# benchmark Agent 行为指标(修复前后对比)");
+{
+  const { execSync } = await import("node:child_process");
+  const dir = mkdtempSync(join(tmpdir(), "bench-"));
+  const BIN = fileURLToPath(new URL("../bin/dsh-maint.mjs", import.meta.url));
+  const ev = (o) => JSON.stringify(o);
+  // before:失败现场(2 次调用 1 败 + 2 重试 + 1 类错误)
+  writeFileSync(join(dir, "before.jsonl"), [
+    ev({ type: "session.started", at: "2026-08-17T04:00:00.000Z", data: { title: "修复 x" } }),
+    ev({ type: "tool.started", at: "2026-08-17T04:00:01.000Z", data: { tool: "bash", inputSummary: "a" } }),
+    ev({ type: "tool.completed", at: "2026-08-17T04:00:02.000Z", data: { tool: "bash", exitCode: 0, latencyMs: 100, stdoutTail: "ok" } }),
+    ev({ type: "tool.started", at: "2026-08-17T04:00:03.000Z", data: { tool: "bash", inputSummary: "b" } }),
+    ev({ type: "tool.completed", at: "2026-08-17T04:00:04.000Z", data: { tool: "bash", exitCode: 1, latencyMs: 300, stdoutTail: "ERR" } }),
+    ev({ type: "error.recorded", at: "2026-08-17T04:00:05.000Z", data: { taxonomy: "REPRODUCE_FAILED", severity: "LOW", occurrences: 2 } }),
+    ev({ type: "llm/retry", at: "2026-08-17T04:00:06.000Z", data: {} }),
+    ev({ type: "llm/retry", at: "2026-08-17T04:00:07.000Z", data: {} }),
+    ev({ type: "session.completed", at: "2026-08-17T04:00:10.000Z", data: { reason: "failed", turns: 2 } })
+  ].join("\n") + "\n");
+  // after:成功现场(2 次调用全 0 退出,无重试无错误)
+  writeFileSync(join(dir, "after.jsonl"), [
+    ev({ type: "session.started", at: "2026-08-17T04:30:00.000Z", data: { title: "修复 x(重试)" } }),
+    ev({ type: "tool.started", at: "2026-08-17T04:30:01.000Z", data: { tool: "bash", inputSummary: "a" } }),
+    ev({ type: "tool.completed", at: "2026-08-17T04:30:02.000Z", data: { tool: "bash", exitCode: 0, latencyMs: 90, stdoutTail: "ok" } }),
+    ev({ type: "tool.started", at: "2026-08-17T04:30:03.000Z", data: { tool: "bash", inputSummary: "b" } }),
+    ev({ type: "tool.completed", at: "2026-08-17T04:30:04.000Z", data: { tool: "bash", exitCode: 0, latencyMs: 80, stdoutTail: "done" } }),
+    ev({ type: "session.completed", at: "2026-08-17T04:30:06.000Z", data: { reason: "completed", turns: 1 } })
+  ].join("\n") + "\n");
+  const runB = (args) => JSON.parse(execSync("node " + BIN + " " + args, { cwd: dir, encoding: "utf8" }));
+  // 1) 失败现场指标
+  const bf = runB("benchmark before.jsonl --json");
+  assert.equal(bf.data.exists, true);
+  assert.equal(bf.data.metrics.toolCalls, 2);
+  assert.equal(bf.data.metrics.failedCalls, 1);
+  assert.equal(bf.data.metrics.failureRate, 0.5);
+  assert.equal(bf.data.metrics.llmRetries, 2);
+  assert.equal(bf.data.metrics.errorDensity, 1); // 2 次错误 / 2 次调用
+  assert.equal(bf.data.metrics.reason, "failed");
+  assert.equal(bf.data.quality, 10); // 1 - 失败率0.5 - 重试0.15×2 - 错误密度0.1×1 = 0.1 → 10
+  assert.equal(bf.data.verdict, "poor");
+  ok("benchmark 失败现场:失败率/重试/错误密度/质量分");
+  // 2) 成功现场指标
+  const af = runB("benchmark after.jsonl --json");
+  assert.equal(af.data.metrics.failedCalls, 0);
+  assert.equal(af.data.metrics.failureRate, 0);
+  assert.equal(af.data.metrics.reason, "completed");
+  assert.equal(af.data.quality, 100);
+  assert.equal(af.data.verdict, "good");
+  ok("benchmark 成功现场:全 0 退出 → 质量分 100/good");
+  // 3) 修复前后对比
+  const cp = runB("benchmark --before before.jsonl --after after.jsonl --json");
+  assert.equal(cp.data.exists, true);
+  assert.equal(cp.data.deltas.failureRate.delta, -0.5);
+  assert.equal(cp.data.deltas.llmRetries.delta, -2);
+  assert.equal(cp.data.deltas.quality.delta, 90); // 100 - 10
+  assert.equal(cp.data.verdict.before, "poor");
+  assert.equal(cp.data.verdict.after, "good");
+  assert.ok(cp.data.verdict.improved.includes("failureRate"));
+  ok("benchmark 对比:失败率 0.5→0、重试 2→0、质量 20→100,poor→good");
+  // 4) 不存在
+  const miss = runB("benchmark nope.jsonl --json");
+  assert.equal(miss.data.exists, false);
+  ok("benchmark 不存在 trace → exists=false");
+}
 
 console.log("\npassed", passed, "checks");

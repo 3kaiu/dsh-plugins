@@ -255,3 +255,36 @@ $ dsh-maint replay --before before.jsonl --after after.jsonl
 
 **发现**:当前 .dsh/incidents 的 traceRef 指向文件从未写入(维护闭环还没落 trace)——深度回放已就绪,待 headless 会话接入 trace 落盘后即可对真实修复做 before/after 对比。
 **工程含义**:回放是"复盘"能力的地基:假完成拦截管"修没修对",回放管"过程怎么走的";后续 Agent Benchmark 可直接消费 trace 计算行为指标(工具调用效率、重试率、错误密度)。
+
+## 11. 附:Agent Benchmark 实测(Phase 2 第四件,2026-08-17)
+
+**能力**:dsh-maint benchmark 消费 trace(与 replay 同源)计算行为指标,三种用法:
+- `benchmark <traceRef> [--json]`:单 trace 评分——metrics(turns/toolCalls/toolKinds/avgLatencyMs/failedCalls/failureRate/llmRetries/errors/errorDensity/reason)+ quality 分 + verdict(good≥80/ok≥60/poor);
+- `benchmark --before <ref> --after <ref> [--json]`:修复前后对比——每项指标 delta + 改善项列表 + 判定变化;
+- 质量分公式全可解释:`100 - 失败率×100 - 0.15×重试数 - 0.1×错误密度`(封底 0),无黑盒模型。
+
+**实测**(构造 fixture:失败现场 2 次调用 1 败 + 2 重试 + 2 次错误;成功现场 2 次调用全 0 退出;单测 4 项新增,共 17 项全过):
+
+```text
+$ dsh-maint benchmark before.jsonl
+=== Benchmark: .../before.jsonl (8 事件) ===
+  turns          3
+  toolCalls      1 (种类 1)
+  failedCalls    1 (失败率 100%)
+  llmRetries     1
+  errors         REPRODUCE_FAILED ×2
+  avgLatency     512ms
+  reason         failed
+  quality        0/100 (poor)
+
+$ dsh-maint benchmark --before before.jsonl --after after.jsonl
+=== Benchmark 对比: before.jsonl (修复前) vs after.jsonl (修复后) ===
+  failureRate    1.000 → 0.000 ↓
+  llmRetries     1.000 → 0.000 ↓
+  errorDensity   2.000 → 0.000 ↓
+  quality        0.000 → 100.000 ↑
+  verdict        poor → good (改善: failureRate, llmRetries, errorDensity, quality)
+```
+
+**定位**:benchmark 是"复盘 + 门禁"双用途——复盘:每次修复后看失败率/重试/错误密度是否真的降(与 replay 的过程还原互补);门禁:Phase 3 的 guarded auto-merge 可把"修复后 benchmark ≥ 阈值"纳入放行条件(如 quality ≥ 60 且 reason=completed)。
+**待接入**:真实 headless 会话的 trace 落盘后,benchmark 即可对真实修复打分(当前与 replay 一样,先以 fixture 验证语义)。
