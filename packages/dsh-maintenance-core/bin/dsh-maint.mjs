@@ -5,7 +5,8 @@
 //   dsh-maint inspect <incidentId> [--json]     查看单个事项完整现场
 //   dsh-maint reproduce <incidentId> [--json]   重放最小复现(退出 0=缺陷可复现)
 //   dsh-maint test <incidentId> [--json]        跑定向测试(修复前后对比)
-//   dsh-maint replay <traceRef> [--json]        (Phase 2 深度回放;现为 trace 摘要)
+//   dsh-maint replay <traceRef> [--json]        深度回放:会话元数据+工具调用序列+错误+timeline
+//   dsh-maint replay --before <ref> --after <ref> [--json]  修复前后行为对比
 //   dsh-maint verify contract [--json]          契约闸门(diff 范围/禁止路径/行数)
 //   dsh-maint verify evidence --claim <json> --incident <id> [--json]
 //                                            证据核验:agent 声明 vs 磁盘事实
@@ -32,17 +33,101 @@ function readAttempts() {
     return readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
   } catch { return []; }
 }
-function traceSummary(traceRef) {
-  // traceRef 支持:仓库内 .dsh/state/traces/<ref>.jsonl,或 events 家族文件路径
+function loadTrace(traceRef) {
+  // traceRef 支持:仓库内 .dsh/state/traces/<ref>.jsonl、仓库内相对路径、绝对路径
   const candidates = [join(STATE, "traces", traceRef), join(REPO, traceRef), traceRef];
   for (const p of candidates) {
     if (!existsSync(p)) continue;
-    const lines = readFileSync(p, "utf8").split("\n").filter(Boolean);
-    const first = lines[0] ? JSON.parse(lines[0]) : null;
-    const last = lines[lines.length - 1] ? JSON.parse(lines[lines.length - 1]) : null;
-    return { exists: true, path: p, eventCount: lines.length, firstType: first?.type ?? null, lastType: last?.type ?? null };
+    const events = readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter(Boolean);
+    return { path: p, events };
   }
-  return { exists: false, eventCount: 0 };
+  return null;
+}
+function traceSummary(traceRef) {
+  const t = loadTrace(traceRef);
+  if (!t) return { exists: false, eventCount: 0 };
+  const first = t.events[0], last = t.events[t.events.length - 1];
+  return { exists: true, path: t.path, eventCount: t.events.length, firstType: first?.type ?? null, lastType: last?.type ?? null };
+}
+// 深度回放:把 trace 事件流还原为结构化会话(兼容五族包络与原始 firehose 两种形态)
+function deepReplay(traceRef) {
+  const t = loadTrace(traceRef);
+  if (!t) return { exists: false };
+  const ev = t.events;
+  const at = (e) => (e.at ?? "").slice(11, 19) || "";
+  const started = ev.find((e) => e.type === "session.started");
+  const completed = ev.find((e) => e.type === "session.completed");
+  const titleEv = ev.find((e) => e.type === "session.title");
+  const ctx = ev.find((e) => e.type === "request/context");
+  const calls = [];
+  const errors = [];
+  let retries = 0;
+  let open = null;
+  const timeline = [];
+  const push = (e, msg) => timeline.push((at(e) ? at(e) + " " : "") + msg);
+  for (const e of ev) {
+    switch (e.type) {
+      case "session.started": push(e, "session 开始" + (e.data.title ? " · " + e.data.title : "")); break;
+      case "session.title": push(e, "会话标题: " + e.data.title); break;
+      case "request/context": push(e, "请求上下文: " + (e.data.provider ?? "?") + " / " + (e.data.model ?? "?") + " (window " + (e.data.contextWindow ?? "?") + ")"); break;
+      case "turn/start": push(e, "turn 开始"); break;
+      case "turn/end": push(e, "turn 结束" + (e.data.reason ? " (" + e.data.reason.kind + ")" : "")); break;
+      case "user/message": push(e, "用户消息"); break;
+      case "tool.started": case "tool/call": open = { tool: e.data.tool ?? e.data.name ?? "?", input: e.data.inputSummary ?? (e.data.arguments ? String(e.data.arguments).slice(0, 120) : null), at: at(e) }; break;
+      case "tool.completed": case "tool/result": {
+        const d = e.data;
+        const content = d.stdoutTail ?? (Array.isArray(d.message?.content) ? JSON.stringify(d.message.content).slice(0, 120) : null);
+        const exit = d.exitCode ?? (d.isError ? 1 : 0);
+        const c = { tool: open?.tool ?? d.tool ?? "?", input: open?.input ?? null, exitCode: exit, latencyMs: d.latencyMs ?? null, output: content ?? null, at: open?.at ?? at(e) };
+        calls.push(c);
+        timeline.push((c.at ? c.at + " " : "") + "→ " + c.tool + (c.input ? " " + String(c.input).replace(/\n/g, " ").slice(0, 60) : "") + (c.output != null ? " exit=" + c.exitCode + (c.latencyMs != null ? " (" + c.latencyMs + "ms)" : "") + " 「" + String(c.output).replace(/\n/g, " ").slice(0, 40) + "」" : " exit=" + c.exitCode));
+        open = null;
+        break;
+      }
+      case "tool.failed": {
+        const c = { tool: open?.tool ?? e.data?.tool ?? "?", input: open?.input ?? null, exitCode: e.data?.exitCode ?? 1, error: e.data?.message ?? null, at: open?.at ?? at(e) };
+        calls.push(c);
+        timeline.push((c.at ? c.at + " " : "") + "→ " + c.tool + " ✗ " + (c.error ?? "").replace(/\n/g, " ").slice(0, 60));
+        open = null;
+        break;
+      }
+      case "llm/retry": retries++; push(e, "LLM 重试: " + (e.data.error ?? "").slice(0, 80)); break;
+      case "error.recorded": errors.push({ taxonomy: e.data.taxonomy, severity: e.data.severity, occurrences: e.data.occurrences ?? 1 }); push(e, "错误: " + e.data.taxonomy + " (" + e.data.severity + " ×" + (e.data.occurrences ?? 1) + ")"); break;
+      case "session.completed": push(e, "session 完成: " + (e.data.reason ?? "") + " turns=" + (e.data.turns ?? "?") + " tokens=" + (e.data.tokens ? e.data.tokens.in + "/" + e.data.tokens.out : "?")); break;
+      default: if (e.type && !e.type.startsWith("assistant/") && e.type !== "message") push(e, e.type); break;
+    }
+  }
+  return {
+    exists: true, path: t.path, eventCount: ev.length,
+    session: { title: titleEv?.data?.title ?? started?.data?.title ?? null, model: ctx?.data?.model ?? null, turns: completed?.data?.turns ?? null, tokens: completed?.data?.tokens ?? null, durationMs: completed?.data?.durationMs ?? null, reason: completed?.data?.reason ?? null },
+    calls: calls.map((c) => ({ tool: c.tool, input: c.input, exitCode: c.exitCode, latencyMs: c.latencyMs, output: c.output ?? c.error })),
+    errors, llmRetries: retries, timeline,
+  };
+}
+// 修复前后对比:工具序列 + 错误 + 结果差异
+function diffTraces(beforeRef, afterRef) {
+  const a = deepReplay(beforeRef);
+  const b = deepReplay(afterRef);
+  if (!a.exists || !b.exists) return { exists: false, a: a.exists, b: b.exists };
+  const seqA = a.calls.map((c) => c.tool);
+  const seqB = b.calls.map((c) => c.tool);
+  const changes = [];
+  const n = Math.max(seqA.length, seqB.length);
+  for (let i = 0; i < n; i++) {
+    if (i >= seqA.length) changes.push({ at: i + 1, kind: "added", detail: "B 新增调用 " + seqB[i] });
+    else if (i >= seqB.length) changes.push({ at: i + 1, kind: "removed", detail: "A 有而 B 无: " + seqA[i] });
+    else if (seqA[i] !== seqB[i]) changes.push({ at: i + 1, kind: "changed", detail: seqA[i] + " → " + seqB[i] });
+  }
+  const resultChanges = [];
+  for (let i = 0; i < Math.min(a.calls.length, b.calls.length); i++) {
+    const ca = a.calls[i], cb = b.calls[i];
+    if (ca.tool === cb.tool && ca.exitCode !== cb.exitCode) resultChanges.push({ at: i + 1, tool: ca.tool, exitCode: ca.exitCode + " → " + cb.exitCode });
+  }
+  const errA = a.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
+  const errB = b.errors.reduce((m, e) => m + (e.occurrences ?? 1), 0);
+  return { exists: true, seqA, seqB, changes, resultChanges, errors: { before: a.errors, after: b.errors, total: errA + " → " + errB }, reason: { before: a.session.reason, after: b.session.reason }, sessionA: a.session, sessionB: b.session };
 }
 
 // 契约类闸门(contract):diff 范围 + 禁止路径 + 行数
@@ -169,13 +254,29 @@ const TOOLS = {
     return out(true, data);
   },
 
-  replay({ traceRef, json }) {
-    if (!traceRef) return fail("需要 --traceRef");
-    const t = traceSummary(traceRef);
-    if (!t.exists) return out(true, { traceRef, exists: false }, ["trace 不存在,深度回放为 Phase 2 能力"]);
-    const data = { traceRef, exists: true, eventCount: t.eventCount, firstType: t.firstType, lastType: t.lastType };
-    if (!json) console.log("trace " + traceRef + ": " + t.eventCount + " 事件, " + t.firstType + " → " + t.lastType);
-    return out(true, data);
+  replay({ traceRef, json, before, after }) {
+    if (before && after) {
+      const d = diffTraces(before, after);
+      if (!d.exists) return out(true, { exists: false, before: d.a, after: d.b }, ["before/after trace 至少一个不存在"]);
+      if (!json) {
+        console.log("=== 回放对比: " + before + " (修复前) vs " + after + " (修复后) ===");
+        console.log("工具序列 A: " + (d.seqA.join(" → ") || "(空)"));
+        console.log("工具序列 B: " + (d.seqB.join(" → ") || "(空)"));
+        for (const c of d.changes) console.log("  [" + c.at + "] " + c.kind + ": " + c.detail);
+        for (const c of d.resultChanges) console.log("  [" + c.at + "] 结果变化: " + c.tool + " exit " + c.exitCode);
+        console.log("错误: " + d.errors.total + " (" + (d.reason.before ?? "?") + " → " + (d.reason.after ?? "?") + ")");
+      }
+      return out(true, d);
+    }
+    if (!traceRef) return fail("需要 --traceRef(或 --before + --after)");
+    const d = deepReplay(traceRef);
+    if (!d.exists) return out(true, { traceRef, exists: false }, ["trace 不存在"]);
+    if (!json) {
+      console.log("=== 回放: " + d.path + " (" + d.eventCount + " 事件) ===");
+      console.log("会话: " + (d.session.title ?? "(无标题)") + " | 模型: " + (d.session.model ?? "?") + " | turns: " + (d.session.turns ?? "?") + " | tokens: " + (d.session.tokens ? d.session.tokens.in + "/" + d.session.tokens.out : "?") + " | 结果: " + (d.session.reason ?? "?"));
+      for (const l of d.timeline) console.log(l);
+    }
+    return out(true, { traceRef, ...d });
   },
 
   verify({ scope = "contract", json, claim, incident }) {
@@ -216,8 +317,11 @@ for (let i = 0; i < rest.length; i++) {
   else if (rest[i] === "--scope") args.scope = rest[++i];
   else if (rest[i] === "--claim") args.claim = rest[++i];
   else if (rest[i] === "--incident") args.incident = rest[++i];
-  // 位置参数:verify 的第一个位置参数是 scope,其余命令是 id
+  else if (rest[i] === "--before") args.before = rest[++i];
+  else if (rest[i] === "--after") args.after = rest[++i];
+  // 位置参数:verify 的第一个位置参数是 scope;replay 的是 traceRef;其余命令是 id
   else if (cmd === "verify" && !args.scope) args.scope = rest[i];
+  else if (cmd === "replay" && !args.traceRef) args.traceRef = rest[i];
   else if (!args.id) args.id = rest[i];
 }
 if (!TOOLS[cmd]) {
