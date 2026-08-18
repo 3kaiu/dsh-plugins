@@ -703,9 +703,9 @@ class OpenCodeZenAdapter extends LlmAdapter {
       const watchdog = idleWatchdog(upstream, settings.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE);
       let emitted = false;
 
+      const payload = buildWireRequest(messages, options, tools, effort);
       try {
         for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt++) {
-          const payload = buildWireRequest(messages, options, tools, effort);
           const iterator = this.requestStream(
             options,
             connection,
