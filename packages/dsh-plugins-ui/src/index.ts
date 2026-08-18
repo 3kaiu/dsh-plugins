@@ -16,7 +16,7 @@
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -176,9 +176,13 @@ export class PluginManagerGateway extends TypertRemoteService {
   /** 重启 dsh web(安装/卸载/升级后生效) */
   @Remote("restart")
   restart() {
-    const child = spawn(process.execPath, [process.argv[1], ...process.argv.slice(2)], {
+    const logFd = openSync("/tmp/dsh-restart.log", "a");
+    writeSync(logFd, "[" + new Date().toISOString() + "] restart called, argv=" + JSON.stringify(process.argv.slice(1)) + "\n");
+    // 延迟 2s 再 exec 自身:给当前进程 800ms 退出与端口释放留出时间,
+    // 避免子进程启动期绑同端口撞 EADDRINUSE(sh -c 包装:先 sleep 后 exec)。
+    const child = spawn("sh", ["-c", `sleep 2; exec "$0" "$@"`, process.execPath, process.argv[1], ...process.argv.slice(2)], {
       detached: true,
-      stdio: "ignore",
+      stdio: ["ignore", logFd, logFd],
       env: { ...process.env, DSH_WEB_RESTARTING: "1" },
     });
     child.unref();
