@@ -36,6 +36,62 @@ const SHORT_NAMES = {
   "dsh-plugins-ui": "3kaiu-dsh-plugins-ui",
 };
 
+// 商店目录:浏览器「管理」tab 的可用插件清单(名称/描述/emoji 面向用户)
+const CATALOG = [
+  { key: "llm-opencode-zen", pkg: "@3kaiu/dsh-llm-opencode-zen", emoji: "🦙", name: "OpenCode Zen 模型", description: "免费 DeepSeek 模型接入,可调并发/重试/模型列表" },
+  { key: "dsh-github-sync", pkg: "@3kaiu/dsh-github-sync", emoji: "🔁", name: "GitHub 同步", description: "把 CI 工作流与 PR 状态拉进本地事件库" },
+  { key: "dsh-runtime-events", pkg: "@3kaiu/dsh-runtime-events", emoji: "⏱️", name: "运行时事件", description: "事件采集与用量记录" },
+  { key: "harness-updater", pkg: "@3kaiu/dsh-harness-updater", emoji: "🆕", name: "运行时更新", description: "检查 dsh 新版本,在 Console 提示升级" },
+  { key: "dsh-console", pkg: "@3kaiu/dsh-console", emoji: "🖥️", name: "事件控制台", description: "事件库工作台(端口 3090,重启生效)" },
+  { key: "layout-infer", pkg: "@3kaiu/dsh-layout-infer", emoji: "📐", name: "布局推断", description: "设计稿节点树的布局语义标注(面向开发者)" },
+  { key: "dsh-plugins-ui", pkg: "@3kaiu/dsh-plugins-ui", emoji: "🧩", name: "插件设置与管理", description: "本页面的配置卡与插件管理自身" },
+];
+
+// 尽力查询 @3kaiu/dsh-plugins 最新 Release,返回 { key: tag };离线/无 Release 时为空
+// 60s 内存缓存:list 每次调用都会触发,避免操作后刷新卡 3s
+let latestCache = { at: 0, map: {} };
+async function latestVersions() {
+  if (Date.now() - latestCache.at < 60000) return latestCache.map;
+  const map = {};
+  try {
+    const res = await fetch("https://api.github.com/repos/3kaiu/dsh-plugins/releases/latest", {
+      signal: AbortSignal.timeout(3000),
+      headers: { Accept: "application/vnd.github+json", "User-Agent": "dsh-plugins-ui" },
+    });
+    if (!res.ok) return map;
+    const rel = await res.json();
+    const tag = String(rel.tag_name ?? "").replace(/^v/, "");
+    if (!tag) return map;
+    const assets = (rel.assets ?? []).map((a) => String(a.name ?? ""));
+    for (const key of Object.keys(SHORT_NAMES)) {
+      // Release 资产名 = <package-file>-<version>.tgz,各插件版本号可能不同
+      const file = SHORT_NAMES[key];
+      const hit = assets.find((a) => a.startsWith(file + "-"));
+      if (hit) {
+        const rest = hit.slice(file.length + 1);
+        const m = rest.match(/^(.+)\.tgz$/);
+        if (m) map[key] = m[1];
+      }
+    }
+    latestCache = { at: Date.now(), map };
+  } catch { /* 离线/超时:latest 为空,UI 不显示更新提示 */ }
+  return map;
+}
+
+/** 语义化版本比较:>0 表示 a 更新 */
+function compareVersions(a: string, b: string) {
+  const pa = String(a).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
+  const pb = String(b).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x === y) continue;
+    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+  }
+  return 0;
+}
+
 function readManifest() {
   try { return JSON.parse(readFileSync(MANIFEST, "utf8")); } catch { return null; }
 }
@@ -108,13 +164,13 @@ export class PluginManagerGateway extends TypertRemoteService {
     super(ctx, "pluginManager");
   }
 
-  /** 已装插件列表:依赖 + bundle/版本信息 */
+  /** 插件总览:商店目录(可用/已装/可升级)+ 全部已装依赖 */
   @Remote("list")
-  list() {
+  async list() {
     const m = readManifest();
     const deps = Object.keys(m?.dependencies ?? {});
     const bundles = m?.dsh?.profile?.bundles ?? [];
-    const plugins = deps.map((name) => {
+    const installed = deps.map((name) => {
       const pkg = readPkg(join(PROFILE_DIR, "node_modules", name));
       return {
         name,
@@ -124,7 +180,20 @@ export class PluginManagerGateway extends TypertRemoteService {
         hasBundleDecl: exportsPatch(name),
       };
     });
-    return { profile: PROFILE, dshHome: DSH_HOME, bundles, plugins };
+    const latest = await latestVersions();
+    const catalog = CATALOG.map((entry) => {
+      const inst = installed.find((p) => p.name === entry.pkg);
+      const version = inst?.version ?? null;
+      const latestVersion = latest[entry.key] ?? null;
+      return {
+        ...entry,
+        installed: !!inst,
+        version,
+        latest: latestVersion,
+        hasUpdate: !!inst && !!latestVersion && compareVersions(latestVersion, version) > 0,
+      };
+    });
+    return { profile: PROFILE, dshHome: DSH_HOME, bundles, installed, catalog };
   }
 
   /** 安装:快捷名 / https tarball(SHA-256 校验后交给 pnpm)/ file: 路径 / 包名 */

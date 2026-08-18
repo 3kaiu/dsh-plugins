@@ -1,5 +1,6 @@
 import { signal } from "@preact/signals";
 import { Card } from "../components/basic";
+import { PluginSettings } from "../components/plugin-settings";
 import { setMaxWindow } from "../stores/events";
 
 // 事件窗口:持久化 + 实时生效(events store 的 ingest 按此裁剪)
@@ -25,6 +26,9 @@ export function Settings() {
           Console 端口由启动时的服务地址决定(本页面地址即所连端口);若需变更端口,请通过
           dsh-launcher 重启 Console 后访问新地址。
         </div>
+      </Card>
+      <Card title="插件配置">
+        <PluginSettings />
       </Card>
     </div>
   );

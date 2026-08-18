@@ -240,30 +240,26 @@ function SchemaFields(props: {
 }
 
 /** 卡外壳:描述符加载 + 编辑草稿 + 保存/丢弃(与官方 PluginCard 交互对齐) */
-export function SchemaCard(props: { hooks?: { card?: { spec: { ns: string; title: string; description: string }; scope: Scope; describeAll(): Promise<DescribeResult> } } }) {
-  const face = props.hooks?.card;
+export function SchemaCard(props: { useCard?: (sel: (s: Snapshot) => Snapshot) => Snapshot; spec?: { ns: string; title: string; description: string }; scope?: Scope; describeAll?(): Promise<DescribeResult> }) {
   const [desc, setDesc] = useState<Descriptor | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [snap, setSnap] = useState<Snapshot>(() => face?.scope.getSnapshot() ?? { status: "loading", value: undefined, base: undefined, user: undefined, revision: undefined, writable: false, mode: "host" });
+  const snap = props.useCard?.((s) => s) ?? { status: "loading" as const, value: undefined, base: undefined, user: undefined, revision: undefined, writable: false, mode: "host" as const };
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!face) return;
+    if (!props.describeAll) return;
     let alive = true;
-    face.describeAll().then((res) => {
+    props.describeAll().then((res) => {
       if (!alive || !res.result.ok || !res.result.value) return;
-      const found = res.result.value.namespaces.find((d) => d.ns === face.spec.ns);
+      const found = res.result.value.namespaces.find((d) => d.ns === props.spec?.ns);
       if (found) setDesc(found);
     }).catch((e: unknown) => {
       if (alive) setLoadError(String((e as Error)?.message ?? e));
     });
-    const off = face.scope.subscribe(() => {
-      if (alive) setSnap(face.scope.getSnapshot());
-    });
-    return () => { alive = false; off(); };
-  }, [face]);
+    return () => { alive = false; };
+  }, [props.describeAll, props.spec?.ns]);
 
   const value = snap.value as Record<string, unknown> | undefined;
   const base = snap.base as Record<string, unknown> | undefined;
@@ -283,7 +279,7 @@ export function SchemaCard(props: { hooks?: { card?: { spec: { ns: string; title
   );
 
   const save = useCallback(async () => {
-    if (!face || changed.length === 0) return;
+    if (!props.scope || changed.length === 0) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -293,9 +289,9 @@ export function SchemaCard(props: { hooks?: { card?: { spec: { ns: string; title
         if (secret && next === "") continue; // 密码框留空 = 保持不变
         const isReset = deepEqual(next, valueAt(base, k));
         if (isReset && hasOwn(user, k)) {
-          await face.scope.unset(k);
+          await props.scope.unset(k);
         } else {
-          await face.scope.set(k, next);
+          await props.scope.set(k, next);
         }
       }
       setDraft({});
@@ -304,7 +300,7 @@ export function SchemaCard(props: { hooks?: { card?: { spec: { ns: string; title
     } finally {
       setSaving(false);
     }
-  }, [face, changed, draft, base, user, secrets]);
+  }, [props.scope, changed, draft, base, user, secrets]);
 
   const discard = useCallback(() => setDraft({}), []);
 
@@ -317,12 +313,12 @@ export function SchemaCard(props: { hooks?: { card?: { spec: { ns: string; title
     h(
       "div",
       { style: { fontSize: 13, fontWeight: 600, color: "var(--text, #e8eaed)", marginBottom: 2 } },
-      face?.spec.title ?? "插件配置",
+      props.spec?.title ?? "插件配置",
     ),
     h(
       "div",
       { style: { fontSize: 11, color: "var(--text-secondary, #8a8f98)", marginBottom: 8 } },
-      face?.spec.description ?? "",
+      props.spec?.description ?? "",
       desc?.applies === "restart" ? h("span", { style: badgeStyle }, " 重启后生效") : null,
     ),
     loadError ? h("div", { style: { fontSize: 12, color: "var(--danger, #e06c75)", margin: "6px 0" } }, "加载失败: " + loadError) : null,

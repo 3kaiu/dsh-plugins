@@ -26,17 +26,14 @@ function isoHome() {
   return { dir, stateFile: join(dir, "state", "dsh-update.json") };
 }
 
-test("新版本:info 提示 + 预热调用 + 状态写入(history/updatedCount)", async () => {
+test("新版本:info 提示 + 状态写入(history/updatedCount)", async () => {
   const { dir, stateFile } = isoHome();
   process.env.DSH_HOME = dir;
   const c = mkCtx();
-  let warmed = null;
   await checkLatest(c, {
     fetch: async () => jsonResponse({ version: "9.9.9" }),
-    warm: (v) => { warmed = v; },
   });
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(warmed, "9.9.9");
   assert.equal(state.latest, "9.9.9");
   assert.equal(state.updatedCount, 1);
   assert.equal(state.history.length, 1);
@@ -46,18 +43,15 @@ test("新版本:info 提示 + 预热调用 + 状态写入(history/updatedCount)"
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("当前版本:info current + 不预热 + updatedCount 不增,但 lastCheckAt 刷新", async () => {
+test("当前版本:info current + updatedCount 不增,但 lastCheckAt 刷新", async () => {
   const { dir, stateFile } = isoHome();
   process.env.DSH_HOME = dir;
   writeFileSync(stateFile, JSON.stringify({ latest: "1.2.3", updatedCount: 5, latestPrev: "1.2.3", history: [] }));
   const c = mkCtx();
-  let warmed = false;
   await checkLatest(c, {
     fetch: async () => jsonResponse({ version: "1.2.3" }),
-    warm: () => { warmed = true; },
   });
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(warmed, false);
   assert.equal(state.latest, "1.2.3");
   assert.equal(state.updatedCount, 5);
   assert.equal(state.history.length, 0);
@@ -104,7 +98,6 @@ test("状态文件损坏:readState 容错,检查照常完成并修复状态", as
   const c = mkCtx();
   await checkLatest(c, {
     fetch: async () => jsonResponse({ version: "2.0.0" }),
-    warm: () => {},
   });
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
   assert.equal(state.latest, "2.0.0");
@@ -120,7 +113,6 @@ test("history 截断:HISTORY_LIMIT=20,超限只留最近 20 条", async () => {
   const c = mkCtx();
   await checkLatest(c, {
     fetch: async () => jsonResponse({ version: "new-ver" }),
-    warm: () => {},
   });
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
   assert.equal(state.history.length, 20);
@@ -135,7 +127,6 @@ test("checkLatest 注入校验:fetch 收到 registry URL", async () => {
   const c = mkCtx();
   await checkLatest(c, {
     fetch: async (url) => { assert.equal(url, REGISTRY_URL); return jsonResponse({ version: "x" }); },
-    warm: () => {},
   });
   rmSync(dir, { recursive: true, force: true });
 });

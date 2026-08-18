@@ -8,6 +8,8 @@ import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-sett
 
 const name = "dsh-console";
 const NS = settingsNamespace("dsh-console");
+// 声明 settings 服务注入(供「插件配置」面板的 settings.describe/mutate 代理)
+const inject = ["settings"];
 
 const Config = z.object({
   port: z.number().min(1024).max(65535).default(3090),
@@ -29,7 +31,7 @@ function apply(ctx, config) {
   };
   // Cordis 语义:ctx.effect(fn) 的 fn 立即执行(插件激活期),返回值 = 卸载时清理。
   ctx.effect(() => {
-    const { server, port } = createConsoleServer({ port: current().port, logger: (m) => ctx.logger.info(m) });
+    const { server, port } = createConsoleServer({ port: current().port, logger: (m) => ctx.logger.info(m), settings: ctx.settings });
     server.listen(port, "127.0.0.1", () => {
       ctx.logger.info("[dsh-console] Console 工作台 http://127.0.0.1:" + port);
     });
@@ -47,4 +49,4 @@ function apply(ctx, config) {
   });
 }
 
-export { Config, apply, name };
+export { Config, apply, name, inject };
