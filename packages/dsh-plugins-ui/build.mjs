@@ -31,15 +31,19 @@ const PLATFORM_EXTERNALS = [
 ];
 
 // node half
+// 注意:禁止 minify —— Typert SRC 描述符从方法源码解析参数名
+// (methodParameterNames 用 Function#toString),参数名被压缩后 RPC 会失配;
+// @deepseek-ai/dsh-typert-protocol 必须 external(host 提供,避免 cordis/标记双实例)。
 await build({
   bundle: true,
   format: "esm",
   platform: "node",
   target: "node20",
-  minify: true,
+  minify: false,
   legalComments: "none",
   entryPoints: ["src/index.ts"],
   outfile: "dist/index.js",
+  external: ["@deepseek-ai/dsh-typert-protocol"],
 });
 console.log("built dist/index.js");
 
