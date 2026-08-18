@@ -94,6 +94,25 @@ namespace 的插件各显示一张配置卡,与官方 AgentLoop/Bash/WebSearch �
 经 `dsh.client` 声明被 host 自动注入,launcher / dsh web 零改动):
 未来插件补 `installSettingsSection` 后,卡自动出现,无需改 UI 包。
 
+#### 插件管理(「管理」tab,零命令行)
+
+同一「插件」tab 的第二页「管理」,由 dsh-plugins-ui 的 node half
+(PluginManagerGateway,Typert remote)提供:
+
+- **安装**:输入框支持三类来源——内置快捷名(7 个 @3kaiu 插件,点击 chips
+  填入)、任意 https .tgz 地址、file: 本地路径或 npm 包名。远程 tarball
+  下载后先与 GitHub Release 的 SHA256SUMS 比对,通过才交给 pnpm
+  (pnpm add -w,按官方 dsh plugin 语义 reconcile dsh.profile.bundles)
+- **卸载 / 升级**:列表每行按钮,卸载需二次点击确认
+- **重启**:安装 / 卸载 / 升级后生效;「重启」按钮 spawn 自身进程
+  (延迟 2s 避开端口竞态),浏览器自动刷新
+- 全部操作走 POST /api/pluginManager/<method> 斜杠 RPC 通道(与官方
+  pluginInventory 同一协议),无需 CLI,不影响正在运行的实例
+
+node half 通过 typert.host.js(TYPERT manifest)静态登记端点(与官方
+dsh-host-plugin-inventory 同模式),函数 apply 显式实例化(类导出在
+bundle 条目下不生效)。
+
 ## 开发
 
 
