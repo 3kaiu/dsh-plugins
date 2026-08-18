@@ -18,7 +18,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
 const PROFILE = "web";
@@ -87,7 +87,8 @@ function compareVersions(a: string, b: string) {
     const x = pa[i] ?? 0;
     const y = pb[i] ?? 0;
     if (x === y) continue;
-    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+    if (typeof x !== typeof y) return typeof x === "number" ? 1 : -1;
+    return typeof x === "number" ? x - y : String(x).localeCompare(String(y));
   }
   return 0;
 }
@@ -130,9 +131,11 @@ function runPnpm(args) {
   return { ok: r.status === 0, text, status: r.status };
 }
 
-/** 下载 tarball,与 Release 的 SHA256SUMS 比对(拉不到校验文件则跳过) */
-async function fetchVerified(url) {
-  const fileName = decodeURIComponent(url.split("/").pop() ?? "download.tgz");
+/** 下载 tarball 并比对 Release 的 SHA256SUMS。
+ * 匹配规则:资产名精确匹配,或剥掉 `-<版本>` 段后匹配(快捷名场景资产名带版本)。
+ * 3kaiu Release 域的 URL 必须校验通过(否则拒绝);第三方 URL 无法比对时如实标注未校验。 */
+async function fetchVerified(url, { mandatory }) {
+  const fileName = basename(decodeURIComponent(url.split("/").pop() ?? "download.tgz"));
   const file = join(PROFILE_DIR, ".dsh-downloads", fileName);
   mkdirSync(join(file, ".."), { recursive: true });
   const res = await fetch(url, { signal: AbortSignal.timeout(300000) });
@@ -144,18 +147,23 @@ async function fetchVerified(url) {
     if (sums.ok) {
       for (const line of (await sums.text()).split("\n")) {
         const parts = line.trim().split(/\s+/);
-        if (parts.length >= 2 && parts.slice(1).join(" ") === fileName) { expected = parts[0]; break; }
+        if (parts.length < 2) continue;
+        const asset = parts.slice(1).join(" ");
+        const bare = asset.replace(/\.tgz$/, "").replace(/-\d[^/]*$/, "") + ".tgz";
+        if (asset === fileName || bare === fileName) { expected = parts[0]; break; }
       }
     }
-  } catch { /* 校验文件不可达则跳过(仅少一层保护) */ }
+  } catch { /* 校验文件不可达:按 mandatory 决定拒绝或标注 */ }
+  const got = createHash("sha256").update(buf).digest("hex");
   if (expected) {
-    const got = createHash("sha256").update(buf).digest("hex");
     if (got !== expected.toLowerCase()) {
       throw new Error("SHA-256 校验失败: " + fileName + "(期望 " + expected.slice(0, 12) + "…,实得 " + got.slice(0, 12) + "…)");
     }
+  } else if (mandatory) {
+    throw new Error("SHA-256 校验清单不可达或缺少该资产,已拒绝安装(官方来源必须校验通过)");
   }
   writeFileSync(file, buf);
-  return file;
+  return { file, verified: expected !== undefined };
 }
 
 /** PluginManager remote service(浏览器「插件 → 管理」tab 的后端) */
@@ -201,6 +209,7 @@ export class PluginManagerGateway extends TypertRemoteService {
   async install(spec) {
     const s = String(spec ?? "").trim();
     if (!s) throw new Error("请输入插件包名、GitHub 下载地址或本地路径");
+    if (s.startsWith("-")) throw new Error("参数不能以 - 开头(防 pnpm 旗标注入)");
     let arg = s;
     const notes = [];
     if (SHORT_NAMES[s] !== undefined) {
@@ -209,9 +218,10 @@ export class PluginManagerGateway extends TypertRemoteService {
     }
     if (/^https?:\/\//.test(arg)) {
       if (!/\.(tgz|tar\.gz)$/.test(arg)) throw new Error("远程地址需要指向 .tgz 文件");
-      const local = await fetchVerified(arg);
-      arg = local;
-      notes.push("已下载并通过 SHA-256 校验");
+      const mandatory = arg.startsWith(RELEASE_BASE);
+      const { file, verified } = await fetchVerified(arg, { mandatory });
+      arg = file;
+      notes.push(verified ? "已下载并通过 SHA-256 校验" : "已下载,但不在官方 SHA-256 清单中(未校验)");
     } else if (arg.startsWith("file:")) {
       arg = arg.slice("file:".length);
     }
@@ -226,27 +236,43 @@ export class PluginManagerGateway extends TypertRemoteService {
   uninstall(pkg) {
     const name = String(pkg ?? "").trim();
     if (!name) throw new Error("缺少包名");
+    if (name.startsWith("-")) throw new Error("参数不能以 - 开头(防 pnpm 旗标注入)");
     const r = runPnpm(["remove", "-w", name]);
     if (!r.ok) throw new Error("pnpm remove 失败:\n" + r.text.slice(-2000));
     const bundles = reconcilePlugins();
     return { ok: true, removed: name, bundles };
   }
 
-  /** 升级:全部或单个 */
+  /** 升级:全部(仅 semver 范围)或单个(file:/URL 依赖 pnpm update 不重拉,改卸载+重装原 spec) */
   @Remote("update")
   update(pkg) {
-    const args = ["update", "-w", ...(pkg ? [String(pkg).trim()] : [])];
+    const name = String(pkg ?? "").trim();
+    if (name.startsWith("-")) throw new Error("参数不能以 - 开头(防 pnpm 旗标注入)");
+    if (name) {
+      const m = readManifest();
+      const spec = m?.dependencies?.[name];
+      if (spec !== undefined && !/^[~^]?\d/.test(String(spec))) {
+        const rm = runPnpm(["remove", "-w", name]);
+        if (!rm.ok) throw new Error("pnpm remove 失败:\n" + rm.text.slice(-2000));
+        const add = runPnpm(["add", "-w", String(spec)]);
+        if (!add.ok) throw new Error("pnpm add 失败:\n" + add.text.slice(-2000));
+        const bundles = reconcilePlugins();
+        return { ok: true, updated: name, reinstalled: true, bundles };
+      }
+    }
+    const args = ["update", "-w", ...(name ? [name] : [])];
     const r = runPnpm(args);
     if (!r.ok) throw new Error("pnpm update 失败:\n" + r.text.slice(-2000));
     const bundles = reconcilePlugins();
-    return { ok: true, updated: pkg ?? "all", bundles };
+    return { ok: true, updated: name || "all", bundles };
   }
 
   /** 重启 dsh web(安装/卸载/升级后生效) */
   @Remote("restart")
   restart() {
-    const logFd = openSync("/tmp/dsh-restart.log", "a");
-    writeSync(logFd, "[" + new Date().toISOString() + "] restart called, argv=" + JSON.stringify(process.argv.slice(1)) + "\n");
+    const logPath = join(DSH_HOME, ".dsh-restart.log");
+    const logFd = openSync(logPath, "a", 0o600);
+    writeSync(logFd, "[" + new Date().toISOString() + "] restart called, pid=" + process.pid + "\n");
     // 延迟 2s 再 exec 自身:给当前进程 800ms 退出与端口释放留出时间,
     // 避免子进程启动期绑同端口撞 EADDRINUSE(sh -c 包装:先 sleep 后 exec)。
     const child = spawn("sh", ["-c", `sleep 2; exec "$0" "$@"`, process.execPath, process.argv[1], ...process.argv.slice(2)], {

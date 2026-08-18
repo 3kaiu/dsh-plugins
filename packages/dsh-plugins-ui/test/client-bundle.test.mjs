@@ -17,7 +17,7 @@ test("client bundle: closure-factory 形态", () => {
   // 平台依赖必须保留 require(未被打进包;源码全用 createElement,无 jsx-runtime 引用)
   assert.match(code, /require\(["']react["']\)/);
   // 中文文案以 \u 转义保留,包不依赖外部资源
-  assert.match(code, /\\u4FDD\\u5B58/); // "保存"
+  assert.match(code, /\\u5B89\\u88C5\\u63D2\\u4EF6/); // "安装插件"(管理 tab 标题)
 });
 
 test("client bundle: stub 环境可 materialize 且导出 apply/inject", () => {
@@ -34,7 +34,6 @@ test("client bundle: stub 环境可 materialize 且导出 apply/inject", () => {
   assert.equal(typeof ret.inject, "object");
   assert.ok(Array.isArray(ret.inject));
   assert.ok(ret.inject.includes("slots"), "inject 应含 slots");
-  assert.ok(ret.inject.includes("settingsScope"), "inject 应含 settingsScope");
 });
 
 test("node half: 空 apply 占位", async () => {

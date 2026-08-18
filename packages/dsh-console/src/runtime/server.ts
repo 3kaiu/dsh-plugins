@@ -89,7 +89,8 @@ function compareVersions(a, b) {
     const x = pa[i] ?? 0;
     const y = pb[i] ?? 0;
     if (x === y) continue;
-    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+    if (typeof x !== typeof y) return typeof x === "number" ? 1 : -1;
+    return typeof x === "number" ? x - y : String(x).localeCompare(String(y));
   }
   return 0;
 }
@@ -133,6 +134,8 @@ function dshUpdate() {
   };
 }
 
+//#region settings 代理:仅暴露插件配置面板的 4 个命名空间,防本地进程枚举/篡改官方配置
+const UI_NS = new Set(["harness-updater", "github-sync", "runtime-events", "dsh-console"]);
 //#region 静态托管(simple,防目录穿越)
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript",
@@ -140,10 +143,19 @@ const MIME = {
   ".png": "image/png", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json",
   ".woff2": "font/woff2", ".map": "application/json",
 };
-function readBody(req) {
+function readBody(req, limit = 1 << 20) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (c) => chunks.push(c));
+    let total = 0;
+    req.on("data", (c) => {
+      total += c.length;
+      if (total > limit) {
+        reject(new Error("request body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
@@ -215,7 +227,7 @@ export function createConsoleServer(opts = {}) {
       const want = new Set((url.searchParams.get("ns") ?? "").split(",").filter(Boolean));
       try {
         const sections = settings.describe({ redactSecrets: true })
-          .filter((d) => want.size === 0 || want.has(d.ns))
+          .filter((d) => (want.size === 0 ? UI_NS.has(d.ns) : [...want].every((n) => UI_NS.has(n)) && want.has(d.ns)))
           .map((d) => ({ ns: d.ns, schema: d.schema, value: d.value, base: d.base, user: d.user, applies: d.applies, revision: d.revision }));
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ ok: true, sections }));
@@ -227,11 +239,14 @@ export function createConsoleServer(opts = {}) {
     }
     if (url.pathname === "/api/settings/update" && req.method === "POST") {
       if (!settings) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "独立形态无 settings 服务" })); return; }
+      if (!String(req.headers["content-type"] ?? "").startsWith("application/json")) {
+        res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "content-type 必须为 application/json" })); return;
+      }
       let body;
       try { body = JSON.parse(String(req.headers["content-length"] ? await readBody(req) : "")); } catch { body = null; }
-      const ns = typeof body?.ns === "string" ? body.ns : null;
+      const ns = typeof body?.ns === "string" && UI_NS.has(body.ns) ? body.ns : null;
       const ops = Array.isArray(body?.ops) ? body.ops : null;
-      if (!ns || !ops) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "body 需 {ns, ops}" })); return; }
+      if (!ns || !ops) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "body 需 {ns, ops},且 ns 必须在插件配置白名单内" })); return; }
       try {
         await settings.mutate(ns, ops);
         res.writeHead(200, { "content-type": "application/json" });
