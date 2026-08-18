@@ -22,7 +22,7 @@ export const TYPERT = {
       invocation: { kind: "direct" },
       parameters: [],
       result: any,
-      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 246),
+      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 275),
     },
     {
       id: "@3kaiu/dsh-plugins-ui#pluginManager/install",
@@ -32,7 +32,7 @@ export const TYPERT = {
       invocation: { kind: "direct" },
       parameters: [{ name: "spec", wire: "spec", source: "json", codec: str }],
       result: any,
-      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 200),
+      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 212),
     },
     {
       id: "@3kaiu/dsh-plugins-ui#pluginManager/uninstall",
@@ -42,7 +42,7 @@ export const TYPERT = {
       invocation: { kind: "direct" },
       parameters: [{ name: "pkg", wire: "pkg", source: "json", codec: str }],
       result: any,
-      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 225),
+      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 239),
     },
     {
       id: "@3kaiu/dsh-plugins-ui#pluginManager/update",
@@ -52,7 +52,7 @@ export const TYPERT = {
       invocation: { kind: "direct" },
       parameters: [{ name: "pkg", wire: "pkg", source: "json", codec: str }],
       result: any,
-      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 236),
+      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 251),
     },
     {
       id: "@3kaiu/dsh-plugins-ui#pluginManager/restart",
@@ -62,7 +62,7 @@ export const TYPERT = {
       invocation: { kind: "direct" },
       parameters: [],
       result: any,
-      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 168),
+      sourceLocation: src("packages/dsh-plugins-ui/src/index.ts", 179),
     },
   ],
   model: { services: [], events: [], objects: [] },
