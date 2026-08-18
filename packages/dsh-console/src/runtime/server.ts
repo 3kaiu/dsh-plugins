@@ -10,13 +10,18 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync, statSync, readdirSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, extname, normalize, resolve } from "node:path";
+import { join, dirname, extname, normalize, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.DSH_CONSOLE_PORT ?? 3090);
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
 const MAINT_REPO = process.env.DSH_MAINT_REPO?.length > 0 ? process.env.DSH_MAINT_REPO : null;
+// launcher 运行时版本(install.sh 写 RT_HOME/versions.json)与 updater 检查状态
+const RT_HOME = process.env.DSH_RT_HOME?.length > 0 ? process.env.DSH_RT_HOME : join(homedir(), ".local", "share", "dsh-runtime");
+const RUN_FILE = join(RT_HOME, "run.json");
+const VERSIONS_FILE = join(RT_HOME, "versions.json");
+const UPDATE_FILE = join(DSH_HOME, "state", "dsh-update.json");
 const EVENTS_DIR = join(DSH_HOME, "state", "events");
 const ALL_LOG = join(EVENTS_DIR, "all.jsonl");
 const SEQ_FILE = join(EVENTS_DIR, "seq");
@@ -75,6 +80,59 @@ function healthSummary() {
 }
 //#endregion
 
+/** 语义化版本比较:>0 表示 a 更新(数字段逐段比,rc.6 < rc.7 < rc.10)。 */
+function compareVersions(a, b) {
+  const pa = String(a).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
+  const pb = String(b).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x === y) continue;
+    return typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+  }
+  return 0;
+}
+
+/** 从 bin 路径向上找最近的 package.json(容纳 lib/bin.js / bin.js 等布局)。 */
+function pkgFromBin(binPath) {
+  let dir = dirname(binPath);
+  while (dir.length > 1) {
+    try { return JSON.parse(readFileSync(join(dir, "package.json"), "utf8")); } catch {}
+    dir = dirname(dir);
+  }
+  return null;
+}
+
+/** dsh 版本对比:launcher 已装(run.json 指向的 dsh 包,versions.json 兜底) vs updater 检查到的 registry 最新(dsh-update.json)。 */
+function dshUpdate() {
+  let installed = null;
+  // 主源:run.json 的 dsh bin 路径 → 该包 package.json(与 daemon 实际 exec 的 dsh 一致,不会过期)
+  try {
+    const run = JSON.parse(readFileSync(RUN_FILE, "utf8"));
+    if (typeof run.dsh === "string" && run.dsh.length > 0) {
+      installed = pkgFromBin(run.dsh)?.version ?? null;
+    }
+  } catch {}
+  // 兜底:install.sh 写的 versions.json
+  if (!installed) {
+    try { installed = JSON.parse(readFileSync(VERSIONS_FILE, "utf8")).dsh ?? null; } catch {}
+  }
+  if (!installed) return { ok: false, reason: "未检测到 launcher 运行时(run.json)" };
+  let latest = null;
+  let lastCheckAt = null;
+  try {
+    const s = JSON.parse(readFileSync(UPDATE_FILE, "utf8"));
+    latest = typeof s.latest === "string" && s.latest.length > 0 ? s.latest : null;
+    lastCheckAt = s.lastCheckAtIso ?? null;
+  } catch {}
+  return {
+    ok: true, installed, latest,
+    updateAvailable: latest !== null && compareVersions(latest, installed) > 0,
+    lastCheckAt,
+  };
+}
+
 //#region 静态托管(simple,防目录穿越)
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript",
@@ -82,6 +140,14 @@ const MIME = {
   ".png": "image/png", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json",
   ".woff2": "font/woff2", ".map": "application/json",
 };
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
 function serveStatic(req, res, urlPath) {
   // 畸形 % 编码会让 decodeURIComponent 抛 URIError;HTTP request listener 抛异常
   // = uncaughtException,会崩掉整个 console 进程(本地 DoS:任意能访问
@@ -105,14 +171,17 @@ function serveStatic(req, res, urlPath) {
 /**
  * 创建 Console 服务(http + ws + 静态托管),返回 { server, port }。
  * 不自动 listen——由调用方决定(插件 apply 或独立 bin)。
- * @param {{ logger?: (msg: string) => void; port?: number }} [opts]
+ * @param {{ logger?: (msg: string) => void; port?: number; settings?: SettingsFace | null }} [opts]
+ *   settings:插件形态传入 dsh-settings 服务(ctx.settings),供「插件配置」面板读写
+ *  (settings.describe / settings.mutate,契约见 @deepseek-ai/dsh-settings)。
  */
 export function createConsoleServer(opts = {}) {
   const logger = opts.logger ?? ((m) => console.log(m));
   const port = opts.port ?? PORT;
+  const settings = opts.settings ?? null;
 
   //#region HTTP 路由
-  const http = createServer((req, res) => {
+  const http = createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (url.pathname === "/api/events") {
       const since = Number(url.searchParams.get("since") ?? 0) || 0;
@@ -134,6 +203,43 @@ export function createConsoleServer(opts = {}) {
       if (!existsSync(p)) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "早报未生成:先跑 scripts/morning-report.mjs" })); return; }
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: true, markdown: readFileSync(p, "utf8"), generatedAt: statSync(p).mtime.toISOString() }));
+      return;
+    }
+    if (url.pathname === "/api/dsh-update") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(dshUpdate()));
+      return;
+    }
+    if (url.pathname === "/api/settings/sections") {
+      if (!settings) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "独立形态无 settings 服务" })); return; }
+      const want = new Set((url.searchParams.get("ns") ?? "").split(",").filter(Boolean));
+      try {
+        const sections = settings.describe({ redactSecrets: true })
+          .filter((d) => want.size === 0 || want.has(d.ns))
+          .map((d) => ({ ns: d.ns, schema: d.schema, value: d.value, base: d.base, user: d.user, applies: d.applies, revision: d.revision }));
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: true, sections }));
+      } catch (e) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message ?? e) }));
+      }
+      return;
+    }
+    if (url.pathname === "/api/settings/update" && req.method === "POST") {
+      if (!settings) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "独立形态无 settings 服务" })); return; }
+      let body;
+      try { body = JSON.parse(String(req.headers["content-length"] ? await readBody(req) : "")); } catch { body = null; }
+      const ns = typeof body?.ns === "string" ? body.ns : null;
+      const ops = Array.isArray(body?.ops) ? body.ops : null;
+      if (!ns || !ops) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "body 需 {ns, ops}" })); return; }
+      try {
+        await settings.mutate(ns, ops);
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message ?? e) }));
+      }
       return;
     }
     if (url.pathname.startsWith("/api/")) { res.writeHead(404); res.end(JSON.stringify({ error: "unknown api" })); return; }

@@ -1,16 +1,13 @@
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import z from "@deepseek-ai/schemastery";
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 
-const PACKAGE = "@deepseek-ai/dsh";
 const NS = settingsNamespace("harness-updater");
 const HISTORY_LIMIT = 20;
 const REGISTRY_URL = "https://registry.npmjs.org/@deepseek-ai%2Fdsh/latest";
 const FETCH_TIMEOUT_MS = 10000;
-const WARM_NPX_TIMEOUT_MS = 120000;
 
 const dshHome = () => (process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh"));
 const stateFile = () => join(dshHome(), "state", "dsh-update.json");
@@ -33,28 +30,14 @@ function writeState(state) {
   } catch {}
 }
 
-function warmNpxCache(version) {
-  const child = spawn("npx", ["--yes", `${PACKAGE}@${version}`, "--version"], {
-    stdio: "ignore",
-    detached: true,
-  });
-  // spawn 失败（npx 不在 PATH 等）会在子进程上触发异步 'error' 事件，
-  // try/catch 捕获不到，必须显式监听，否则会崩溃整个 dsh 进程。
-  child.on("error", () => {});
-  child.unref();
-  const kill = setTimeout(() => child.kill(), WARM_NPX_TIMEOUT_MS);
-  child.on("exit", () => clearTimeout(kill));
-}
-
 /**
- * 检查 registry 最新版本并更新状态。
+ * 检查 registry 最新版本并更新状态(供 Console 展示"可升级"提示)。
  * @param {object} ctx 插件上下文({ logger: { info, warn } })
- * @param {{ fetch?: typeof fetch; warm?: (version: string) => void }} [deps]
- *   测试注入点:mock fetch / 替换 npx 预热(单测不真正 spawn)。
+ * @param {{ fetch?: typeof fetch }} [deps]
+ *   测试注入点:mock fetch(单测不真正出网)。
  */
 async function checkLatest(ctx, deps = {}) {
   const doFetch = deps.fetch ?? fetch;
-  const doWarm = deps.warm ?? warmNpxCache;
   let latest;
   try {
     const controller = new AbortController();
@@ -84,8 +67,7 @@ async function checkLatest(ctx, deps = {}) {
     history.push({ at: state.lastCheckAtIso, from: state.latestPrev ?? null, to: latest });
     state.history = history.slice(-HISTORY_LIMIT);
     state.updatedCount = (state.updatedCount ?? 0) + 1;
-    doWarm(latest);
-    ctx.logger.info(`[dsh-updater] new dsh version ${latest} found; npx cache warming for next launch`);
+    ctx.logger.info(`[dsh-updater] new dsh version ${latest} found; state written for console hint`);
   } else {
     ctx.logger.info(`[dsh-updater] dsh is current: ${latest}`);
   }
