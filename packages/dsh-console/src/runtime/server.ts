@@ -8,7 +8,7 @@
 //   DSH_CONSOLE_PORT(默认 3090) DSH_HOME(默认 ~/.dsh)
 //   DSH_CONSOLE_DIST(默认 packages/dsh-console/dist,相对本文件所在包)
 import { createServer } from "node:http";
-import { readFileSync, existsSync, statSync, readdirSync, realpathSync } from "node:fs";
+import { readFileSync, existsSync, statSync, readdirSync, realpathSync, openSync, readSync, closeSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, extname, normalize, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -37,26 +37,63 @@ const FAMILIES = new Set(["session", "tool", "error", "test", "completion"]);
 function readSeq() {
   try { return Number(readFileSync(SEQ_FILE, "utf8")) || 0; } catch { return 0; }
 }
-/** 读取 all.jsonl 中 seq > since 的事件(上限 cap 条,按需过滤家族)。 */
+/** 读取 all.jsonl 中 seq > since 的事件(上限 cap 条,按需过滤家族)。
+ * 二分定位首条 seq > since 的行,只 parse 目标区间(O(log n) 次 parse)。 */
 function readEventsSince(since, families, cap = 2000) {
   try {
     if (!existsSync(ALL_LOG)) return [];
-    const lines = readFileSync(ALL_LOG, "utf8").trim().split("\n").filter(Boolean);
+    const lines = readFileSync(ALL_LOG, "utf8").split("\n").filter((l) => l.trim().length > 0);
+    const seqAt = (i) => {
+      try { return JSON.parse(lines[i]).seq; } catch { return -Infinity; } // 坏行视为最小,保持二分单调
+    };
+    let lo = 0, hi = lines.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (seqAt(mid) > since) hi = mid; else lo = mid + 1;
+    }
     const out = [];
-    for (const line of lines) {
+    for (let i = lo; i < lines.length && out.length < cap; i++) {
+      const t = lines[i].trim();
+      if (!t) continue;
       let e;
-      try { e = JSON.parse(line); } catch { continue; }
+      try { e = JSON.parse(t); } catch { continue; }
       if (typeof e.seq !== "number") continue;
-      if (e.seq <= since) continue;
       if (families !== null && !families.has(e.family)) continue;
       out.push(e);
-      if (out.length >= cap) break;
     }
     return out;
   } catch { return []; }
 }
-/** 维护早报摘要(05 §6):当日各家族事件计数 + 最近 error 族。 */
+
+/** 模块级共享增量 reader:记录文件 size + 未完成半行,只读追加区间。
+ * 多个 WS 客户端共用同一份读取,避免每客户端每 300ms 全量读文件。 */
+const logReader = {
+  size: 0,
+  partial: "",
+  readNew() {
+    try {
+      if (!existsSync(ALL_LOG)) { this.size = 0; this.partial = ""; return []; }
+      const st = statSync(ALL_LOG);
+      if (st.size < this.size) { this.size = 0; this.partial = ""; } // 文件被轮转/截断
+      if (st.size === this.size) return [];
+      const fd = openSync(ALL_LOG, "r");
+      try {
+        const buf = Buffer.alloc(st.size - this.size);
+        readSync(fd, buf, 0, buf.length, this.size);
+        this.size = st.size;
+        const text = this.partial + buf.toString("utf8");
+        const lines = text.split("\n");
+        this.partial = lines.pop() ?? "";
+        return lines.map((l) => l.trim()).filter(Boolean);
+      } finally { closeSync(fd); }
+    } catch { return []; }
+  },
+};
+/** 维护早报摘要(05 §6):当日各家族事件计数 + 最近 error 族。30s TTL 缓存。 */
+let summaryCache = { at: 0, value: null };
 function healthSummary() {
+  const now = Date.now();
+  if (now - summaryCache.at < 30000 && summaryCache.value) return summaryCache.value;
   const day = new Date().toISOString().slice(0, 10);
   const counts = {};
   let errors = 0;
@@ -72,11 +109,13 @@ function healthSummary() {
       }
     }
   } catch {}
-  return {
+  const value = {
     date: day, counts, total: Object.values(counts).reduce((a, b) => a + b, 0),
     errors, errorLatest: errorLatest ? { seq: errorLatest.seq, message: errorLatest.message ?? errorLatest.detail ?? "" } : null,
     eventsDir: EVENTS_DIR, seq: readSeq(),
   };
+  summaryCache = { at: now, value };
+  return value;
 }
 //#endregion
 
@@ -105,8 +144,11 @@ function pkgFromBin(binPath) {
   return null;
 }
 
-/** dsh 版本对比:launcher 已装(run.json 指向的 dsh 包,versions.json 兜底) vs updater 检查到的 registry 最新(dsh-update.json)。 */
+let dshUpdateCache = { at: 0, value: null };
+/** dsh 版本对比:launcher 已装(run.json 指向的 dsh 包,versions.json 兜底) vs updater 检查到的 registry 最新(dsh-update.json)。60s TTL。 */
 function dshUpdate() {
+  const now = Date.now();
+  if (now - dshUpdateCache.at < 60000 && dshUpdateCache.value) return dshUpdateCache.value;
   let installed = null;
   // 主源:run.json 的 dsh bin 路径 → 该包 package.json(与 daemon 实际 exec 的 dsh 一致,不会过期)
   try {
@@ -127,15 +169,30 @@ function dshUpdate() {
     latest = typeof s.latest === "string" && s.latest.length > 0 ? s.latest : null;
     lastCheckAt = s.lastCheckAtIso ?? null;
   } catch {}
-  return {
+  const value = {
     ok: true, installed, latest,
     updateAvailable: latest !== null && compareVersions(latest, installed) > 0,
     lastCheckAt,
   };
+  dshUpdateCache = { at: now, value };
+  return value;
 }
 
 //#region settings 代理:仅暴露插件配置面板的 4 个命名空间,防本地进程枚举/篡改官方配置
 const UI_NS = new Set(["harness-updater", "github-sync", "runtime-events", "dsh-console"]);
+let sectionsCacheKey = "";
+let sectionsCache = null;
+/** describe({redactSecrets:true}) 按 4 ns 的 revision 键缓存投影(schema 重建/深拷贝只在注册或变更时发生)。 */
+function describeSettingsCached(svc) {
+  if (!svc) return [];
+  const all = svc.describe({ redactSecrets: true }).filter((d) => UI_NS.has(d.ns));
+  const key = all.map((d) => d.ns + ":" + d.revision).join("|");
+  if (key !== sectionsCacheKey) {
+    sectionsCacheKey = key;
+    sectionsCache = all.map((d) => ({ ns: d.ns, schema: d.schema, value: d.value, base: d.base, user: d.user, applies: d.applies, revision: d.revision }));
+  }
+  return sectionsCache;
+}
 //#region 静态托管(simple,防目录穿越)
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript",
@@ -160,6 +217,7 @@ function readBody(req, limit = 1 << 20) {
     req.on("error", reject);
   });
 }
+const staticCache = new Map(); // file -> { mtimeMs, size, body }(dist 产物数量有限,无需淘汰)
 function serveStatic(req, res, urlPath) {
   // 畸形 % 编码会让 decodeURIComponent 抛 URIError;HTTP request listener 抛异常
   // = uncaughtException,会崩掉整个 console 进程(本地 DoS:任意能访问
@@ -173,7 +231,15 @@ function serveStatic(req, res, urlPath) {
   if (!file.startsWith(DIST_DIR)) { res.writeHead(403); res.end("forbidden"); return; }
   const path = existsSync(file) && statSync(file).isFile() ? file : join(DIST_DIR, "index.html"); // SPA 回退
   try {
+    const st = statSync(path);
+    const hit = staticCache.get(path);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) {
+      res.writeHead(200, { "content-type": MIME[extname(path)] ?? "application/octet-stream", "cache-control": "no-cache" });
+      res.end(hit.body);
+      return;
+    }
     const body = readFileSync(path);
+    staticCache.set(path, { mtimeMs: st.mtimeMs, size: st.size, body });
     res.writeHead(200, { "content-type": MIME[extname(path)] ?? "application/octet-stream", "cache-control": "no-cache" });
     res.end(body);
   } catch { res.writeHead(404); res.end("not found"); }
@@ -226,11 +292,13 @@ export function createConsoleServer(opts = {}) {
       if (!settings) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "独立形态无 settings 服务" })); return; }
       const want = new Set((url.searchParams.get("ns") ?? "").split(",").filter(Boolean));
       try {
-        const sections = settings.describe({ redactSecrets: true })
-          .filter((d) => (want.size === 0 ? UI_NS.has(d.ns) : [...want].every((n) => UI_NS.has(n)) && want.has(d.ns)))
-          .map((d) => ({ ns: d.ns, schema: d.schema, value: d.value, base: d.base, user: d.user, applies: d.applies, revision: d.revision }));
+        const wantOk = [...want].every((n) => UI_NS.has(n));
+        const sections = describeSettingsCached(settings);
+        const filtered = wantOk
+          ? sections.filter((d) => want.size === 0 || want.has(d.ns))
+          : sections;
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ ok: true, sections }));
+        res.end(JSON.stringify({ ok: true, sections: filtered }));
       } catch (e) {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message ?? e) }));
@@ -297,14 +365,10 @@ export function createConsoleServer(opts = {}) {
         if (typeof msg.since === "number") client.since = msg.since;
       }
     });
-    // 增量轮询:all.jsonl 追加即推(300ms 粒度足够本地场景)
+    // 增量轮询:共享 logReader 只读追加区间,扇出给各客户端(300ms 粒度足够本地场景)
     client.timer = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      try {
-        if (!existsSync(ALL_LOG)) return;
-        const lines = readFileSync(ALL_LOG, "utf8").trim().split("\n").filter(Boolean);
-        for (const line of lines) pushLine(client, line);
-      } catch {}
+      for (const line of logReader.readNew()) pushLine(client, line);
     }, 300);
     ws.on("close", () => { clearInterval(hb); if (client.timer) clearInterval(client.timer); clients.delete(client); });
     ws.on("error", () => {});

@@ -15,10 +15,12 @@
 //     条目下不生效,已实证);browser half 的注入不受影响。
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { spawn, spawnSync } from "node:child_process";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
 const PROFILE = "web";
@@ -48,34 +50,47 @@ const CATALOG = [
 ];
 
 // 尽力查询 @3kaiu/dsh-plugins 最新 Release,返回 { key: tag };离线/无 Release 时为空
-// 60s 内存缓存:list 每次调用都会触发,避免操作后刷新卡 3s
+// stale-while-revalidate:60s 内直接返回缓存;过期后先返回旧值,后台刷新
 let latestCache = { at: 0, map: {} };
+let latestRefreshing = null;
 async function latestVersions() {
   if (Date.now() - latestCache.at < 60000) return latestCache.map;
-  const map = {};
-  try {
-    const res = await fetch("https://api.github.com/repos/3kaiu/dsh-plugins/releases/latest", {
-      signal: AbortSignal.timeout(3000),
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "dsh-plugins-ui" },
-    });
-    if (!res.ok) return map;
-    const rel = await res.json();
-    const tag = String(rel.tag_name ?? "").replace(/^v/, "");
-    if (!tag) return map;
-    const assets = (rel.assets ?? []).map((a) => String(a.name ?? ""));
-    for (const key of Object.keys(SHORT_NAMES)) {
-      // Release 资产名 = <package-file>-<version>.tgz,各插件版本号可能不同
-      const file = SHORT_NAMES[key];
-      const hit = assets.find((a) => a.startsWith(file + "-"));
-      if (hit) {
-        const rest = hit.slice(file.length + 1);
-        const m = rest.match(/^(.+)\.tgz$/);
-        if (m) map[key] = m[1];
+  if (!latestRefreshing) {
+    latestRefreshing = (async () => {
+      const map = {};
+      try {
+        const res = await fetch("https://api.github.com/repos/3kaiu/dsh-plugins/releases/latest", {
+          signal: AbortSignal.timeout(3000),
+          headers: { Accept: "application/vnd.github+json", "User-Agent": "dsh-plugins-ui" },
+        });
+        if (res.ok) {
+          const rel = await res.json();
+          const tag = String(rel.tag_name ?? "").replace(/^v/, "");
+          if (tag) {
+            const assets = (rel.assets ?? []).map((a) => String(a.name ?? ""));
+            // 一次性建 asset 索引,7 个快捷名同趟匹配
+            const byName = new Map(assets.map((a) => [a, true]));
+            for (const key of Object.keys(SHORT_NAMES)) {
+              // Release 资产名 = <package-file>-<version>.tgz,各插件版本号可能不同
+              const file = SHORT_NAMES[key];
+              const hit = assets.find((a) => byName.has(a) && a.startsWith(file + "-"));
+              if (hit) {
+                const m = hit.slice(file.length + 1).match(/^(.+)\.tgz$/);
+                if (m) map[key] = m[1];
+              }
+            }
+          }
+        }
+        latestCache = { at: Date.now(), map };
+      } catch {
+        // 离线/超时:保留旧值,5s 后允许重试(不卡 UI)
+        latestCache = { at: Date.now() - 55000, map: latestCache.map };
+      } finally {
+        latestRefreshing = null;
       }
-    }
-    latestCache = { at: Date.now(), map };
-  } catch { /* 离线/超时:latest 为空,UI 不显示更新提示 */ }
-  return map;
+    })();
+  }
+  return latestCache.map;
 }
 
 /** 语义化版本比较:>0 表示 a 更新 */
@@ -106,26 +121,32 @@ function exportsPatch(pkg) {
   return readPkg(join(PROFILE_DIR, "node_modules", pkg))?.dsh?.bundle?.patch !== undefined;
 }
 
-/** 按安装状态对齐 dsh.profile.bundles(依赖声明 dsh.bundle 则加入,否则摘除) */
+/** 按安装状态对齐 dsh.profile.bundles(依赖声明 dsh.bundle 则加入,否则摘除)。
+ * 单趟判定(deps 只读一次包);集合未变化时跳过写盘。 */
 function reconcilePlugins() {
   const m = readManifest();
   if (!m) throw new Error("web profile 不存在: " + PROFILE_DIR);
   const deps = Object.keys(m.dependencies ?? {});
-  const plugins = new Set(m.dsh?.profile?.bundles ?? []);
-  for (const dep of deps) if (exportsPatch(dep)) plugins.add(dep);
-  for (const p of [...plugins]) if (!deps.includes(p) || !exportsPatch(p)) plugins.delete(p);
-  m.dsh ??= {};
-  m.dsh.profile ??= {};
-  m.dsh.profile.bundles = [...plugins];
-  writeManifest(m);
-  return [...plugins];
+  const prev = new Set(m.dsh?.profile?.bundles ?? []);
+  const next = new Set(deps.filter((d) => exportsPatch(d)));
+  const changed = prev.size !== next.size || [...prev].some((p) => !next.has(p));
+  if (changed) {
+    m.dsh ??= {};
+    m.dsh.profile ??= {};
+    m.dsh.profile.bundles = [...next];
+    writeManifest(m);
+  }
+  return [...next];
 }
 
+let pnpmBin = null; // probe 结果缓存(环境稳定,无需每次探测)
 /** 运行 pnpm(PATH 优先,退回 npx --yes pnpm@9.15.0,覆盖未全局装 pnpm 的 launcher 环境) */
 function runPnpm(args) {
-  const probe = spawnSync("pnpm", ["--version"], { encoding: "utf8" });
-  const bin = probe.status === 0 ? "pnpm" : "npx";
-  const full = bin === "npx" ? ["--yes", "pnpm@9.15.0", ...args] : args;
+  if (pnpmBin === null) {
+    const probe = spawnSync("pnpm", ["--version"], { encoding: "utf8" });
+    pnpmBin = probe.status === 0 ? "pnpm" : "npx";
+  }
+  const full = pnpmBin === "npx" ? ["--yes", "pnpm@9.15.0", ...args] : args;
   const r = spawnSync(bin, full, { cwd: PROFILE_DIR, encoding: "utf8", timeout: 300000 });
   const text = [r.stdout, r.stderr].filter(Boolean).join("\n");
   return { ok: r.status === 0, text, status: r.status };
@@ -133,38 +154,53 @@ function runPnpm(args) {
 
 /** 下载 tarball 并比对 Release 的 SHA256SUMS。
  * 匹配规则:资产名精确匹配,或剥掉 `-<版本>` 段后匹配(快捷名场景资产名带版本)。
- * 3kaiu Release 域的 URL 必须校验通过(否则拒绝);第三方 URL 无法比对时如实标注未校验。 */
+ * 3kaiu Release 域的 URL 必须校验通过(否则拒绝);第三方 URL 无法比对时如实标注未校验。
+ * 下载与校验清单并行拉取;流式写盘边下边哈希(内存 O(块) 而非 O(包大小))。 */
 async function fetchVerified(url, { mandatory }) {
   const fileName = basename(decodeURIComponent(url.split("/").pop() ?? "download.tgz"));
   const file = join(PROFILE_DIR, ".dsh-downloads", fileName);
-  mkdirSync(join(file, ".."), { recursive: true });
-  const res = await fetch(url, { signal: AbortSignal.timeout(300000) });
+  mkdirSync(dirname(file), { recursive: true });
+  const [res, sumsRes] = await Promise.all([
+    fetch(url, { signal: AbortSignal.timeout(300000) }),
+    fetch(RELEASE_BASE + "/SHA256SUMS", { signal: AbortSignal.timeout(30000) }).catch(() => null),
+  ]);
   if (!res.ok) throw new Error("下载失败: " + url + " (HTTP " + res.status + ")");
-  const buf = Buffer.from(await res.arrayBuffer());
-  let expected;
+  const hash = createHash("sha256");
   try {
-    const sums = await fetch(RELEASE_BASE + "/SHA256SUMS", { signal: AbortSignal.timeout(30000) });
-    if (sums.ok) {
-      for (const line of (await sums.text()).split("\n")) {
+    await pipeline(
+      res.body,
+      new Transform({ transform(chunk, _enc, cb) { hash.update(chunk); cb(null, chunk); } }),
+      createWriteStream(file),
+    );
+  } catch (e) {
+    try { unlinkSync(file); } catch { /* 残留忽略 */ }
+    throw e;
+  }
+  const got = hash.digest("hex");
+  let expected;
+  if (sumsRes?.ok) {
+    try {
+      for (const line of (await sumsRes.text()).split("\n")) {
         const parts = line.trim().split(/\s+/);
         if (parts.length < 2) continue;
         const asset = parts.slice(1).join(" ");
         const bare = asset.replace(/\.tgz$/, "").replace(/-\d[^/]*$/, "") + ".tgz";
         if (asset === fileName || bare === fileName) { expected = parts[0]; break; }
       }
-    }
-  } catch { /* 校验文件不可达:按 mandatory 决定拒绝或标注 */ }
-  const got = createHash("sha256").update(buf).digest("hex");
+    } catch { /* 解析失败按未命中处理 */ }
+  }
   if (expected) {
     if (got !== expected.toLowerCase()) {
+      try { unlinkSync(file); } catch { /* 残留忽略 */ }
       throw new Error("SHA-256 校验失败: " + fileName + "(期望 " + expected.slice(0, 12) + "…,实得 " + got.slice(0, 12) + "…)");
     }
   } else if (mandatory) {
+    try { unlinkSync(file); } catch { /* 残留忽略 */ }
     throw new Error("SHA-256 校验清单不可达或缺少该资产,已拒绝安装(官方来源必须校验通过)");
   }
-  writeFileSync(file, buf);
   return { file, verified: expected !== undefined };
 }
+
 
 /** PluginManager remote service(浏览器「插件 → 管理」tab 的后端) */
 export class PluginManagerGateway extends TypertRemoteService {
@@ -178,14 +214,15 @@ export class PluginManagerGateway extends TypertRemoteService {
     const m = readManifest();
     const deps = Object.keys(m?.dependencies ?? {});
     const bundles = m?.dsh?.profile?.bundles ?? [];
+    const bundleSet = new Set(bundles);
     const installed = deps.map((name) => {
       const pkg = readPkg(join(PROFILE_DIR, "node_modules", name));
       return {
         name,
         version: pkg?.version ?? null,
         description: pkg?.description ?? null,
-        bundle: bundles.includes(name),
-        hasBundleDecl: exportsPatch(name),
+        bundle: bundleSet.has(name),
+        hasBundleDecl: pkg?.dsh?.bundle?.patch !== undefined,
       };
     });
     const latest = await latestVersions();
