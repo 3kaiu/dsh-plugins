@@ -24,10 +24,24 @@
 
 要求 Node.js ≥ 20。
 
-### 安装(推荐:tarball,无需 npm 发布)
+### 安装(推荐:一键脚本,无需 git clone / npm 发布)
 
 GitHub Actions 在**云端直接构建产物**并生成 tarball 挂到 Release
 (不依赖 npm 发布/账号,不提交 dist)。安装/更新一条命令:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/3kaiu/dsh-plugins/main/scripts/install.sh | bash
+#   从 GitHub Release 下载最新 tarball + SHA256SUMS,逐文件 SHA-256 校验
+#   通过后装进 ~/.dsh/profiles/web 并自动 reconcile dsh.profile.bundles
+# 更新:重跑同一条命令即可;指定版本: ... | bash -s -- --tag v0.3.0
+```
+
+安装器(install-remote.mjs)逻辑与下方 `--release` 模式完全等价,只是不依赖
+仓库副本——包名/版本/tarball 资产均来自 Release 本身。
+
+> 也可只装部分插件:`... | bash -s -- --only dsh-console,harness-updater`。
+
+### 安装(替代方案:tarball,仓库内脚本)
 
 ```sh
 git clone https://github.com/3kaiu/dsh-plugins.git && cd dsh-plugins
@@ -37,7 +51,7 @@ node scripts/install-local.mjs --release
 ```
 
 > 维护者发布(可选,不发布也能用源码模式):`git tag v0.3.0 && git push origin v0.3.0`
-> → Actions 自动:pnpm build → pnpm pack(6 个 tarball)→ 上传 Release。
+> → Actions 自动:pnpm build → pnpm pack(7 个 tarball)→ 上传 Release。
 >
 > 等价命令(逐个装):`dsh plugin --profile web add <tgz URL>`;
 > profile 是 pnpm workspace 根,`dsh plugin add` 撞 `ERR_PNPM_ADDING_TO_ROOT` 时用

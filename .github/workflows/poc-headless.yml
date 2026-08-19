@@ -24,17 +24,3 @@ jobs:
           name: poc-probe-ubuntu
           path: .dsh/state/poc/
           retention-days: 7
-
-  probe-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Probe OpenCode Zen (free tier)
-        run: bash scripts/poc-zen-headless.sh .dsh/state/poc
-      - name: Show result
-        run: cat .dsh/state/poc/summary.txt && echo "---" && cat .dsh/state/poc/result.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: poc-probe-macos
-          path: .dsh/state/poc/
-          retention-days: 7
