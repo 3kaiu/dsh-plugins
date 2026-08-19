@@ -32,27 +32,9 @@ export function Dashboard() {
     }).catch(() => { setMorning(null); setMorningNote("早报接口不可用"); });
   };
   useEffect(() => { loadMorning(); }, []);
-  const [upd, setUpd] = useState<null | { installed: string; latest: string | null; updateAvailable: boolean; lastCheckAt: string | null }>(null);
-  useEffect(() => {
-    fetch("/api/dsh-update").then((res) => res.json()).then((j) => { if (j && j.ok) setUpd(j); }).catch(() => {});
-  }, []);
   return (
     <div>
       <h1 style="margin-bottom:14px">工作台总览</h1>
-      {upd && (
-        <div style="margin-bottom:14px">
-          <Card title="dsh 版本">
-            {upd.updateAvailable ? (
-              <div class="list-item">
-                <span style="color:var(--warn,#ffd166);font-weight:600">新版本 {upd.latest} 可用</span>
-                <span class="dim">已装 {upd.installed} · 重跑安装脚本(install.sh)升级</span>
-              </div>
-            ) : (
-              <div class="dim">已是最新 {upd.installed}{upd.latest ? `(registry ${upd.latest})` : ""} · 检查于 {fmtTime(upd.lastCheckAt)}</div>
-            )}
-          </Card>
-        </div>
-      )}
       <div style="margin-bottom:14px">
         <Card title="维护早报" extra={<button onClick={loadMorning} style="font-size:12px;padding:2px 8px;cursor:pointer">刷新</button>}>
           {morning ? <div>{renderMd(morning)}<div class="dim" style="margin-top:6px">{morningNote}</div></div> : <EmptyState text={morningNote} />}

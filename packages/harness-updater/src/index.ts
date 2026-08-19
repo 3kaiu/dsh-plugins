@@ -1,13 +1,18 @@
+import { execFile } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import z from "@deepseek-ai/schemastery";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 
-const NS = settingsNamespace("harness-updater");
-const HISTORY_LIMIT = 20;
+// @3kaiu/dsh-harness-updater —— 极简版:只做两件事
+//   1. 定时检查 npm registry 的 @deepseek-ai/dsh 最新版本
+//   2. 有新版本时弹 macOS 原生通知(Notification Center)
+// 不做:状态持久化给 Console 提示、settings 注册、history 记录。
+// 唯一持久化:lastNotified(通知过的版本,幂等防重复弹窗)。
+
 const REGISTRY_URL = "https://registry.npmjs.org/@deepseek-ai%2Fdsh/latest";
 const FETCH_TIMEOUT_MS = 10000;
+// 检查间隔:默认 24h,env 可覆盖(ms)
+const CHECK_INTERVAL_MS = Number(process.env.DSH_UPDATER_CHECK_INTERVAL_MS) || 24 * 60 * 60 * 1000;
 
 const dshHome = () => (process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh"));
 const stateFile = () => join(dshHome(), "state", "dsh-update.json");
@@ -31,10 +36,27 @@ function writeState(state) {
 }
 
 /**
- * 检查 registry 最新版本并更新状态(供 Console 展示"可升级"提示)。
+ * macOS 原生通知(Notification Center):osascript display notification,
+ * 系统自带无需额外安装。非 darwin 平台无操作。
+ * @param {string} title
+ * @param {string} message
+ * @param {{ execFile?: typeof execFile }} [deps] 测试注入点
+ */
+function notifyMacOS(title, message, deps = {}) {
+  const run = deps.execFile ?? execFile;
+  // 双引号/反斜杠转义,防 osascript 脚本注入(版本号来自 registry,不可信)
+  const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
+  const script = `display notification "${esc(message)}" with title "${esc(title)}"`;
+  run("osascript", ["-e", script], (err) => {
+    if (err) console.warn(`[dsh-updater] macOS 通知失败: ${String(err?.message ?? err)}`);
+  });
+}
+
+/**
+ * 检查 registry 最新版本;有新版且 macOS 时弹原生通知(每版本只弹一次)。
  * @param {object} ctx 插件上下文({ logger: { info, warn } })
- * @param {{ fetch?: typeof fetch }} [deps]
- *   测试注入点:mock fetch(单测不真正出网)。
+ * @param {{ fetch?: typeof fetch, execFile?: typeof execFile,
+ *           platform?: string }} [deps] 测试注入点
  */
 async function checkLatest(ctx, deps = {}) {
   const doFetch = deps.fetch ?? fetch;
@@ -57,59 +79,28 @@ async function checkLatest(ctx, deps = {}) {
   if (typeof latest !== "string" || latest.length === 0) return;
 
   const state = readState();
-  const changed = state.latest !== latest;
-  const now = Date.now();
-  state.latest = latest;
-  state.lastCheckAt = now;
-  state.lastCheckAtIso = new Date(now).toISOString();
-  if (changed) {
-    const history = state.history ?? [];
-    history.push({ at: state.lastCheckAtIso, from: state.latestPrev ?? null, to: latest });
-    state.history = history.slice(-HISTORY_LIMIT);
-    state.updatedCount = (state.updatedCount ?? 0) + 1;
-    ctx.logger.info(`[dsh-updater] new dsh version ${latest} found; state written for console hint`);
+  const changed = state.lastNotified !== latest;
+  if (changed && (deps.platform ?? process.platform) === "darwin") {
+    notifyMacOS("DeepSeek Harness 有新版", `发现 v${latest} 可用,可重跑 install.sh 升级`, deps);
+    state.lastNotified = latest;
+    writeState(state);
+    ctx.logger.info(`[dsh-updater] new dsh version ${latest} found; macOS notification sent`);
   } else {
     ctx.logger.info(`[dsh-updater] dsh is current: ${latest}`);
   }
-  state.latestPrev = latest;
-  writeState(state);
 }
 
 const name = "dsh-harness-updater";
 
-const Config = z.object({
-  checkIntervalMs: z.number().min(60000).max(7 * 24 * 60 * 60 * 1000).default(24 * 60 * 60 * 1000),
-});
-
-function apply(ctx, config) {
-  let lastGood;
-  const current = () => {
-    try {
-      const next = Config(config ?? {});
-      lastGood = next;
-      return next;
-    } catch (error) {
-      if (lastGood === void 0) throw error;
-      ctx.logger?.error("[dsh-updater] keeping the last good configuration");
-      ctx.logger?.error(error);
-      return lastGood;
-    }
-  };
+function apply(ctx) {
   const state = readState();
-  ctx.logger.info(
-    `[dsh-updater] last check: ${state.lastCheckAtIso ?? "never"}; latest known: ${state.latest ?? "unknown"}`,
-  );
+  ctx.logger.info(`[dsh-updater] last notified version: ${state.lastNotified ?? "never"}`);
   void checkLatest(ctx);
-  const interval = setInterval(() => void checkLatest(ctx), current().checkIntervalMs);
+  const interval = setInterval(() => void checkLatest(ctx), CHECK_INTERVAL_MS);
   interval.unref();
   // Cordis 语义:ctx.effect(fn) 的 fn 立即执行,返回值才是卸载清理;
   // 直接写 clearInterval 会让定时器刚创建就被清掉(实测从未定时检查)。
   ctx.effect(() => () => clearInterval(interval));
-
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => { config = source; },
-    onChange: () => {},
-  });
 }
 
-export { Config, apply, checkLatest, name };
+export { apply, checkLatest, name, notifyMacOS };

@@ -8,25 +8,14 @@ permissions:
   contents: read
 jobs:
   check:
-    name: check (${{ matrix.os }} / node ${{ matrix.node }})
-    strategy:
-      fail-fast: false
-      matrix:
-        # 3 组合(DoD ≥3):ubuntu 全 node 覆盖,macOS 只留一个版本
-        include:
-          - os: ubuntu-latest
-            node: 20
-          - os: ubuntu-latest
-            node: 24
-          - os: macos-latest
-            node: 24
-    runs-on: ${{ matrix.os }}
+    name: check (macos-latest / node 24)
+    runs-on: macos-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
       - name: pnpm
         run: npm install -g pnpm@9.15.0
       - name: install

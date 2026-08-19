@@ -1,7 +1,7 @@
-// @3kaiu/dsh-harness-updater 单元测试:registry 检查/状态机/预热/容错(mock fetch)
+// @3kaiu/dsh-harness-updater 单元测试:registry 版本检测 + macOS 原生通知(mock fetch/execFile/platform)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkLatest } from "../dist/index.js";
@@ -26,102 +26,84 @@ function isoHome() {
   return { dir, stateFile: join(dir, "state", "dsh-update.json") };
 }
 
-test("新版本:info 提示 + 状态写入(history/updatedCount)", async () => {
+test("新版本 + darwin → 弹 macOS 通知并记录 lastNotified", async () => {
   const { dir, stateFile } = isoHome();
   process.env.DSH_HOME = dir;
+  let notified = null;
   const c = mkCtx();
   await checkLatest(c, {
+    platform: "darwin",
     fetch: async () => jsonResponse({ version: "9.9.9" }),
+    execFile: (cmd, args, cb) => { notified = { cmd, args }; cb(null); },
   });
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(state.latest, "9.9.9");
-  assert.equal(state.updatedCount, 1);
-  assert.equal(state.history.length, 1);
-  assert.equal(state.history[0].to, "9.9.9");
-  assert.equal(state.history[0].from, null);
-  assert.match(c.logs.info[0], /new dsh version 9\.9\.9/);
+  assert.equal(notified?.cmd, "osascript");
+  assert.ok(notified.args[1].includes('display notification "发现 v9.9.9'));
+  assert.equal(state.lastNotified, "9.9.9");
+  assert.ok(c.logs.info.some((m) => m.includes("notification sent")));
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("当前版本:info current + updatedCount 不增,但 lastCheckAt 刷新", async () => {
+test("已通知过的版本 → 不重复弹窗(幂等)", async () => {
   const { dir, stateFile } = isoHome();
   process.env.DSH_HOME = dir;
-  writeFileSync(stateFile, JSON.stringify({ latest: "1.2.3", updatedCount: 5, latestPrev: "1.2.3", history: [] }));
+  writeFileSync(stateFile, JSON.stringify({ lastNotified: "9.9.9" }));
+  let calls = 0;
   const c = mkCtx();
   await checkLatest(c, {
-    fetch: async () => jsonResponse({ version: "1.2.3" }),
+    platform: "darwin",
+    fetch: async () => jsonResponse({ version: "9.9.9" }),
+    execFile: (cmd, args, cb) => { calls += 1; cb(null); },
   });
-  const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(state.latest, "1.2.3");
-  assert.equal(state.updatedCount, 5);
-  assert.equal(state.history.length, 0);
-  assert.ok(state.lastCheckAt > 0);
-  assert.match(c.logs.info[0], /dsh is current: 1\.2\.3/);
+  assert.equal(calls, 0);
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("registry 5xx:warn 且状态不写", async () => {
-  const { dir, stateFile } = isoHome();
+test("非 macOS 平台 → 不弹通知", async () => {
+  const { dir } = isoHome();
   process.env.DSH_HOME = dir;
-  const c = mkCtx();
-  await checkLatest(c, { fetch: async () => jsonResponse({}, 503) });
-  assert.match(c.logs.warn[0], /registry responded 503/);
-  assert.equal(existsSync(stateFile), false, "失败不写状态");
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test("网络异常:warn 且不崩", async () => {
-  const { dir, stateFile } = isoHome();
-  process.env.DSH_HOME = dir;
-  const c = mkCtx();
-  await checkLatest(c, { fetch: async () => { throw new Error("ETIMEDOUT"); } });
-  assert.match(c.logs.warn[0], /version check failed: ETIMEDOUT/);
-  assert.equal(existsSync(stateFile), false, "失败不写状态");
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test("无效版本(空字符串):静默跳过,不写状态", async () => {
-  const { dir, stateFile } = isoHome();
-  process.env.DSH_HOME = dir;
-  const c = mkCtx();
-  await checkLatest(c, { fetch: async () => jsonResponse({ version: "" }) });
-  assert.equal(c.logs.warn.length, 0);
-  assert.equal(c.logs.info.length, 0);
-  assert.equal(existsSync(stateFile), false, "无效版本不写状态");
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test("状态文件损坏:readState 容错,检查照常完成并修复状态", async () => {
-  const { dir, stateFile } = isoHome();
-  process.env.DSH_HOME = dir;
-  writeFileSync(stateFile, "{corrupted json!!");
+  let calls = 0;
   const c = mkCtx();
   await checkLatest(c, {
-    fetch: async () => jsonResponse({ version: "2.0.0" }),
+    platform: "linux",
+    fetch: async () => jsonResponse({ version: "9.9.8" }),
+    execFile: (cmd, args, cb) => { calls += 1; cb(null); },
   });
-  const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(state.latest, "2.0.0");
-  assert.equal(state.updatedCount, 1);
+  assert.equal(calls, 0);
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("history 截断:HISTORY_LIMIT=20,超限只留最近 20 条", async () => {
-  const { dir, stateFile } = isoHome();
+test("osascript 参数转义:版本号含引号/反斜杠不破坏脚本", async () => {
+  const { dir } = isoHome();
   process.env.DSH_HOME = dir;
-  const history = Array.from({ length: 25 }, (_, i) => ({ at: "t" + i, from: "v" + i, to: "v" + (i + 1) }));
-  writeFileSync(stateFile, JSON.stringify({ latest: "old", history }));
+  let script = null;
   const c = mkCtx();
   await checkLatest(c, {
-    fetch: async () => jsonResponse({ version: "new-ver" }),
+    platform: "darwin",
+    fetch: async () => jsonResponse({ version: '1.0"\\evil' }),
+    execFile: (cmd, args, cb) => { script = args[1]; cb(null); },
   });
-  const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  assert.equal(state.history.length, 20);
-  assert.equal(state.history[19].to, "new-ver");
-  assert.equal(state.updatedCount, 1);
+  assert.ok(script.includes('\\"') && script.includes("\\\\"));
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("checkLatest 注入校验:fetch 收到 registry URL", async () => {
+test("registry 失败(503)→ warn 且不弹通知、不写状态", async () => {
+  const { dir, stateFile } = isoHome();
+  process.env.DSH_HOME = dir;
+  let calls = 0;
+  const c = mkCtx();
+  await checkLatest(c, {
+    platform: "darwin",
+    fetch: async () => jsonResponse({ error: "boom" }, 503),
+    execFile: (cmd, args, cb) => { calls += 1; cb(null); },
+  });
+  assert.equal(calls, 0);
+  assert.ok(c.logs.warn.length > 0);
+  assert.throws(() => readFileSync(stateFile, "utf8"), /ENOENT/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("fetch 注入校验:收到 registry URL", async () => {
   const { dir } = isoHome();
   process.env.DSH_HOME = dir;
   const c = mkCtx();
