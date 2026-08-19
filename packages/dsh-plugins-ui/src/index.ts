@@ -41,7 +41,7 @@ const CATALOG = [
   { key: "llm-opencode-zen", pkg: "@3kaiu/dsh-llm-opencode-zen", emoji: "🦙", name: "OpenCode Zen 模型", description: "免费 DeepSeek 模型接入,可调并发/重试/模型列表" },
   { key: "dsh-github-sync", pkg: "@3kaiu/dsh-github-sync", emoji: "🔁", name: "GitHub 同步", description: "把 CI 工作流与 PR 状态拉进本地事件库" },
   { key: "dsh-runtime-events", pkg: "@3kaiu/dsh-runtime-events", emoji: "⏱️", name: "运行时事件", description: "事件采集与用量记录" },
-  { key: "harness-updater", pkg: "@3kaiu/dsh-harness-updater", emoji: "🆕", name: "运行时更新", description: "检查 dsh 新版本,在 Console 提示升级" },
+  { key: "harness-updater", pkg: "@3kaiu/dsh-harness-updater", emoji: "🆕", name: "运行时更新", description: "检查 dsh 新版本,macOS 弹原生通知" },
   { key: "dsh-console", pkg: "@3kaiu/dsh-console", emoji: "🖥️", name: "事件控制台", description: "事件库工作台(端口 3090,重启生效)" },
   { key: "layout-infer", pkg: "@3kaiu/dsh-layout-infer", emoji: "📐", name: "布局推断", description: "设计稿节点树的布局语义标注(面向开发者)" },
   { key: "dsh-plugins-ui", pkg: "@3kaiu/dsh-plugins-ui", emoji: "🧩", name: "插件设置与管理", description: "本页面的配置卡与插件管理自身" },

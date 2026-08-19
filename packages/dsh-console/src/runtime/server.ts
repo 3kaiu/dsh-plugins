@@ -17,11 +17,6 @@ import { WebSocketServer, WebSocket } from "ws";
 const PORT = Number(process.env.DSH_CONSOLE_PORT ?? 3090);
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
 const MAINT_REPO = process.env.DSH_MAINT_REPO?.length > 0 ? process.env.DSH_MAINT_REPO : null;
-// launcher 运行时版本(install.sh 写 RT_HOME/versions.json)与 updater 检查状态
-const RT_HOME = process.env.DSH_RT_HOME?.length > 0 ? process.env.DSH_RT_HOME : join(homedir(), ".local", "share", "dsh-runtime");
-const RUN_FILE = join(RT_HOME, "run.json");
-const VERSIONS_FILE = join(RT_HOME, "versions.json");
-const UPDATE_FILE = join(DSH_HOME, "state", "dsh-update.json");
 const EVENTS_DIR = join(DSH_HOME, "state", "events");
 const ALL_LOG = join(EVENTS_DIR, "all.jsonl");
 const SEQ_FILE = join(EVENTS_DIR, "seq");
@@ -80,62 +75,8 @@ function healthSummary() {
 }
 //#endregion
 
-/** 语义化版本比较:>0 表示 a 更新(数字段逐段比,rc.6 < rc.7 < rc.10)。 */
-function compareVersions(a, b) {
-  const pa = String(a).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
-  const pb = String(b).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? Number(x) : x));
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const x = pa[i] ?? 0;
-    const y = pb[i] ?? 0;
-    if (x === y) continue;
-    if (typeof x !== typeof y) return typeof x === "number" ? 1 : -1;
-    return typeof x === "number" ? x - y : String(x).localeCompare(String(y));
-  }
-  return 0;
-}
-
-/** 从 bin 路径向上找最近的 package.json(容纳 lib/bin.js / bin.js 等布局)。 */
-function pkgFromBin(binPath) {
-  let dir = dirname(binPath);
-  while (dir.length > 1) {
-    try { return JSON.parse(readFileSync(join(dir, "package.json"), "utf8")); } catch {}
-    dir = dirname(dir);
-  }
-  return null;
-}
-
-/** dsh 版本对比:launcher 已装(run.json 指向的 dsh 包,versions.json 兜底) vs updater 检查到的 registry 最新(dsh-update.json)。 */
-function dshUpdate() {
-  let installed = null;
-  // 主源:run.json 的 dsh bin 路径 → 该包 package.json(与 daemon 实际 exec 的 dsh 一致,不会过期)
-  try {
-    const run = JSON.parse(readFileSync(RUN_FILE, "utf8"));
-    if (typeof run.dsh === "string" && run.dsh.length > 0) {
-      installed = pkgFromBin(run.dsh)?.version ?? null;
-    }
-  } catch {}
-  // 兜底:install.sh 写的 versions.json
-  if (!installed) {
-    try { installed = JSON.parse(readFileSync(VERSIONS_FILE, "utf8")).dsh ?? null; } catch {}
-  }
-  if (!installed) return { ok: false, reason: "未检测到 launcher 运行时(run.json)" };
-  let latest = null;
-  let lastCheckAt = null;
-  try {
-    const s = JSON.parse(readFileSync(UPDATE_FILE, "utf8"));
-    latest = typeof s.latest === "string" && s.latest.length > 0 ? s.latest : null;
-    lastCheckAt = s.lastCheckAtIso ?? null;
-  } catch {}
-  return {
-    ok: true, installed, latest,
-    updateAvailable: latest !== null && compareVersions(latest, installed) > 0,
-    lastCheckAt,
-  };
-}
-
 //#region settings 代理:仅暴露插件配置面板的 4 个命名空间,防本地进程枚举/篡改官方配置
-const UI_NS = new Set(["harness-updater", "github-sync", "runtime-events", "dsh-console"]);
+const UI_NS = new Set(["github-sync", "runtime-events", "dsh-console"]);
 //#region 静态托管(simple,防目录穿越)
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript",
@@ -224,11 +165,6 @@ export function createConsoleServer(opts = {}) {
       if (!existsSync(p)) { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ ok: false, reason: "早报未生成:先跑 scripts/morning-report.mjs" })); return; }
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: true, markdown: readFileSync(p, "utf8"), generatedAt: statSync(p).mtime.toISOString() }));
-      return;
-    }
-    if (url.pathname === "/api/dsh-update") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(dshUpdate()));
       return;
     }
     if (url.pathname === "/api/settings/sections") {

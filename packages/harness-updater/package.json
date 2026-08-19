@@ -1,7 +1,7 @@
 {
   "name": "@3kaiu/dsh-harness-updater",
   "version": "0.1.0",
-  "description": "DeepSeek Harness plugin: registry version check for @deepseek-ai/dsh with npx-cache warm-up.",
+  "description": "DeepSeek Harness plugin: daily registry version check for @deepseek-ai/dsh, macOS native notification on new release. No runtime deps.",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
@@ -19,10 +19,6 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  },
-  "dependencies": {
-    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "3.18.1"
   },
   "devDependencies": {
     "esbuild": "^0.24.2"
