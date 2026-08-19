@@ -1,0 +1,3019 @@
+{
+ "canvas": {
+  "width": 375,
+  "height": 811
+ },
+ "rootMeta": {
+  "background": "paint_40:900"
+ },
+ "sections": [
+  {
+   "id": "40:0139",
+   "name": "矩形 148656",
+   "type": "LAYER",
+   "x": 0,
+   "y": 0,
+   "width": 375,
+   "height": 104,
+   "dsl": {
+    "styles": {
+     "paint_40:0140": {
+      "value": [
+       "linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "LAYER",
+      "id": "40:0139",
+      "name": "矩形 148656",
+      "layoutStyle": {
+       "width": 375,
+       "height": 104,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_40:0140",
+      "_color": "linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%)"
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0199",
+   "name": "矩形 148654",
+   "type": "PATH",
+   "x": 0,
+   "y": 0,
+   "width": 375,
+   "height": 813,
+   "dsl": {
+    "styles": {
+     "paint_2:161": {
+      "value": [
+       "#FFFFFF"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:0199",
+      "name": "矩形 148654",
+      "layoutStyle": {
+       "width": 375,
+       "height": 813,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "svgKey": "S1:40:0199|40:0199",
+      "svgShortKey": "S1#0",
+      "svgName": ""
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0202",
+   "name": "矩形 148699",
+   "type": "LAYER",
+   "x": 0,
+   "y": 0,
+   "width": 375,
+   "height": 128,
+   "dsl": {
+    "styles": {
+     "paint_40:0140": {
+      "value": [
+       "linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "LAYER",
+      "id": "40:0202",
+      "name": "矩形 148699",
+      "layoutStyle": {
+       "width": 375,
+       "height": 128,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_40:0140",
+      "_color": "linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%)"
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:948",
+   "name": "编组",
+   "type": "FRAME",
+   "x": 0,
+   "y": 0,
+   "width": 375,
+   "height": 44,
+   "dsl": {
+    "styles": {
+     "font_2:812": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 15,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:100": {
+      "value": [
+       "#000000"
+      ]
+     },
+     "paint_2:824": {
+      "value": [
+       "rgba(255, 255, 255, 0)"
+      ]
+     },
+     "paint_2:826": {
+      "value": []
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:948",
+      "name": "编组",
+      "layoutStyle": {
+       "width": 375,
+       "height": 44,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "LAYER",
+        "id": "40:968",
+        "name": "矩形",
+        "layoutStyle": {
+         "width": 375,
+         "height": 44,
+         "relativeX": 0,
+         "relativeY": 0
+        },
+        "fill": "paint_2:824",
+        "_color": "rgba(255, 255, 255, 0)",
+        "strokeColor": "paint_2:826",
+        "strokeType": "solid",
+        "strokeAlign": "inside",
+        "strokeWidth": "1px"
+       },
+       {
+        "type": "FRAME",
+        "id": "40:949",
+        "name": "Battery",
+        "layoutStyle": {
+         "width": 25,
+         "height": 12,
+         "relativeX": 336,
+         "relativeY": 16
+        },
+        "children": [
+         {
+          "type": "LAYER",
+          "id": "40:952",
+          "name": "Border",
+          "layoutStyle": {
+           "width": 22,
+           "height": 11.333333015441895,
+           "relativeX": 0.33329999446868896,
+           "relativeY": 0.3333333432674408
+          },
+          "opacity": 0.3499999940395355,
+          "borderRadius": "2.6666667461395264px",
+          "strokeColor": "paint_2:100",
+          "strokeType": "solid",
+          "strokeAlign": "inside",
+          "strokeWidth": "1px"
+         },
+         {
+          "type": "PATH",
+          "id": "40:951",
+          "name": "Cap",
+          "layoutStyle": {
+           "width": 1.328037977218628,
+           "height": 4,
+           "relativeX": 23.33329963684082,
+           "relativeY": 4
+          },
+          "opacity": 0.4000000059604645,
+          "path": [
+           {
+            "fill": "#000000",
+            "data": ""
+           }
+          ]
+         },
+         {
+          "type": "LAYER",
+          "id": "40:950",
+          "name": "Capacity",
+          "layoutStyle": {
+           "width": 18,
+           "height": 7.333333492279053,
+           "relativeX": 2.3333001136779785,
+           "relativeY": 2.3333332538604736
+          },
+          "borderRadius": "1.3333333730697632px",
+          "fill": "paint_2:100",
+          "_color": "#000000"
+         }
+        ]
+       },
+       {
+        "type": "PATH",
+        "id": "40:957",
+        "name": "Wifi",
+        "layoutStyle": {
+         "width": 15.333300590515137,
+         "height": 11.000236511230469,
+         "relativeX": 316,
+         "relativeY": 17
+        },
+        "svgKey": "S5:编组|40:957",
+        "svgShortKey": "S5#0",
+        "svgName": "编组"
+       },
+       {
+        "type": "PATH",
+        "id": "40:962",
+        "name": "Cellular Connection",
+        "layoutStyle": {
+         "width": 17,
+         "height": 10.6669921875,
+         "relativeX": 294,
+         "relativeY": 17
+        }
+       },
+       {
+        "type": "TEXT",
+        "id": "40:953",
+        "name": "11:07",
+        "layoutStyle": {
+         "width": 34,
+         "height": 21,
+         "relativeX": 31,
+         "relativeY": 12
+        },
+        "fill": "paint_2:100",
+        "_color": "#000000",
+        "text": [
+         {
+          "text": "11:07",
+          "font": "font_2:812"
+         }
+        ],
+        "textColor": [
+         {
+          "start": 0,
+          "end": 5,
+          "color": "paint_2:100"
+         }
+        ],
+        "textAlign": "center",
+        "textMode": "auto-height",
+        "_placeholder": true
+       }
+      ]
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "11:07",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "编组"
+     }
+    ],
+    "placeholderTexts": [
+     "11:07"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0166",
+   "name": "标题",
+   "type": "FRAME",
+   "x": 0,
+   "y": 44,
+   "width": 375,
+   "height": 44,
+   "dsl": {
+    "styles": {
+     "effect_40:0177": {
+      "value": []
+     },
+     "font_2:704": {
+      "value": {
+       "family": "PingFang HK",
+       "size": 20,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "font_40:0184": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 14,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:093": {
+      "value": []
+     },
+     "paint_2:161": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_2:420": {
+      "value": [
+       "#111E38"
+      ]
+     },
+     "paint_40:0173": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_40:0186": {
+      "value": [
+       "#3E495F"
+      ]
+     },
+     "paint_40:0191": {
+      "value": [
+       "#8D94A2"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:0166",
+      "name": "标题",
+      "layoutStyle": {
+       "width": 375,
+       "height": 44,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:093",
+      "children": [
+       {
+        "type": "TEXT",
+        "id": "40:0167",
+        "name": "课程",
+        "layoutStyle": {
+         "width": 40,
+         "height": 28,
+         "relativeX": 20,
+         "relativeY": 8
+        },
+        "fill": "paint_2:420",
+        "_color": "#111E38",
+        "text": [
+         {
+          "text": "课程",
+          "font": "font_2:704"
+         }
+        ],
+        "textColor": [
+         {
+          "start": 0,
+          "end": 2,
+          "color": "paint_2:420"
+         }
+        ],
+        "textAlign": "left",
+        "textMode": "single-line",
+        "_placeholder": true
+       },
+       {
+        "type": "GROUP",
+        "id": "40:0188",
+        "name": "组 174158",
+        "layoutStyle": {
+         "width": 42,
+         "height": 32,
+         "relativeX": 317,
+         "relativeY": 6
+        },
+        "children": [
+         {
+          "type": "PATH",
+          "id": "40:0189",
+          "name": "矩形 148320",
+          "layoutStyle": {
+           "width": 42,
+           "height": 32,
+           "relativeX": 0,
+           "relativeY": 0
+          },
+          "effect": "effect_40:0177",
+          "svgKey": "S6:标题|40:0189",
+          "svgShortKey": "S6#0",
+          "svgName": "标题"
+         },
+         {
+          "type": "GROUP",
+          "id": "40:5591",
+          "name": "组 174316",
+          "layoutStyle": {
+           "width": 18,
+           "height": 18,
+           "relativeX": 12,
+           "relativeY": 7
+          },
+          "_mergedVector": true
+         }
+        ]
+       },
+       {
+        "type": "GROUP",
+        "id": "40:0171",
+        "name": "组 174159",
+        "layoutStyle": {
+         "width": 80,
+         "height": 32,
+         "relativeX": 225,
+         "relativeY": 6
+        },
+        "children": [
+         {
+          "type": "PATH",
+          "id": "40:0172",
+          "name": "矩形 148320",
+          "layoutStyle": {
+           "width": 80,
+           "height": 32,
+           "relativeX": 0,
+           "relativeY": 0
+          },
+          "effect": "effect_40:0177"
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0181",
+          "name": "电脑上课",
+          "layoutStyle": {
+           "width": 56,
+           "height": 20,
+           "relativeX": 12,
+           "relativeY": 6
+          },
+          "fill": "paint_40:0186",
+          "_color": "#3E495F",
+          "text": [
+           {
+            "text": "电脑上课",
+            "font": "font_40:0184"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 4,
+            "color": "paint_40:0186"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "课程",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "标题"
+     },
+     {
+      "text": "电脑上课",
+      "_placeholder": true,
+      "parentType": "GROUP",
+      "parentName": "标题"
+     }
+    ],
+    "placeholderTexts": [
+     "课程",
+     "电脑上课"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0095",
+   "name": "image-HqXTtMI7xn6hBnTXlBReRKVmThRUyy",
+   "type": "LAYER",
+   "x": 167,
+   "y": 104,
+   "width": 42,
+   "height": 41.999996185302734,
+   "dsl": {
+    "styles": {
+     "paint_40:0096": {
+      "value": [
+       {
+        "url": "assets/eb73fb43f5354357.png",
+        "filters": ""
+       }
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "LAYER",
+      "id": "40:0095",
+      "name": "image-HqXTtMI7xn6hBnTXlBReRKVmThRUyy",
+      "layoutStyle": {
+       "width": 42,
+       "height": 41.999996185302734,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_40:0096"
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0207",
+   "name": "课程学习成果",
+   "type": "TEXT",
+   "x": 146,
+   "y": 146,
+   "width": 84,
+   "height": 20,
+   "dsl": {
+    "styles": {
+     "font_40:0210": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 14,
+       "style": "{\"fontStyle\":\"中粗体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "uppercase",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "600"
+      }
+     },
+     "paint_40:0212": {
+      "value": [
+       "#5D636D"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:0207",
+      "name": "课程学习成果",
+      "layoutStyle": {
+       "width": 84,
+       "height": 20,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_40:0212",
+      "_color": "#5D636D",
+      "text": [
+       {
+        "text": "课程学习成果",
+        "font": "font_40:0210"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 6,
+        "color": "paint_40:0212"
+       }
+      ],
+      "textAlign": "left",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "课程学习成果",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "课程学习成果"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "105:4225",
+   "name": "容器 173839",
+   "type": "FRAME",
+   "x": 29.756103515625,
+   "y": 176,
+   "width": 319.243896484375,
+   "height": 113.05548095703125,
+   "dsl": {
+    "styles": {
+     "effect_40:0086": {
+      "value": [
+       "box-shadow: 0px 1px 6px 0px #E3DFE4;"
+      ]
+     },
+     "effect_40:0162": {
+      "value": [
+       "box-shadow: inset 0px 6px 14px 0px #E6F1ED;"
+      ]
+     },
+     "effect_40:0239": {
+      "value": [
+       "box-shadow: inset 0px 6px 14px 0px #FAE8FA;"
+      ]
+     },
+     "effect_40:988": {
+      "value": [
+       "filter: blur(1px);"
+      ]
+     },
+     "effect_40:993": {
+      "value": [
+       "box-shadow: inset 0px 6px 14px 0px #FAE8E8;"
+      ]
+     },
+     "font_40:0089": {
+      "value": {
+       "family": "JoonFont",
+       "size": 38,
+       "style": "{\"fontStyle\":\"Regular\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "400"
+      }
+     },
+     "font_40:914": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 12,
+       "style": "{\"fontStyle\":\"常规体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "400"
+      }
+     },
+     "paint_2:100": {
+      "value": [
+       "#000000"
+      ]
+     },
+     "paint_2:161": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_2:420": {
+      "value": [
+       "#111E38"
+      ]
+     },
+     "paint_40:0160": {
+      "value": [
+       "linear-gradient(180deg, rgba(246, 247, 251, 0) 0%, #F7F8FA 100%)"
+      ]
+     },
+     "paint_40:981": {
+      "value": [
+       "#AAAAAA"
+      ]
+     },
+     "paint_40:991": {
+      "value": [
+       "linear-gradient(180deg, rgba(246, 247, 251, 0) 0%, #F9F2F2 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "105:4225",
+      "name": "容器 173839",
+      "layoutStyle": {
+       "width": 319.243896484375,
+       "height": 113.05548095703125,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "FRAME",
+        "id": "105:4221",
+        "name": "容器 173838",
+        "layoutStyle": {
+         "width": 114.59025573730469,
+         "height": 111.18283081054688,
+         "relativeX": 204.6536407470703,
+         "relativeY": 1.872650146484375
+        },
+        "children": [
+         {
+          "type": "PATH",
+          "id": "40:0238",
+          "name": "矩形 148698",
+          "layoutStyle": {
+           "width": 102,
+           "height": 98,
+           "relativeX": 6.3,
+           "relativeY": 6.59
+          },
+          "effect": "effect_40:0239",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(-0.9903619885444641,-0.13850341737270355,-0.13850341737270355,0.9903619885444641,230.03277551025212,16.007301576953296)"
+           },
+           {
+            "fill": "url(#grad_paint_40_0160)",
+            "data": "",
+            "transform": "matrix(-0.9903619885444641,-0.13850341737270355,-0.13850341737270355,0.9903619885444641,230.03277551025212,16.007301576953296)"
+           }
+          ],
+          "svgKey": "S18:容器 173838|40:0238",
+          "svgShortKey": "S18#0",
+          "svgName": "容器 173838"
+         },
+         {
+          "type": "PATH",
+          "id": "40:0194",
+          "name": "路径 2358",
+          "layoutStyle": {
+           "width": 15.6767578125,
+           "height": 16,
+           "relativeX": 21.37,
+           "relativeY": 6.89
+          },
+          "effect": "effect_40:988",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(0.9738145470619202,0.2276783436536789,-0.2276783436536789,0.9738145470619202,1.8227856834714657,-5.188239543959071)"
+           }
+          ]
+         },
+         {
+          "type": "TEXT",
+          "id": "40:977",
+          "name": "本周已学",
+          "layoutStyle": {
+           "width": 48,
+           "height": 17,
+           "relativeX": 32.59025573730469,
+           "relativeY": 62.127349853515625
+          },
+          "fill": "paint_40:981",
+          "_color": "#AAAAAA",
+          "text": [
+           {
+            "text": "累计时长",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 4,
+            "color": "paint_40:981"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line"
+         },
+         {
+          "type": "TEXT",
+          "id": "40:973",
+          "name": "min",
+          "layoutStyle": {
+           "width": 21,
+           "height": 17,
+           "relativeX": 64.59025573730469,
+           "relativeY": 43.127349853515625
+          },
+          "fill": "paint_2:420",
+          "_color": "#111E38",
+          "text": [
+           {
+            "text": "min",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 3,
+            "color": "paint_2:420"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0084",
+          "name": "67",
+          "layoutStyle": {
+           "width": 34,
+           "height": 38,
+           "relativeX": 28.590255737304688,
+           "relativeY": 29.127349853515625
+          },
+          "fill": "paint_2:100",
+          "_color": "#000000",
+          "strokeColor": "paint_2:161",
+          "strokeType": "solid",
+          "strokeAlign": "outside",
+          "strokeWidth": "2.5px",
+          "effect": "effect_40:0086",
+          "text": [
+           {
+            "text": "67",
+            "font": "font_40:0089"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 2,
+            "color": "paint_2:100"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       },
+       {
+        "type": "FRAME",
+        "id": "105:4213",
+        "name": "容器 173836",
+        "layoutStyle": {
+         "width": 111.68502807617188,
+         "height": 108.12506103515625,
+         "relativeX": 0,
+         "relativeY": 0
+        },
+        "children": [
+         {
+          "type": "PATH",
+          "id": "40:990",
+          "name": "矩形 148568",
+          "layoutStyle": {
+           "width": 102,
+           "height": 98,
+           "relativeX": 4.84,
+           "relativeY": 5.06
+          },
+          "effect": "effect_40:993",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(0.9945219159126282,0.10452846437692642,-0.10452846437692642,0.9945219159126282,0.05611634120123199,-1.0707676039033913)"
+           },
+           {
+            "fill": "url(#grad_paint_40_991)",
+            "data": "",
+            "transform": "matrix(0.9945219159126282,0.10452846437692642,-0.10452846437692642,0.9945219159126282,0.05611634120123199,-1.0707676039033913)"
+           }
+          ],
+          "svgKey": "S18:容器 173836|40:990",
+          "svgShortKey": "S18#1",
+          "svgName": "容器 173836"
+         },
+         {
+          "type": "PATH",
+          "id": "40:987",
+          "name": "路径 2356",
+          "layoutStyle": {
+           "width": 15.676758766174316,
+           "height": 16,
+           "relativeX": 17.82,
+           "relativeY": 7.29
+          },
+          "effect": "effect_40:988",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(0.9679904580116272,0.25098687410354614,-0.25098687410354614,0.9679904580116272,2.0438688522544908,-4.861927557581112)"
+           }
+          ]
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0005",
+          "name": "累计已学",
+          "layoutStyle": {
+           "width": 48,
+           "height": 17,
+           "relativeX": 32.24378967285156,
+           "relativeY": 64
+          },
+          "fill": "paint_40:981",
+          "_color": "#AAAAAA",
+          "text": [
+           {
+            "text": "今日学习",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 4,
+            "color": "paint_40:981"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line"
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0091",
+          "name": "min",
+          "layoutStyle": {
+           "width": 21,
+           "height": 17,
+           "relativeX": 63.24378967285156,
+           "relativeY": 45
+          },
+          "fill": "paint_2:420",
+          "_color": "#111E38",
+          "text": [
+           {
+            "text": "min",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 3,
+            "color": "paint_2:420"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0129",
+          "name": "25",
+          "layoutStyle": {
+           "width": 33,
+           "height": 38,
+           "relativeX": 28.243789672851562,
+           "relativeY": 31
+          },
+          "fill": "paint_2:100",
+          "_color": "#000000",
+          "strokeColor": "paint_2:161",
+          "strokeType": "solid",
+          "strokeAlign": "outside",
+          "strokeWidth": "2.5px",
+          "effect": "effect_40:0086",
+          "text": [
+           {
+            "text": "25",
+            "font": "font_40:0089"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 2,
+            "color": "paint_2:100"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       },
+       {
+        "type": "FRAME",
+        "id": "105:4217",
+        "name": "容器 173837",
+        "layoutStyle": {
+         "width": 111.68502807617188,
+         "height": 108.12506103515625,
+         "relativeX": 103.80265808105469,
+         "relativeY": 3
+        },
+        "children": [
+         {
+          "type": "PATH",
+          "id": "40:0159",
+          "name": "矩形 148697",
+          "layoutStyle": {
+           "width": 102,
+           "height": 98,
+           "relativeX": 4.84,
+           "relativeY": 5.06
+          },
+          "effect": "effect_40:0162",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(-0.9945219159126282,0.10452846437692642,0.10452846437692642,0.9945219159126282,202.3267731727401,-10.603496874792768)"
+           },
+           {
+            "fill": "url(#grad_paint_40_0160)",
+            "data": "",
+            "transform": "matrix(-0.9945219159126282,0.10452846437692642,0.10452846437692642,0.9945219159126282,202.3267731727401,-10.603496874792768)"
+           }
+          ],
+          "svgKey": "S18:容器 173837|40:0159",
+          "svgShortKey": "S18#2",
+          "svgName": "容器 173837"
+         },
+         {
+          "type": "PATH",
+          "id": "40:0243",
+          "name": "路径 2357",
+          "layoutStyle": {
+           "width": 15.6767578125,
+           "height": 15.999999046325684,
+           "relativeX": 10.54,
+           "relativeY": 15.1
+          },
+          "effect": "effect_40:988",
+          "path": [
+           {
+            "fill": "#FFFFFF",
+            "data": "",
+            "transform": "matrix(0.9947630167007446,-0.10295023024082184,0.10295023024082184,0.9947630167007446,-1.5908763989446015,1.088052421563816)"
+           }
+          ]
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0203",
+          "name": "本周已学",
+          "layoutStyle": {
+           "width": 48,
+           "height": 17,
+           "relativeX": 31.441238403320312,
+           "relativeY": 61
+          },
+          "fill": "paint_40:981",
+          "_color": "#AAAAAA",
+          "text": [
+           {
+            "text": "连续学习",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 4,
+            "color": "paint_40:981"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line"
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0195",
+          "name": "94",
+          "layoutStyle": {
+           "width": 37,
+           "height": 38,
+           "relativeX": 30.441238403320312,
+           "relativeY": 28
+          },
+          "fill": "paint_2:100",
+          "_color": "#000000",
+          "strokeColor": "paint_2:161",
+          "strokeType": "solid",
+          "strokeAlign": "outside",
+          "strokeWidth": "2.5px",
+          "effect": "effect_40:0086",
+          "text": [
+           {
+            "text": "94",
+            "font": "font_40:0089"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 2,
+            "color": "paint_2:100"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:969",
+          "name": "天",
+          "layoutStyle": {
+           "width": 12,
+           "height": 17,
+           "relativeX": 69.44123840332031,
+           "relativeY": 42
+          },
+          "fill": "paint_2:420",
+          "_color": "#111E38",
+          "text": [
+           {
+            "text": "天",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 1,
+            "color": "paint_2:420"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "累计时长",
+      "parentType": "FRAME",
+      "parentName": "容器 173838"
+     },
+     {
+      "text": "min",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173838"
+     },
+     {
+      "text": "67",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173838"
+     },
+     {
+      "text": "今日学习",
+      "parentType": "FRAME",
+      "parentName": "容器 173836"
+     },
+     {
+      "text": "min",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173836"
+     },
+     {
+      "text": "25",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173836"
+     },
+     {
+      "text": "连续学习",
+      "parentType": "FRAME",
+      "parentName": "容器 173837"
+     },
+     {
+      "text": "94",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173837"
+     },
+     {
+      "text": "天",
+      "_placeholder": true,
+      "parentType": "FRAME",
+      "parentName": "容器 173837"
+     }
+    ],
+    "placeholderTexts": [
+     "min",
+     "67",
+     "25",
+     "94",
+     "天"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:997",
+   "name": "矩形 148702",
+   "type": "PATH",
+   "x": 16,
+   "y": 278,
+   "width": 95,
+   "height": 3,
+   "dsl": {
+    "styles": {
+     "effect_40:0000": {
+      "value": [
+       "filter: blur(5px);"
+      ]
+     },
+     "paint_40:998": {
+      "value": [
+       "linear-gradient(270deg, #E4E4E4 0%, rgba(216, 216, 216, 0) 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:997",
+      "name": "矩形 148702",
+      "layoutStyle": {
+       "width": 95,
+       "height": 3,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "effect": "effect_40:0000",
+      "svgKey": "S14:40:997|40:997",
+      "svgShortKey": "S14#0",
+      "svgName": ""
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0149",
+   "name": "矩形 148703",
+   "type": "PATH",
+   "x": 162,
+   "y": 281,
+   "width": 88,
+   "height": 3,
+   "dsl": {
+    "styles": {
+     "effect_40:0000": {
+      "value": [
+       "filter: blur(5px);"
+      ]
+     },
+     "paint_40:998": {
+      "value": [
+       "linear-gradient(270deg, #E4E4E4 0%, rgba(216, 216, 216, 0) 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:0149",
+      "name": "矩形 148703",
+      "layoutStyle": {
+       "width": 88,
+       "height": 3,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "effect": "effect_40:0000",
+      "svgKey": "S16:40:0149|40:0149",
+      "svgShortKey": "S16#0",
+      "svgName": ""
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0138",
+   "name": "矩形 148704",
+   "type": "PATH",
+   "x": 234,
+   "y": 282,
+   "width": 85,
+   "height": 3,
+   "dsl": {
+    "styles": {
+     "effect_40:0000": {
+      "value": [
+       "filter: blur(5px);"
+      ]
+     },
+     "paint_40:998": {
+      "value": [
+       "linear-gradient(270deg, #E4E4E4 0%, rgba(216, 216, 216, 0) 100%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:0138",
+      "name": "矩形 148704",
+      "layoutStyle": {
+       "width": 85,
+       "height": 3,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "effect": "effect_40:0000",
+      "svgKey": "S15:40:0138|40:0138",
+      "svgShortKey": "S15#0",
+      "svgName": ""
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:983",
+   "name": "我的课程",
+   "type": "TEXT",
+   "x": 16,
+   "y": 302,
+   "width": 56,
+   "height": 20,
+   "dsl": {
+    "styles": {
+     "font_2:661": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 14,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:128": {
+      "value": [
+       "#8F96A4"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:983",
+      "name": "我的课程",
+      "layoutStyle": {
+       "width": 56,
+       "height": 20,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:128",
+      "_color": "#8F96A4",
+      "text": [
+       {
+        "text": "我的课程",
+        "font": "font_2:661"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 4,
+        "color": "paint_2:128"
+       }
+      ],
+      "textAlign": "left",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "我的课程",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "我的课程"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "105:0229",
+   "name": "容器 173827",
+   "type": "FRAME",
+   "x": 16,
+   "y": 338,
+   "width": 343,
+   "height": 236,
+   "dsl": {
+    "styles": {
+     "effect_40:925": {
+      "value": []
+     },
+     "effect_40:930": {
+      "value": []
+     },
+     "effect_40:937": {
+      "value": []
+     },
+     "font_2:0722": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 16,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "font_40:907": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 10,
+       "style": "{\"fontStyle\":\"常规体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "400"
+      }
+     },
+     "font_40:914": {
+      "value": {
+       "family": "PingFang SC",
+       "size": 12,
+       "style": "{\"fontStyle\":\"常规体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "-1",
+       "letterSpacing": "auto",
+       "weight": "400"
+      }
+     },
+     "paint_2:161": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_2:174": {
+      "value": []
+     },
+     "paint_40:0228": {
+      "value": [
+       "#E6F1ED"
+      ]
+     },
+     "paint_40:909": {
+      "value": [
+       "#87705A"
+      ]
+     },
+     "paint_40:916": {
+      "value": [
+       "#7C7068"
+      ]
+     },
+     "paint_40:922": {
+      "value": [
+       "#FF9B05"
+      ]
+     },
+     "paint_40:933": {
+      "value": [
+       "#F1E8F1"
+      ]
+     },
+     "paint_40:940": {
+      "value": [
+       {
+        "url": "assets/c305b53f461e1a46.jpg",
+        "filters": ""
+       }
+      ]
+     },
+     "paint_40:946": {
+      "value": [
+       "#38302B"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "105:0229",
+      "name": "容器 173827",
+      "layoutStyle": {
+       "width": 343,
+       "height": 236,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0215",
+        "name": "组 173775",
+        "layoutStyle": {
+         "width": 343,
+         "height": 112,
+         "relativeX": 0,
+         "relativeY": 0
+        },
+        "children": [
+         {
+          "type": "GROUP",
+          "id": "40:0220",
+          "name": "蒙版组 226",
+          "layoutStyle": {
+           "width": 343,
+           "height": 112,
+           "relativeX": 0,
+           "relativeY": 0
+          },
+          "children": [
+           {
+            "type": "GROUP",
+            "id": "40:0221",
+            "name": "蒙版组 228",
+            "layoutStyle": {
+             "width": 343,
+             "height": 112,
+             "relativeX": 0,
+             "relativeY": 0
+            },
+            "children": [
+             {
+              "type": "PATH",
+              "id": "40:0227",
+              "name": "矩形 6639",
+              "layoutStyle": {
+               "width": 343,
+               "height": 112,
+               "relativeX": 0,
+               "relativeY": 0
+              },
+              "mask": "outline",
+              "effect": "effect_40:937",
+              "svgKey": "S11:蒙版组 228|40:0227",
+              "svgShortKey": "S11#0",
+              "svgName": "蒙版组 228"
+             },
+             {
+              "type": "GROUP",
+              "id": "40:0222",
+              "name": "组 174238",
+              "layoutStyle": {
+               "width": 36,
+               "height": 36,
+               "relativeX": 287,
+               "relativeY": 56
+              },
+              "children": [
+               {
+                "type": "GROUP",
+                "id": "40:5539",
+                "name": "组 174315",
+                "layoutStyle": {
+                 "width": 36,
+                 "height": 36,
+                 "relativeX": 0,
+                 "relativeY": 0
+                },
+                "_mergedVector": true
+               }
+              ]
+             },
+             {
+              "type": "LAYER",
+              "id": "40:0226",
+              "name": "01双人主图PSD",
+              "layoutStyle": {
+               "width": 72,
+               "height": 72,
+               "relativeX": 20,
+               "relativeY": 20
+              },
+              "borderRadius": "12px",
+              "fill": "paint_40:940"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0234",
+          "name": "90天“祖成”英语陪跑课",
+          "layoutStyle": {
+           "width": 167,
+           "height": 22,
+           "relativeX": 104,
+           "relativeY": 20
+          },
+          "fill": "paint_40:946",
+          "_color": "#38302B",
+          "text": [
+           {
+            "text": "90天“祖成”英语陪跑课",
+            "font": "font_2:0722"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 12,
+            "color": "paint_40:946"
+           }
+          ],
+          "textAlign": "center",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0216",
+          "name": "明星老师陪你学英语",
+          "layoutStyle": {
+           "width": 108,
+           "height": 17,
+           "relativeX": 104,
+           "relativeY": 44
+          },
+          "fill": "paint_40:916",
+          "_color": "#7C7068",
+          "text": [
+           {
+            "text": "明星老师陪你学英语",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 9,
+            "color": "paint_40:916"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:0230",
+          "name": "420人在学习",
+          "layoutStyle": {
+           "width": 58,
+           "height": 14,
+           "relativeX": 104,
+           "relativeY": 72
+          },
+          "fill": "paint_40:909",
+          "_color": "#87705A",
+          "text": [
+           {
+            "text": "420人在学习",
+            "font": "font_40:907"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 7,
+            "color": "paint_40:909"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       },
+       {
+        "type": "GROUP",
+        "id": "40:903",
+        "name": "组 174112",
+        "layoutStyle": {
+         "width": 343,
+         "height": 112,
+         "relativeX": 0,
+         "relativeY": 124
+        },
+        "children": [
+         {
+          "type": "GROUP",
+          "id": "40:918",
+          "name": "蒙版组 226",
+          "layoutStyle": {
+           "width": 343,
+           "height": 112,
+           "relativeX": 0,
+           "relativeY": 0
+          },
+          "children": [
+           {
+            "type": "GROUP",
+            "id": "40:919",
+            "name": "蒙版组 228",
+            "layoutStyle": {
+             "width": 343,
+             "height": 112,
+             "relativeX": 0,
+             "relativeY": 0
+            },
+            "children": [
+             {
+              "type": "PATH",
+              "id": "40:932",
+              "name": "矩形 6639",
+              "layoutStyle": {
+               "width": 343,
+               "height": 112,
+               "relativeX": 0,
+               "relativeY": 0
+              },
+              "mask": "outline",
+              "effect": "effect_40:937"
+             },
+             {
+              "type": "GROUP",
+              "id": "40:920",
+              "name": "组 174238",
+              "layoutStyle": {
+               "width": 36,
+               "height": 36,
+               "relativeX": 287,
+               "relativeY": 56
+              },
+              "_mergedVector": true
+             },
+             {
+              "type": "LAYER",
+              "id": "40:939",
+              "name": "01双人主图PSD",
+              "layoutStyle": {
+               "width": 72,
+               "height": 72,
+               "relativeX": 20,
+               "relativeY": 20
+              },
+              "borderRadius": "12px",
+              "fill": "paint_40:940"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "type": "TEXT",
+          "id": "40:942",
+          "name": "90天“祖成”英语陪跑课",
+          "layoutStyle": {
+           "width": 167,
+           "height": 22,
+           "relativeX": 104,
+           "relativeY": 20
+          },
+          "fill": "paint_40:946",
+          "_color": "#38302B",
+          "text": [
+           {
+            "text": "90天“祖成”英语陪跑课",
+            "font": "font_2:0722"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 12,
+            "color": "paint_40:946"
+           }
+          ],
+          "textAlign": "center",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:911",
+          "name": "明星老师陪你学英语",
+          "layoutStyle": {
+           "width": 108,
+           "height": 17,
+           "relativeX": 104,
+           "relativeY": 44
+          },
+          "fill": "paint_40:916",
+          "_color": "#7C7068",
+          "text": [
+           {
+            "text": "明星老师陪你学英语",
+            "font": "font_40:914"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 9,
+            "color": "paint_40:916"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         },
+         {
+          "type": "TEXT",
+          "id": "40:904",
+          "name": "420人在学习",
+          "layoutStyle": {
+           "width": 58,
+           "height": 14,
+           "relativeX": 104,
+           "relativeY": 72
+          },
+          "fill": "paint_40:909",
+          "_color": "#87705A",
+          "text": [
+           {
+            "text": "420人在学习",
+            "font": "font_40:907"
+           }
+          ],
+          "textColor": [
+           {
+            "start": 0,
+            "end": 7,
+            "color": "paint_40:909"
+           }
+          ],
+          "textAlign": "left",
+          "textMode": "single-line",
+          "_placeholder": true
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "90天“祖成”英语陪跑课",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "明星老师陪你学英语",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "420人在学习",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "90天“祖成”英语陪跑课",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "明星老师陪你学英语",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "420人在学习",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     }
+    ],
+    "placeholderTexts": [
+     "90天“祖成”英语陪跑课",
+     "明星老师陪你学英语",
+     "420人在学习"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0098",
+   "name": "矩形 148669",
+   "type": "LAYER",
+   "x": 0,
+   "y": 578,
+   "width": 375,
+   "height": 234,
+   "dsl": {
+    "styles": {
+     "paint_40:0099": {
+      "value": [
+       "linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #F6F7FB 40%)"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "LAYER",
+      "id": "40:0098",
+      "name": "矩形 148669",
+      "layoutStyle": {
+       "width": 375,
+       "height": 234,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_40:0099",
+      "_color": "linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #F6F7FB 40%)"
+     }
+    ],
+    "components": []
+   },
+   "_depth": 0
+  },
+  {
+   "id": "105:0198",
+   "name": "容器 173817",
+   "type": "FRAME",
+   "x": 114.5,
+   "y": 676,
+   "width": 146,
+   "height": 42,
+   "dsl": {
+    "styles": {
+     "effect_40:0122": {
+      "value": [
+       "box-shadow: 0px 10px 20px 0px rgba(0, 0, 0, 0.04);"
+      ]
+     },
+     "font_40:0109": {
+      "value": {
+       "family": "PingFang HK",
+       "size": 14,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "font_40:0115": {
+      "value": {
+       "family": "PingFang HK",
+       "size": 12,
+       "style": "{\"fontStyle\":\"中黑体\",\"opsz\":\"auto\"}",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:161": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_2:420": {
+      "value": [
+       "#111E38"
+      ]
+     },
+     "paint_40:0104": {
+      "value": [
+       {
+        "url": "assets/fbd6e7480c1aee18.png",
+        "filters": ""
+       }
+      ]
+     },
+     "paint_40:0117": {
+      "value": [
+       "#B6BDCA"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "105:0198",
+      "name": "容器 173817",
+      "layoutStyle": {
+       "width": 146,
+       "height": 42,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0101",
+        "name": "组 174313",
+        "layoutStyle": {
+         "width": 146,
+         "height": 42,
+         "relativeX": 0,
+         "relativeY": 0
+        },
+        "children": [
+         {
+          "type": "GROUP",
+          "id": "40:0111",
+          "name": "组 174111",
+          "layoutStyle": {
+           "width": 146,
+           "height": 42,
+           "relativeX": 0,
+           "relativeY": 0
+          },
+          "children": [
+           {
+            "type": "PATH",
+            "id": "40:0119",
+            "name": "减去顶层 13",
+            "layoutStyle": {
+             "width": 146,
+             "height": 42,
+             "relativeX": 0,
+             "relativeY": 0
+            },
+            "effect": "effect_40:0122",
+            "svgKey": "S30:组 174111|40:0119",
+            "svgShortKey": "S30#0",
+            "svgName": "组 174111"
+           },
+           {
+            "type": "TEXT",
+            "id": "40:0112",
+            "name": "直播",
+            "layoutStyle": {
+             "width": 24,
+             "height": 17,
+             "relativeX": 98,
+             "relativeY": 12
+            },
+            "fill": "paint_40:0117",
+            "_color": "#B6BDCA",
+            "text": [
+             {
+              "text": "直播",
+              "font": "font_40:0115"
+             }
+            ],
+            "textColor": [
+             {
+              "start": 0,
+              "end": 2,
+              "color": "paint_40:0117"
+             }
+            ],
+            "textAlign": "left",
+            "textMode": "single-line",
+            "_placeholder": true
+           }
+          ]
+         },
+         {
+          "type": "GROUP",
+          "id": "40:0102",
+          "name": "组 174312",
+          "layoutStyle": {
+           "width": 52,
+           "height": 22.000001907348633,
+           "relativeX": 17.5,
+           "relativeY": 9
+          },
+          "children": [
+           {
+            "type": "TEXT",
+            "id": "40:0106",
+            "name": "课程",
+            "layoutStyle": {
+             "width": 28,
+             "height": 20,
+             "relativeX": 24,
+             "relativeY": 2
+            },
+            "fill": "paint_2:420",
+            "_color": "#111E38",
+            "text": [
+             {
+              "text": "课程",
+              "font": "font_40:0109"
+             }
+            ],
+            "textColor": [
+             {
+              "start": 0,
+              "end": 2,
+              "color": "paint_2:420"
+             }
+            ],
+            "textAlign": "left",
+            "textMode": "single-line",
+            "_placeholder": true
+           },
+           {
+            "type": "LAYER",
+            "id": "40:0103",
+            "name": "image",
+            "layoutStyle": {
+             "width": 22,
+             "height": 22.000001907348633,
+             "relativeX": 0,
+             "relativeY": 0
+            },
+            "fill": "paint_40:0104"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "直播",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     },
+     {
+      "text": "课程",
+      "_placeholder": true,
+      "parentType": "GROUP"
+     }
+    ],
+    "placeholderTexts": [
+     "直播",
+     "课程"
+    ]
+   },
+   "_depth": 0
+  },
+  {
+   "id": "40:0019",
+   "name": "矩形",
+   "type": "PATH",
+   "x": 0,
+   "y": 730,
+   "width": 375,
+   "height": 82,
+   "dsl": {
+    "styles": {
+     "effect_2:374": {
+      "value": [
+       "backdrop-filter: blur(5px);"
+      ]
+     },
+     "paint_2:370": {
+      "value": [
+       "#FFFFFF"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:0019",
+      "name": "矩形",
+      "layoutStyle": {
+       "width": 375,
+       "height": 82,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "effect": "effect_2:374",
+      "svgKey": "S19:40:0019|40:0019",
+      "svgShortKey": "S19#0",
+      "svgName": ""
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0010",
+   "name": "直线 160",
+   "type": "PATH",
+   "x": 0,
+   "y": 730.5,
+   "width": 375,
+   "height": 0,
+   "dsl": {
+    "styles": {
+     "paint_2:779": {
+      "value": [
+       "#EFF1F6"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "PATH",
+      "id": "40:0010",
+      "name": "直线 160",
+      "layoutStyle": {
+       "width": 375,
+       "height": 0,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "path": [
+       {
+        "fill": "#EFF1F6",
+        "data": ""
+       }
+      ]
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0070",
+   "name": "容器 173794",
+   "type": "FRAME",
+   "x": 30,
+   "y": 740,
+   "width": 24,
+   "height": 24,
+   "dsl": {
+    "styles": {
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:0070",
+      "name": "容器 173794",
+      "layoutStyle": {
+       "width": 24,
+       "height": 24,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0071",
+        "name": "组 173968",
+        "layoutStyle": {
+         "width": 22,
+         "height": 20,
+         "relativeX": 0.5,
+         "relativeY": 2
+        },
+        "_mergedVector": true,
+        "svgKey": "S29:容器 173794|40:0071",
+        "svgShortKey": "S29#0",
+        "svgName": "容器 173794"
+       }
+      ]
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0028",
+   "name": "容器 173796",
+   "type": "FRAME",
+   "x": 127,
+   "y": 740,
+   "width": 24,
+   "height": 24,
+   "dsl": {
+    "styles": {
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:0028",
+      "name": "容器 173796",
+      "layoutStyle": {
+       "width": 24,
+       "height": 24,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0029",
+        "name": "组 174283",
+        "layoutStyle": {
+         "width": 22,
+         "height": 19,
+         "relativeX": 1,
+         "relativeY": 3
+        },
+        "_mergedVector": true,
+        "svgKey": "S28:容器 173796|40:0029",
+        "svgShortKey": "S28#0",
+        "svgName": "容器 173796"
+       }
+      ]
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0057",
+   "name": "容器 173797",
+   "type": "FRAME",
+   "x": 224,
+   "y": 740,
+   "width": 24,
+   "height": 24,
+   "dsl": {
+    "styles": {
+     "paint_2:199": {
+      "value": [
+       "#FFA621"
+      ]
+     },
+     "paint_2:420": {
+      "value": [
+       "#111E38"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:0057",
+      "name": "容器 173797",
+      "layoutStyle": {
+       "width": 24,
+       "height": 24,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0058",
+        "name": "组 173970",
+        "layoutStyle": {
+         "width": 23.00000762939453,
+         "height": 20,
+         "relativeX": 0.5,
+         "relativeY": 2
+        },
+        "children": [
+         {
+          "type": "LAYER",
+          "id": "40:0064",
+          "name": "矩形 148539",
+          "layoutStyle": {
+           "width": 14,
+           "height": 11,
+           "relativeX": 7.5,
+           "relativeY": 8
+          },
+          "borderRadius": "4px",
+          "fill": "paint_2:199",
+          "_color": "#FFA621"
+         },
+         {
+          "type": "PATH",
+          "id": "40:0062",
+          "name": "矩形 148391",
+          "layoutStyle": {
+           "width": 3,
+           "height": 14,
+           "relativeX": 0,
+           "relativeY": 3
+          },
+          "svgKey": "S21:组 173970|40:0062",
+          "svgShortKey": "S21#0",
+          "svgName": "组 173970"
+         },
+         {
+          "type": "PATH",
+          "id": "40:0065",
+          "name": "矩形 148398",
+          "layoutStyle": {
+           "width": 3,
+           "height": 9,
+           "relativeX": 10,
+           "relativeY": 3
+          }
+         },
+         {
+          "type": "PATH",
+          "id": "40:0066",
+          "name": "矩形 148395",
+          "layoutStyle": {
+           "width": 3,
+           "height": 14,
+           "relativeX": 20.00000762939453,
+           "relativeY": 3
+          }
+         },
+         {
+          "type": "PATH",
+          "id": "40:0067",
+          "name": "矩形 148397",
+          "layoutStyle": {
+           "width": 7,
+           "height": 3,
+           "relativeX": 3,
+           "relativeY": 0
+          }
+         },
+         {
+          "type": "PATH",
+          "id": "40:0061",
+          "name": "路径 2239",
+          "layoutStyle": {
+           "width": 1.9999949932098389,
+           "height": 2,
+           "relativeX": 2,
+           "relativeY": 2
+          },
+          "path": [
+           {
+            "fill": "#111E38",
+            "data": ""
+           }
+          ]
+         },
+         {
+          "type": "PATH",
+          "id": "40:0060",
+          "name": "路径 2240",
+          "layoutStyle": {
+           "width": 1.9999949932098389,
+           "height": 2,
+           "relativeX": 19,
+           "relativeY": 2
+          },
+          "path": [
+           {
+            "fill": "#111E38",
+            "data": "",
+            "transform": "matrix(-1,0,0,1,42.00001525878906,0)"
+           }
+          ]
+         },
+         {
+          "type": "PATH",
+          "id": "40:0069",
+          "name": "路径 2241",
+          "layoutStyle": {
+           "width": 1.9999949932098389,
+           "height": 2,
+           "relativeX": 12,
+           "relativeY": 2
+          },
+          "path": [
+           {
+            "fill": "#111E38",
+            "data": ""
+           }
+          ]
+         },
+         {
+          "type": "PATH",
+          "id": "40:0068",
+          "name": "路径 2242",
+          "layoutStyle": {
+           "width": 1.9999949932098389,
+           "height": 2,
+           "relativeX": 9,
+           "relativeY": 2
+          },
+          "path": [
+           {
+            "fill": "#111E38",
+            "data": "",
+            "transform": "matrix(-1,0,0,1,22,0)"
+           }
+          ]
+         },
+         {
+          "type": "PATH",
+          "id": "40:0059",
+          "name": "矩形 148399",
+          "layoutStyle": {
+           "width": 7,
+           "height": 3,
+           "relativeX": 13,
+           "relativeY": 0
+          }
+         },
+         {
+          "type": "PATH",
+          "id": "40:0063",
+          "name": "矩形 148396",
+          "layoutStyle": {
+           "width": 23.00000762939453,
+           "height": 3,
+           "relativeX": 0,
+           "relativeY": 17
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0040",
+   "name": "容器 173798",
+   "type": "FRAME",
+   "x": 321,
+   "y": 740,
+   "width": 24,
+   "height": 24,
+   "dsl": {
+    "styles": {
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "FRAME",
+      "id": "40:0040",
+      "name": "容器 173798",
+      "layoutStyle": {
+       "width": 24,
+       "height": 24,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "children": [
+       {
+        "type": "GROUP",
+        "id": "40:0041",
+        "name": "组 173971",
+        "layoutStyle": {
+         "width": 23,
+         "height": 21,
+         "relativeX": 0,
+         "relativeY": 1
+        },
+        "_mergedVector": true,
+        "svgKey": "S22:容器 173798|40:0041",
+        "svgShortKey": "S22#0",
+        "svgName": "容器 173798"
+       }
+      ]
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0020",
+   "name": "对话",
+   "type": "TEXT",
+   "x": 32,
+   "y": 764,
+   "width": 20,
+   "height": 14,
+   "dsl": {
+    "styles": {
+     "font_2:746": {
+      "value": {
+       "family": "PingFangSC",
+       "size": 10,
+       "style": "Medium",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:0020",
+      "name": "对话",
+      "layoutStyle": {
+       "width": 20,
+       "height": 14,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:382",
+      "_color": "#D1D1D1",
+      "text": [
+       {
+        "text": "对话",
+        "font": "font_2:746"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 2,
+        "color": "paint_2:382"
+       }
+      ],
+      "textAlign": "center",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "对话",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "对话"
+    ]
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0011",
+   "name": "首页",
+   "type": "TEXT",
+   "x": 129,
+   "y": 764,
+   "width": 20,
+   "height": 14,
+   "dsl": {
+    "styles": {
+     "font_2:746": {
+      "value": {
+       "family": "PingFangSC",
+       "size": 10,
+       "style": "Medium",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:0011",
+      "name": "首页",
+      "layoutStyle": {
+       "width": 20,
+       "height": 14,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:382",
+      "_color": "#D1D1D1",
+      "text": [
+       {
+        "text": "首页",
+        "font": "font_2:746"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 2,
+        "color": "paint_2:382"
+       }
+      ],
+      "textAlign": "center",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "首页",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "首页"
+    ]
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0024",
+   "name": "学习",
+   "type": "TEXT",
+   "x": 226,
+   "y": 764,
+   "width": 20,
+   "height": 14,
+   "dsl": {
+    "styles": {
+     "font_2:746": {
+      "value": {
+       "family": "PingFangSC",
+       "size": 10,
+       "style": "Medium",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:420": {
+      "value": [
+       "#111E38"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:0024",
+      "name": "学习",
+      "layoutStyle": {
+       "width": 20,
+       "height": 14,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:420",
+      "_color": "#111E38",
+      "text": [
+       {
+        "text": "学习",
+        "font": "font_2:746"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 2,
+        "color": "paint_2:420"
+       }
+      ],
+      "textAlign": "center",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "学习",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "学习"
+    ]
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:0015",
+   "name": "我的",
+   "type": "TEXT",
+   "x": 323,
+   "y": 764,
+   "width": 20,
+   "height": 14,
+   "dsl": {
+    "styles": {
+     "font_2:746": {
+      "value": {
+       "family": "PingFangSC",
+       "size": 10,
+       "style": "Medium",
+       "decoration": "none",
+       "case": "none",
+       "lineHeight": "auto",
+       "letterSpacing": "auto",
+       "weight": "500"
+      }
+     },
+     "paint_2:382": {
+      "value": [
+       "#D1D1D1"
+      ]
+     }
+    },
+    "nodes": [
+     {
+      "type": "TEXT",
+      "id": "40:0015",
+      "name": "我的",
+      "layoutStyle": {
+       "width": 20,
+       "height": 14,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:382",
+      "_color": "#D1D1D1",
+      "text": [
+       {
+        "text": "我的",
+        "font": "font_2:746"
+       }
+      ],
+      "textColor": [
+       {
+        "start": 0,
+        "end": 2,
+        "color": "paint_2:382"
+       }
+      ],
+      "textAlign": "center",
+      "textMode": "single-line",
+      "_placeholder": true
+     }
+    ],
+    "components": [],
+    "rowTexts": [
+     {
+      "text": "我的",
+      "_placeholder": true
+     }
+    ],
+    "placeholderTexts": [
+     "我的"
+    ]
+   },
+   "_depth": 1
+  },
+  {
+   "id": "40:2145",
+   "name": "Bars / Home Indicator / iPhone / Light - Portrait",
+   "type": "INSTANCE",
+   "x": 121,
+   "y": 778,
+   "width": 134,
+   "height": 34,
+   "dsl": {
+    "styles": {
+     "paint_2:0429": {
+      "value": [
+       "#FFFFFF"
+      ]
+     },
+     "paint_2:0432": {
+      "value": [
+       "#000000"
+      ]
+     },
+     "paint_2:0434": {
+      "value": []
+     }
+    },
+    "nodes": [
+     {
+      "type": "INSTANCE",
+      "id": "40:2145",
+      "name": "Bars / Home Indicator / iPhone / Light - Portrait",
+      "layoutStyle": {
+       "width": 134,
+       "height": 34,
+       "relativeX": 0,
+       "relativeY": 0
+      },
+      "fill": "paint_2:0429",
+      "_color": "#FFFFFF",
+      "componentInfo": {
+       "description": "undefined"
+      },
+      "children": [
+       {
+        "type": "LAYER",
+        "id": "40:2145/2:0431",
+        "name": "Home Indicator",
+        "layoutStyle": {
+         "width": 134,
+         "height": 5,
+         "relativeX": 0,
+         "relativeY": 21
+        },
+        "borderRadius": "2.5px",
+        "fill": "paint_2:0432",
+        "_color": "#000000",
+        "strokeColor": "paint_2:0434",
+        "strokeType": "solid",
+        "strokeAlign": "inside"
+       }
+      ],
+      "componentId": "2:0428"
+     }
+    ],
+    "components": []
+   },
+   "_depth": 1
+  }
+ ]
+}
