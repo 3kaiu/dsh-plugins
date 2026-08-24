@@ -23,12 +23,7 @@ import { fileURLToPath } from "node:url";
 
 const PLUGINS = [
   { dir: "llm-opencode-zen", patchIds: ["llm-opencode-zen"], pkg: "@3kaiu/dsh-llm-opencode-zen" },
-  { dir: "harness-updater", patchIds: ["dsh-harness-updater"], pkg: "@3kaiu/dsh-harness-updater" },
   { dir: "layout-infer", patchIds: ["dsh-layout-infer"], pkg: "@3kaiu/dsh-layout-infer" },
-  { dir: "dsh-console", patchIds: ["dsh-console"], pkg: "@3kaiu/dsh-console" },
-  { dir: "dsh-github-sync", patchIds: ["dsh-github-sync"], pkg: "@3kaiu/dsh-github-sync" },
-  { dir: "dsh-runtime-events", patchIds: ["dsh-runtime-events"], pkg: "@3kaiu/dsh-runtime-events" },
-  { dir: "dsh-plugins-ui", patchIds: ["dsh-plugins-ui"], pkg: "@3kaiu/dsh-plugins-ui" },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
