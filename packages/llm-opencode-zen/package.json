@@ -1,6 +1,6 @@
 {
   "name": "@3kaiu/dsh-llm-opencode-zen",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "DeepSeek Harness plugin: resilient OpenCode Zen free-tier LLM adapter (deepseek-v4-flash-free), tuned for rate-limited free quotas.",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs"
+    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs && node test/catalog.test.mjs"
   },
   "dsh": {
     "bundle": {

@@ -443,6 +443,101 @@ async function* translate(events, context = {}) {
 }
 //#endregion
 
+//#region model-catalog
+// 动态免费模型目录:OpenCode 官方模型元数据发布在 models.dev(provider id = "opencode",
+// api 指向 zen/v1),其中 cost.input/output 全为 0 的即免费模型;但 models.dev 会保留
+// 已下线的条目,所以再与 live 端点 {baseURL}/models(当前实际在服务的 id)取交集。
+const MODELS_DEV_URL = "https://models.dev/api.json";
+const MODELS_DEV_PROVIDER = "opencode";
+const DEFAULT_CATALOG_REFRESH_MS = 3600000;
+// 拉取失败时的负缓存:避免每次请求都重试挂掉的源(离线环境快速回退到静态目录)
+const CATALOG_ERROR_TTL_MS = 60000;
+
+async function fetchJson(url, headers) {
+  const response = await fetch(url, { headers });
+  if (!response.ok) throw new Error(`HTTP ${response.status} ${url}`);
+  return response.json();
+}
+
+function toCatalogEntry(id, meta) {
+  return {
+    id,
+    name: meta.name ?? id,
+    ...(meta.description === void 0 ? {} : { description: meta.description }),
+    ...(meta.limit?.context === void 0 ? {} : { contextWindow: meta.limit.context }),
+    ...(meta.limit?.output === void 0 ? {} : { maxTokens: meta.limit.output }),
+    // reasoning:false 的免费模型(如 trinity-large-preview-free)请求时必须强制 effort=off
+    reasoning: meta.reasoning !== false,
+    deprecated: meta.status === "deprecated" || void 0,
+  };
+}
+
+// 免费模型排序:非 deprecated 优先,其余保持源顺序(稳定)
+function orderCatalog(models, preferredModel) {
+  const indexed = models.map((model, index) => ({ model, index }));
+  indexed.sort((a, b) => {
+    if (a.model.id === preferredModel && b.model.id !== preferredModel) return -1;
+    if (b.model.id === preferredModel && a.model.id !== preferredModel) return 1;
+    if ((a.model.deprecated ?? false) !== (b.model.deprecated ?? false))
+      return a.model.deprecated ? 1 : -1;
+    return a.index - b.index;
+  });
+  return indexed.map((entry) => entry.model);
+}
+
+async function fetchFreeModels(baseURL, apiKey) {
+  const [live, meta] = await Promise.all([
+    fetchJson(`${baseURL}/models`, { Authorization: `Bearer ${apiKey}` }),
+    fetchJson(MODELS_DEV_URL, {}),
+  ]);
+  const servedIds = new Set((live?.data ?? []).map((entry) => entry?.id).filter(Boolean));
+  const metas = meta?.[MODELS_DEV_PROVIDER]?.models ?? {};
+  const models = Object.entries(metas)
+    .filter(([id, m]) => servedIds.has(id) && Number(m?.cost?.input) === 0 && Number(m?.cost?.output) === 0)
+    .map(([id, m]) => toCatalogEntry(id, m));
+  if (models.length === 0) throw new Error(`no free models found for ${baseURL}`);
+  return models;
+}
+
+// 模块级缓存(按 baseURL 隔离):正向 TTL 直接复用;失败短 TTL 负缓存;inflight 去并发
+const catalogCache = new Map();
+
+// 测试/多实例隔离:清空目录缓存
+function resetCatalogCache() {
+  catalogCache.clear();
+}
+
+async function freeModelCatalog(baseURL, apiKey, refreshMs) {
+  const now = Date.now();
+  const hit = catalogCache.get(baseURL);
+  if (hit !== void 0) {
+    if (hit.pending !== void 0) return hit.pending;
+    if (hit.expiresAt > now) {
+      if (hit.error !== void 0) throw hit.error;
+      return hit.models;
+    }
+  }
+  const pending = (async () => {
+    try {
+      const models = await fetchFreeModels(baseURL, apiKey);
+      catalogCache.set(baseURL, { expiresAt: Date.now() + refreshMs, models });
+      return models;
+    } catch (error) {
+      catalogCache.set(baseURL, { expiresAt: Date.now() + CATALOG_ERROR_TTL_MS, error });
+      throw error;
+    }
+  })();
+  catalogCache.set(baseURL, { ...hit, pending });
+  try {
+    return await pending;
+  } finally {
+    const entry = catalogCache.get(baseURL);
+    if (entry?.pending === pending) delete entry.pending;
+  }
+}
+
+//#endregion
+
 //#region adapter
 function providerRetryAfterMs(header) {
   if (!header) return void 0;
@@ -549,13 +644,36 @@ class OpenCodeZenAdapter extends LlmAdapter {
     return this.config.options().retryPolicy;
   }
 
-  listModels(provider) {
-    return Promise.resolve(this.config.options().models.map((model) => modelInfo(provider, model)));
+  // 解析当前生效的模型目录:custom = 配置的静态目录;auto = 动态拉取免费模型,
+  // 拉取失败(离线/源不可用)时回退到静态目录并告警一次。
+  async catalogModels(settings) {
+    if (settings.catalog !== "auto") return settings.models;
+    try {
+      const apiKey = await this.config.resolveApiKey(settings);
+      return await freeModelCatalog(settings.baseURL, apiKey, settings.catalogRefreshMs);
+    } catch (error) {
+      this.config.warn?.(
+        `llm-opencode-zen: 免费模型目录拉取失败,回退到静态目录(${settings.models.length} 个);可用 catalog:"custom" 显式配置模型`,
+        error,
+      );
+      return settings.models;
+    }
   }
 
-  resolveModel(provider, model, _signal) {
+  async findModel(settings, modelId) {
+    const models = await this.catalogModels(settings);
+    return models.find((entry) => entry.id === modelId);
+  }
+
+  async listModels(provider) {
+    const settings = this.config.options();
+    const models = orderCatalog(await this.catalogModels(settings), settings.defaultModel);
+    return Promise.resolve(models.map((model) => modelInfo(provider, model)));
+  }
+
+  async resolveModel(provider, model, _signal) {
     const connection = this.config.options();
-    const configured = connection.models.find((entry) => entry.id === model);
+    const configured = await this.findModel(connection, model);
     const contextWindow = configured?.contextWindow ?? connection.defaultContextWindow;
     
     // Build reasoning efforts if thinking is enabled
@@ -695,6 +813,9 @@ class OpenCodeZenAdapter extends LlmAdapter {
       ];
       const tools = serializeTools(options.tools);
       let effort = resolveThinking(options, settings.defaults);
+      // 免费目录中 reasoning:false 的模型不支持推理,强制 off(覆盖全局默认档位)
+      if (effort !== "off" && (await this.findModel(settings, options.model))?.reasoning === false)
+        effort = "off";
 
       const consumer = new AbortController();
       const upstream = options.signal === void 0
@@ -787,16 +908,6 @@ const DEFAULT_MAX_TOKENS = 128000;
 const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300000;
 const DEFAULT_MAX_CONCURRENT_STREAMS = 2;
 
-const DEFAULT_MODELS = [
-  {
-    id: "deepseek-v4-flash-free",
-    name: "DeepSeek V4 Flash Free",
-    description: "OpenCode Zen free tier: reasoning, tools, and cache-friendly streaming",
-    contextWindow: 200000,
-    maxTokens: 128000,
-  },
-];
-
 const DEFAULT_RETRY_POLICY = {
   mode: "normal",
   maxRetries: 2,
@@ -821,16 +932,23 @@ const catalogModel = z.object({
   description: z.string(),
   contextWindow: z.number().step(1).min(1),
   maxTokens: z.number().step(1).min(1),
+  reasoning: z.boolean(),
 });
 
 const Config = z.object({
   apiKeyEnv: z.string().role("credential-ref"),
   baseURL: z.string(),
+  // auto(默认):动态拉取 OpenCode 免费模型目录;custom:使用下方 models 静态目录
+  catalog: z.union(["auto", "custom"]),
+  // 首选模型 id:目录排序置顶(agent-default-model 建议填同一个 id)
+  defaultModel: z.string(),
+  // auto 模式目录刷新间隔
+  catalogRefreshMs: z.number().step(1).min(60000).max(MAX_TIMER_DELAY_MS).default(DEFAULT_CATALOG_REFRESH_MS),
   thinking: z.union(["enabled", "disabled"]),
   reasoningEffort: z.union(["off", "low", "high", "max"]),
   maxTokens: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_TOKENS),
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),
-  models: z.array(catalogModel).default(DEFAULT_MODELS),
+  models: z.array(catalogModel).default([]),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
   maxConcurrentStreams: z.number().step(1).min(1).default(DEFAULT_MAX_CONCURRENT_STREAMS),
   pacing: PacingSchema.default({ enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 }),
@@ -844,7 +962,7 @@ const BASE_URL_ENV = "OPENCODE_ZEN_BASE_URL";
 
 function resolveModels(models) {
   const seen = new Set();
-  return (models ?? DEFAULT_MODELS).map((model) => {
+  return (models ?? []).map((model) => {
     if (model.id.length === 0) throw new Error("llm-opencode-zen: catalog model ids must be non-empty");
     if (model.name !== void 0 && model.name.length === 0)
       throw new Error(`llm-opencode-zen: catalog model "${model.id}" has an empty name`);
@@ -860,6 +978,7 @@ function resolveModels(models) {
       ...(model.description === void 0 ? {} : { description: model.description }),
       ...(model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow }),
       ...(model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }),
+      ...(model.reasoning === void 0 ? {} : { reasoning: model.reasoning }),
     };
   });
 }
@@ -884,6 +1003,9 @@ function resolveAdapterOptions(config, environment) {
     throw new Error(`llm-opencode-zen: pacing.windowMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
   if (!Number.isFinite(pacing.maxHoldMs) || pacing.maxHoldMs < 0 || pacing.maxHoldMs > MAX_TIMER_DELAY_MS)
     throw new Error(`llm-opencode-zen: pacing.maxHoldMs must be a finite number in [0, ${MAX_TIMER_DELAY_MS}]`);
+  const catalogRefreshMs = config.catalogRefreshMs ?? DEFAULT_CATALOG_REFRESH_MS;
+  if (!Number.isFinite(catalogRefreshMs) || catalogRefreshMs < 60000 || catalogRefreshMs > MAX_TIMER_DELAY_MS)
+    throw new Error(`llm-opencode-zen: catalogRefreshMs must be a finite number in [60000, ${MAX_TIMER_DELAY_MS}]`);
   return {
     apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
     baseURL: config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? PUBLIC_BASE_URL,
@@ -893,7 +1015,10 @@ function resolveAdapterOptions(config, environment) {
     },
     maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
     defaultContextWindow: config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
+    catalog: config.catalog === "custom" ? "custom" : "auto",
+    ...(config.defaultModel === void 0 ? {} : { defaultModel: config.defaultModel }),
     models: resolveModels(config.models),
+    catalogRefreshMs,
     streamIdleTimeoutMs,
     maxConcurrentStreams,
     pacing,
@@ -944,6 +1069,10 @@ function apply(ctx, config) {
   const adapter = new OpenCodeZenAdapter({
     options,
     resolveApiKey,
+    warn: (message, cause) => {
+      ctx.logger.warn(message);
+      if (cause !== void 0) ctx.logger.warn(cause);
+    },
   }, new Semaphore(options().maxConcurrentStreams));
 
   quota.configurePacing(options().pacing);
@@ -979,14 +1108,19 @@ const inject = ["llm"];
 
 export {
   Config,
+  MODELS_DEV_PROVIDER,
+  MODELS_DEV_URL,
   OpenCodeZenAdapter,
   PUBLIC_BASE_URL,
   apply,
   estimateUsage,
+  freeModelCatalog,
   inject,
   name,
+  orderCatalog,
   quota,
   repairToolArguments,
+  resetCatalogCache,
   resolveAdapterOptions,
   translate,
 };
