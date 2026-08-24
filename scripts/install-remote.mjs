@@ -10,7 +10,7 @@
 //   node install-remote.mjs                  # 最新 Release(默认)
 //   node install-remote.mjs --tag v0.1.0     # 指定 tag
 //   node install-remote.mjs --base <URL>     # 直接给下载目录(含 tgz+SHA256SUMS)
-//   node install-remote.mjs --only dsh-console,harness-updater   # 只装部分
+//   node install-remote.mjs --only layout-infer,llm-opencode-zen   # 只装部分
 //
 // 环境变量: DSH_HOME(默认 ~/.dsh)、DSH_PROFILE(默认 web)、
 //          DSH_PLUGIN_REPO(默认 3kaiu/dsh-plugins)

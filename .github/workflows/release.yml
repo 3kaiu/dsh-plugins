@@ -27,19 +27,15 @@ jobs:
       - name: pack 插件 tarball
         run: |
           mkdir -p dist-tgz
-          for p in dsh-console dsh-github-sync dsh-runtime-events harness-updater layout-infer llm-opencode-zen dsh-plugins-ui; do
+          for p in layout-infer llm-opencode-zen; do
             (cd packages/$p && pnpm pack --pack-destination ../../dist-tgz/)
           done
-      - name: workbench 独立发行包(console 独立形态 + 维护工具)
-        run: node scripts/release.ts
-      - name: 合并校验和(tgz + workbench zip 一个文件,install-local 下载校验)
-        run: |
-          (cd dist-tgz && shasum -a 256 *.tgz) > SHA256SUMS
-          (cd dist-release && shasum -a 256 *.zip) >> SHA256SUMS
+      - name: 校验和
+        run: (cd dist-tgz && shasum -a 256 *.tgz) > SHA256SUMS
       - name: 创建/更新 Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VER=$(node -e "console.log(require('./packages/dsh-console/package.json').version)")
-          gh release create "v$VER" dist-tgz/*.tgz dist-release/*.zip SHA256SUMS --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README(安装脚本会做 SHA-256 校验);workbench 独立发行见包内 README" || gh release upload "v$VER" dist-tgz/*.tgz dist-release/*.zip SHA256SUMS --clobber
+          VER=$(node -e "console.log(require('./packages/llm-opencode-zen/package.json').version)")
+          gh release create "v$VER" dist-tgz/*.tgz SHA256SUMS --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README(安装脚本会做 SHA-256 校验)" || gh release upload "v$VER" dist-tgz/*.tgz SHA256SUMS --clobber
 

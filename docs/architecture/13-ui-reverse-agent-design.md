@@ -826,7 +826,6 @@ ui-reverse/
 ### 10.4 与现有包的关系
 
 - `layout-infer` 的改造(§11)优先,因为 `dom-to-layout` 依赖其内核;改造放 layout-infer 包内,ui-reverse-agent 依赖它。
-- `dsh-console` 可在 M3 后加"还原任务看板"(进度/热图/报告),非必需。
 
 ---
 

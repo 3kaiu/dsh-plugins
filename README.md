@@ -1,17 +1,13 @@
 # dsh-plugins
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件 monorepo:六个互相独立的插件 + 一个公共能力包,基于 pnpm workspace。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件 monorepo:两个互相独立的插件 + 一个公共能力包,基于 pnpm workspace。
 
 ## 包结构
 
 | 包 | 版本 | 职责 |
 | --- | --- | --- |
 | `packages/llm-opencode-zen` | [@3kaiu/dsh-llm-opencode-zen](./packages/llm-opencode-zen) | **LLM 适配器** — OpenCode Zen 免费额度(`deepseek-v4-flash-free`):429/402 感知、per-session 冷却隔离、主动 pacing、用量遥测、tool-call JSON 修复、reasoning_content 回传 |
-| `packages/harness-updater` | [@3kaiu/dsh-harness-updater](./packages/harness-updater) | **更新器** — 每天一次 registry 版本检查,有新版弹 macOS 原生通知;零运行时依赖 |
 | `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推** — 裸坐标反推 flex 语义 + 还原决策分类,4 个 dsh 工具:`infer_layout` / `annotate_layout` / `clean_layout` / `classify_design`(算法文档见 [docs/architecture/12-ui-restore-algorithm.md](./docs/architecture/12-ui-restore-algorithm.md)) |
-| `packages/dsh-console` | [@3kaiu/dsh-console](./packages/dsh-console) | **Console 工作台(dsh web 插件)** — 事件库(REST+WS)+ 四页 Agent 工作台前端;随 dsh web 启动(默认 3090),也可独立运行 |
-| `packages/dsh-github-sync` | [@3kaiu/dsh-github-sync](./packages/dsh-github-sync) | **GitHub sync(读侧)** — CI workflow runs + PR 状态增量拉进本地事件库,填充 test/completion 族(source=github);幂等轮询,匿名/token 均可用 |
-| `packages/dsh-runtime-events` | [@3kaiu/dsh-runtime-events](./packages/dsh-runtime-events) | **运行时事件桥** — 官方 session firehose → 五族事件 JSONL(本地事件库) |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 布局内核(坐标反推 flex/层级重建/清洗)、配额跟踪、并发信号量、测试助手;构建时被各插件 bundle 进各自 dist,零运行时依赖 |
 
 每个插件是独立 npm 包,自带 `dsh.bundle` manifest,可单独发布/安装/升级。
@@ -29,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/3kaiu/dsh-plugins/main/scripts/inst
 #   从 Release 下载 tarball + SHA256SUMS,逐文件 SHA-256 校验后装进 web profile,
 #   自动 reconcile dsh.profile.bundles;更新 = 重跑同一命令
 #   指定版本: ... | bash -s -- --tag v0.3.0
-#   只装部分: ... | bash -s -- --only dsh-console,harness-updater
+#   只装部分: ... | bash -s -- --only layout-infer,llm-opencode-zen
 ```
 
 ### 源码开发
@@ -40,7 +36,7 @@ pnpm install
 node scripts/install-local.mjs   # pnpm build → pnpm add -w file:<abs> → reconcile bundles
 ```
 
-发布(可选):`git tag v0.3.0 && git push origin v0.3.0` → Actions 自动 build + pack 7 个 tarball → Release。
+发布(可选):`git tag v0.3.0 && git push origin v0.3.0` → Actions 自动 build + pack 2 个 tarball → Release。
 
 ## 配置
 
@@ -59,8 +55,6 @@ node scripts/install-local.mjs   # pnpm build → pnpm add -w file:<abs> → rec
 | `locale` | `zh` | 错误消息语言:`zh` / `en` |
 | `userAgent` | `opencode/1.18.18 …` | 发给 OpenCode Zen 的 User-Agent |
 
-设置弹窗(dsh web ≥ rc.7):设置 → 插件 → **可配置**(schema 渲染,保存写回 `settings.yaml`)、**管理**(安装/卸载/升级/重启,支持内置快捷名 / .tgz URL / file: 路径,远程 tarball 先比 SHA256SUMS)。实现见 `packages/dsh-plugins-ui`。
-
 ## 开发
 
 ```sh
@@ -73,7 +67,7 @@ pnpm test    # 各包 build + 全部测试套件(离线,mock fetch)
 
 ## 版本兼容
 
-按 **DSH 0.1.0-rc.x**(开发者预览版,API 可能破坏性变更)开发:`@deepseek-ai/*` 运行时依赖固定 `0.1.0-rc.6`(dsh-plugins-ui 用 `^0.1.0-rc.7`),升级 DSH 后如遇插件不兼容,优先检查依赖版本。`@3kaiu/dsh-plugin-kit` 保持零运行时依赖,可被插件 bundle,也可被外部工具直接 import 源码。
+按 **DSH 0.1.0-rc.x**(开发者预览版,API 可能破坏性变更)开发:`@deepseek-ai/*` 运行时依赖固定 `0.1.0-rc.6`,升级 DSH 后如遇插件不兼容,优先检查依赖版本。`@3kaiu/dsh-plugin-kit` 保持零运行时依赖,可被插件 bundle,也可被外部工具直接 import 源码。
 
 ## License
 
