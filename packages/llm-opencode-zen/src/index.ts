@@ -24,6 +24,7 @@ import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
 import { deepEqualJson, installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { MAX_TIMER_DELAY_MS, idleWatchdog, timeoutOf } from "@deepseek-ai/dsh-timeout";
 import { EventSourceParserStream } from "eventsource-parser/stream";
+import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 
 //#region telemetry
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
@@ -899,6 +900,74 @@ class OpenCodeZenAdapter extends LlmAdapter {
 }
 //#endregion
 
+//#region zen-models remote
+// 设置弹窗「插件 → OpenCode Zen 模型」tab 的后端:
+//   listFree  —— 返回当前可用免费模型目录(auto=动态交集;custom=静态配置)
+//   applyFree —— 把勾选的模型经官方 settings 服务写回 settings.yaml
+//     (catalog=custom + models 全量字段,走 schema 校验/持久化/变更广播,
+//      浏览器端配置卡即时刷新,无需重启)
+// 注意:SRC 描述符从方法源码解析参数名,此文件构建时禁止 minify。
+let activeAdapter = null;
+
+class ZenModelsGateway extends TypertRemoteService {
+  constructor(ctx) {
+    super(ctx, "zenModels");
+  }
+
+  @Remote("listFree")
+  async listFree() {
+    if (activeAdapter === null) throw new Error("llm-opencode-zen adapter is not ready");
+    const settings = activeAdapter.config.options();
+    const models = orderCatalog(await activeAdapter.catalogModels(settings), settings.defaultModel);
+    return {
+      catalogMode: settings.catalog,
+      defaultModel: settings.defaultModel ?? null,
+      models: models.map((model) => ({
+        id: model.id,
+        name: model.name ?? model.id,
+        ...(model.description === void 0 ? {} : { description: model.description }),
+        ...(model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow }),
+        ...(model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }),
+        ...(model.deprecated === void 0 ? {} : { deprecated: true }),
+      })),
+    };
+  }
+
+  @Remote("applyFree")
+  async applyFree(models) {
+    if (!Array.isArray(models) || models.length === 0)
+      throw new Error("请至少选择一个模型");
+    if (activeAdapter === null) throw new Error("llm-opencode-zen adapter is not ready");
+    const settings = activeAdapter.config.options();
+    const seen = new Set();
+    const section = models.map((entry) => {
+      const raw = typeof entry === "string" ? { id: entry } : entry;
+      const id = String(raw?.id ?? "").trim();
+      if (id.length === 0) throw new Error("模型 id 不能为空");
+      if (seen.has(id)) throw new Error(`重复的模型 id: ${id}`);
+      seen.add(id);
+      return {
+        id,
+        ...(raw.name === void 0 ? {} : { name: String(raw.name) }),
+        ...(raw.description === void 0 ? {} : { description: String(raw.description) }),
+        ...(raw.contextWindow === void 0 ? {} : { contextWindow: Number(raw.contextWindow) }),
+        ...(raw.maxTokens === void 0 ? {} : { maxTokens: Number(raw.maxTokens) }),
+      };
+    });
+    // 官方写回通道:schema 校验 + yaml 持久化 + revision 广播(浏览器配置卡即时刷新)
+    await this.ctx.get("settings").update(NS, {
+      catalog: "custom",
+      ...(settings.defaultModel !== void 0 && section.some((m) => m.id === settings.defaultModel)
+        ? {}
+        : { defaultModel: section[0].id }),
+      models: section,
+    });
+    return { applied: section.length };
+  }
+}
+
+//#endregion
+
 //#region plugin registration
 const PROVIDER = "opencode-zen";
 const NS = settingsNamespace("llm-opencode-zen");
@@ -1074,6 +1143,10 @@ function apply(ctx, config) {
       if (cause !== void 0) ctx.logger.warn(cause);
     },
   }, new Semaphore(options().maxConcurrentStreams));
+  activeAdapter = adapter;
+
+  // 「获取免费模型」remote(浏览器 tab 后端)
+  new ZenModelsGateway(ctx);
 
   quota.configurePacing(options().pacing);
 
@@ -1112,6 +1185,7 @@ export {
   MODELS_DEV_URL,
   OpenCodeZenAdapter,
   PUBLIC_BASE_URL,
+  ZenModelsGateway,
   apply,
   estimateUsage,
   freeModelCatalog,
