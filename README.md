@@ -6,7 +6,7 @@
 
 | 包 | 版本 | 职责 |
 | --- | --- | --- |
-| `packages/llm-opencode-zen` | [@3kaiu/dsh-llm-opencode-zen](./packages/llm-opencode-zen) | **LLM 适配器** — OpenCode Zen 免费额度(`deepseek-v4-flash-free`):429/402 感知、per-session 冷却隔离、主动 pacing、用量遥测、tool-call JSON 修复、reasoning_content 回传 |
+| `packages/llm-opencode-zen` | [@3kaiu/dsh-llm-opencode-zen](./packages/llm-opencode-zen) | **LLM 适配器** — OpenCode Zen 免费模型(动态目录,默认不锁定单一模型 id):429/402 感知、per-session 冷却隔离、主动 pacing、用量遥测、tool-call JSON 修复、reasoning_content 回传 |
 | `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推** — 裸坐标反推 flex 语义 + 还原决策分类,4 个 dsh 工具:`infer_layout` / `annotate_layout` / `clean_layout` / `classify_design`(算法文档见 [docs/architecture/12-ui-restore-algorithm.md](./docs/architecture/12-ui-restore-algorithm.md)) |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 布局内核(坐标反推 flex/层级重建/清洗)、配额跟踪、并发信号量、测试助手;构建时被各插件 bundle 进各自 dist,零运行时依赖 |
 
@@ -40,10 +40,16 @@ node scripts/install-local.mjs   # pnpm build → pnpm add -w file:<abs> → rec
 
 ## 配置
 
-`llm-opencode-zen` 配置位于 `settings.yaml` 的 `llm-opencode-zen:` 下:
+`llm-opencode-zen` 配置位于 `settings.yaml` 的 `llm-opencode-zen:` 下。
+
+**模型目录(0.3.0 起)**:默认 `catalog: auto` —— 从 OpenCode 拉取免费模型目录(models.dev 元数据 ∩ `{baseURL}/models` 在服模型,1 小时缓存),不写死任何模型 id。`dsh` 侧把 `agent-default-model.model` 指到目录里任意免费 id 即可切换;`defaultModel` 只影响模型列表排序置顶。拉取失败时回退到静态 `models` 目录并告警一次。
 
 | Key | Default | Meaning |
 | --- | --- | --- |
+| `catalog` | `auto` | `auto` = 动态免费模型目录;`custom` = 使用下方 `models` 静态目录 |
+| `defaultModel` | — | 首选模型 id,目录排序置顶 |
+| `catalogRefreshMs` | `3600000` | auto 模式目录刷新间隔(≥60000) |
+| `models` | `[]` | 静态目录(catalog=custom 生效;auto 失败时兜底) |
 | `baseURL` | `https://opencode.ai/zen/v1` | API endpoint(`OPENCODE_ZEN_BASE_URL` env 覆盖) |
 | `apiKeyEnv` | `OPENCODE_ZEN_API_KEY` | credential env;免费档用字面量 `public` |
 | `thinking` / `reasoningEffort` | `enabled` / — | 推理支持与档位(`off`/`low`/`high`/`max`) |
@@ -63,7 +69,7 @@ pnpm test    # 各包 build + 全部测试套件(离线,mock fetch)
 ```
 
 - `layout-infer` — 布局内核边界、30 个真实设计稿 section 回归、还原决策分类(含真实 MasterGo DSL fixture)、工具注册冒烟
-- `llm-opencode-zen` — 配额(402/429)与 reasoning_content 回传回归
+- `llm-opencode-zen` — 配额(402/429)与 reasoning_content 回传回归、动态免费模型目录(交集过滤/缓存/回降)
 
 ## 版本兼容
 
