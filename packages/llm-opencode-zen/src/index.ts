@@ -154,11 +154,16 @@ function mapFinishReason(reason) {
     case "stop": return { kind: "stop" };
     case "tool_calls": return { kind: "tool-calls" };
     case "length": return { kind: "max-tokens" };
-    default:
+    default: {
+      // OpenCode Zen 网关到上游中断时不报 HTTP 错误,而是以
+      // finish_reason="network_error" 正常收流——本质是传输层故障,
+      // 映射为 TRANSPORT 以接入内外两层重试,否则一次抖动即终止整轮。
+      const code = reason === "network_error" ? "TRANSPORT" : reason.toUpperCase();
       return {
         kind: "error",
-        failure: { message: `model stopped: ${reason}`, code: reason.toUpperCase() },
+        failure: { message: `model stopped: ${reason}`, code },
       };
+    }
   }
 }
 

@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs && node test/catalog.test.mjs"
+    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs && node test/catalog.test.mjs && node test/network-error.test.mjs"
   },
   "dsh": {
     "bundle": {
