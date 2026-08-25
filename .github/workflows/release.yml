@@ -35,7 +35,12 @@ jobs:
       - name: 创建/更新 Release
         env:
           GH_TOKEN: ${{ github.token }}
+        # tag 同时编码两个插件的版本(v<llm>+li<layout>),避免单独升级
+        # layout-infer 时 Release 命名与内容脱节;安装器只按 API 解析 latest,
+        # 不依赖 tag 命名格式。
         run: |
-          VER=$(node -e "console.log(require('./packages/llm-opencode-zen/package.json').version)")
-          gh release create "v$VER" dist-tgz/*.tgz SHA256SUMS --title "DSH Plugins v$VER" --notes "GitHub 构建产物:tarball 安装见 README(安装脚本会做 SHA-256 校验)" || gh release upload "v$VER" dist-tgz/*.tgz SHA256SUMS --clobber
+          LLM_VER=$(node -e "console.log(require('./packages/llm-opencode-zen/package.json').version)")
+          LI_VER=$(node -e "console.log(require('./packages/layout-infer/package.json').version)")
+          TAG="v${LLM_VER}+li${LI_VER}"
+          gh release create "$TAG" dist-tgz/*.tgz SHA256SUMS --title "DSH Plugins $TAG" --notes "llm-opencode-zen@${LLM_VER} + layout-infer@${LI_VER}。tarball 安装见 README(安装脚本会做 SHA-256 校验)" || gh release upload "$TAG" dist-tgz/*.tgz SHA256SUMS --clobber
 
