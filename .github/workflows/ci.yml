@@ -1,5 +1,5 @@
 name: ci
-# 兼容矩阵(Phase 2):os × node ≥3 组合自动跑 build+test;DoD:matrix ≥3 组合 CI 自动跑
+# 兼容矩阵(Phase 2):os × node ≥3 组合自动跑 build+test
 on:
   pull_request:
   push:
@@ -8,14 +8,21 @@ permissions:
   contents: read
 jobs:
   check:
-    name: check (macos-latest / node 24)
-    runs-on: macos-latest
+    name: check (${{ matrix.os }} / node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: 22 }
+          - { os: ubuntu-latest, node: 24 }
+          - { os: macos-latest, node: 24 }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
       - name: pnpm
         run: npm install -g pnpm@9.15.0
       - name: install
