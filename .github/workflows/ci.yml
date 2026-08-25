@@ -20,6 +20,8 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
+      - name: 刷新 @deepseek-ai/* 到最新(每次 CI 跟随上游 next)
+        run: pnpm update "@deepseek-ai/*"
       - name: build
         run: pnpm build
       - name: test

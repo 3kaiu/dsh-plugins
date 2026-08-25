@@ -59,7 +59,6 @@ node scripts/install-local.mjs   # pnpm build → pnpm add -w file:<abs> → rec
 | `streamIdleTimeoutMs` | `300000` | 流停滞超时 |
 | `pacing` | `{enabled:true, maxRequests:3, windowMs:20000, maxHoldMs:15000}` | 滚动窗口请求预算,在服务端 402/429 之前先等待 |
 | `retryPolicy` | bundled | `RATE_LIMITED`/`QUOTA`/`TIMEOUT`/`TRANSPORT`/`STREAM_CLOSED` 可重试,最长退避 60s |
-| `models` | `deepseek-v4-flash-free` | 模型目录(context window、max tokens) |
 | `locale` | `zh` | 错误消息语言:`zh` / `en` |
 | `userAgent` | `opencode/1.18.18 …` | 发给 OpenCode Zen 的 User-Agent |
 
@@ -75,7 +74,7 @@ pnpm test    # 各包 build + 全部测试套件(离线,mock fetch)
 
 ## 版本兼容
 
-按 **DSH 0.1.0-rc.x**(开发者预览版,API 可能破坏性变更)开发:`@deepseek-ai/*` 运行时依赖固定 `0.1.0-rc.6`,升级 DSH 后如遇插件不兼容,优先检查依赖版本。`@3kaiu/dsh-plugin-kit` 保持零运行时依赖,可被插件 bundle,也可被外部工具直接 import 源码。
+按 **DSH 0.1.0-rc.x+**(开发者预览版,API 可能破坏性变更)开发:所有 `@deepseek-ai/*` 包均为 **可选 peerDependencies(下限 `>=0.1.0-rc.6`,无上限)** —— 运行时一律由宿主 dsh 提供,插件 tarball 不携带、不锁定任何 dsh 版本,dsh 升级后无需重装插件;若 API 发生破坏性变更导致不兼容,升级插件包即可。本地开发通过 `devDependencies`(npm dist-tag `next`)解析类型与测试环境,自动跟随上游最新 rc。`@3kaiu/dsh-plugin-kit` 保持零运行时依赖,可被插件 bundle,也可被外部工具直接 import 源码。
 
 ## License
 
