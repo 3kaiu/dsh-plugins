@@ -48,9 +48,7 @@ if (BASE) {
   downloadBase = BASE;
   tgzNames = null; // 需要先拉 SHA256SUMS 才能知道有哪些 tgz
 } else {
-  const tag = TAG ?? (await jsonFetch(`${API}/releases/latest`)).tag_name;
-  const release = TAG ? await jsonFetch(`${API}/releases/tags/${tag}`) : null;
-  const rel = release ?? (TAG ? null : await jsonFetch(`${API}/releases/latest`));
+  const rel = await jsonFetch(`${API}/releases/${TAG ? `tags/${TAG}` : "latest"}`);
   downloadBase = `${DL_BASE}/download/${rel.tag_name}`;
   tgzNames = rel.assets.map((a) => a.name).filter((n) => n.endsWith(".tgz"));
   console.log(`[install-remote] Release ${rel.tag_name}(${rel.published_at}) 资产:${rel.assets.length} 个`);
@@ -62,21 +60,33 @@ if (!existsSync(join(profileDir, "package.json"))) {
 }
 mkdirSync(join(tmpdir(), "dsh-tgz"), { recursive: true });
 
-// 2. 下载 SHA256SUMS 与全部 tarball,逐文件校验(fail-closed)
-const sumsTxt = execSync(`curl -fsSL "${downloadBase}/SHA256SUMS"`, { encoding: "utf8" });
+// 2. 下载 SHA256SUMS 与全部 tarball,逐文件校验(fail-closed)。
+// 信任模型说明:校验和与产物同源,只能发现传输损坏/资产错配,
+// 不能防御 Release 本身被篡改——后者需对摘要另行签名或钉死已知摘要。
+const fetchText = async (url) => {
+  const res = await fetch(url, { headers: { "User-Agent": "dsh-install-remote" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+  return res.text();
+};
+const downloadTo = async (url, dest) => {
+  const res = await fetch(url, { headers: { "User-Agent": "dsh-install-remote" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+  writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+};
+const sumsTxt = await fetchText(`${downloadBase}/SHA256SUMS`);
 const sums = new Map(sumsTxt.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
   const [sum, ...rest] = l.split(/\s+/);
   return [rest.join(" ").replace(/^\*/, ""), sum];
 }));
 if (!tgzNames) tgzNames = [...sums.keys()].filter((n) => n.endsWith(".tgz"));
 if (ONLY.length > 0) {
-  tgzNames = tgzNames.filter((n) => ONLY.some((o) => n.includes(o.replace(/^@[^/]+\//, "").replace("-", "-")) || n.includes(o)));
+  tgzNames = tgzNames.filter((n) => ONLY.some((o) => n.includes(o.replace(/^@[^/]+\//, "")) || n.includes(o)));
 }
 const verified = [];
 for (const name of tgzNames) {
   const url = `${downloadBase}/${name}`;
   const tmp = join(tmpdir(), "dsh-tgz", name);
-  execSync(`curl -fsSL -o "${tmp}" "${url}"`, { stdio: "inherit" });
+  await downloadTo(url, tmp);
   const want = sums.get(name);
   const got = execSync(`shasum -a 256 "${tmp}"`).toString().trim().split(/\s+/)[0];
   if (!want || want !== got) {

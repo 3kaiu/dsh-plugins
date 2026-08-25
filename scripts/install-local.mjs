@@ -46,7 +46,8 @@ for (const plugin of PLUGINS) {
     const url = RELEASE_BASE + "/" + tgz;
     console.log(`\n[install-local] add ${plugin.pkg} <- ${url}`);
     // 供应链校验:先下载到临时目录,比对 GitHub Release 发布的 SHA256SUMS,
-    // 通过后才交给 pnpm——不安装任何未校验的产物(仓库/CDN 被攻破时中止)。
+    // 通过后才交给 pnpm——校验和与产物同源,防传输损坏/资产错配,
+    // 不防御 Release 本身被篡改(后者需签名或钉死已知摘要)。
     const tmpTgz = join(tmpdir(), "dsh-tgz", tgz);
     mkdirSync(dirname(tmpTgz), { recursive: true });
     execSync(`curl -fsSL -o "${tmpTgz}" "${url}"`, { stdio: "inherit" });
