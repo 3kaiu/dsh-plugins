@@ -11,6 +11,32 @@ description: UI 1:1 还原。设计稿 DSL → 中立蓝图 → 验证门禁。�
 取数① → 归一② → 产物包③ → 实现合同④ → 渲染验证⑤ → 差异定位⑥
 ```
 
+## 原则(优先级从高到低, 冲突时按序裁决)
+
+- Design Truth > LLM Assumption:蓝图数值是设计稿测量事实, 禁止修改、取整或凭感觉"合理化"
+- Visual Fidelity > Code Elegance:不为组件抽象/复用/代码优雅牺牲视觉还原度;Flex 无法准确表达时用 absolute 是正确答案
+- Actual Rendering > Source Code Appearance:验收看截图 diff, 不看代码"看起来对"
+
+## Workflow 入口(推荐)
+
+```bash
+# 分析: 设计稿 json → UI Truth 产物包 + 四闸门禁(session 记账)
+node adapters/restore.mjs analyze <design.json> --dir <out> [--scale auto] --session s.json
+# 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + iteration 记账(maxIterations=5)
+node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json
+# 截图(可选能力, 需 pnpm add -D playwright && npx playwright install chromium):
+node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812]
+```
+
+MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff`。
+
+## 修正优先级(差异多于 3 处时按序处理)
+
+```
+1.页面尺寸 2.大区块位置 3.宽高 4.Layout 5.Margin/Padding/Gap
+6.Typography 7.Color 8.Border/Radius 9.Image裁切 10.Shadow/细节
+```
+
 ## 前置
 
 - 核心库 `@ui-restore/core`(零宿主依赖);CLI `node <pkg>/cli.mjs`;MCP `node <pkg>/adapters/mcp-server.mjs`(stdio)
@@ -76,3 +102,19 @@ ui-restore regions <truth.png> <render.png> --bp <blueprint.json>
 - 合同 100% 落地(checklist 无遗漏项)
 - 四闸全 PASS(契约/几何/样式守恒/真值)
 - blockMatchRate=1 且像素残差仅渲染噪声级
+
+## ⑦ 回归基准(benchmark)
+
+真实案例回归目录约定(每个 case 一个目录, 放在项目侧或 benchmark/ 下):
+
+```
+case/
+├── design.json     # 设计稿导出(形态 A/B/C 均可)
+├── truth.png       # 设计稿参考渲染图
+├── blueprint.json  # ui-restore build 产物(四闸全 PASS 的基线)
+└── generated/      # LLM 实现产物的渲染截图
+```
+
+- 回归 = 对每个 case 重跑 `build` 四闸 + `diff`(blockMatchRate=1, diffRatio<2%)+`regions` 归零
+- **判定对象是还原结果而非算法输出**: 新案例先入 benchmark 再改算法; 任何算法改动跑全量 case 防回归
+- 差异修正入口: `regions --bp <blueprint.json>` 输出末尾附修正指令(区域→关联节点→下钻核对), 数值真值始终以蓝图为准

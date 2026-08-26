@@ -85,6 +85,15 @@ export function blueprintJsonSchema() {
               crossOffset: { type: 'number' },
               gapRefined: { type: 'string' },
               downgradeReason: { type: 'string' },
+              // 推理溯源(算法推断元数据, 非设计稿事实): 布局置信度与判定依据
+              confidence: { type: 'number', minimum: 0, maximum: 1 },
+              reason: { type: 'string' },
+              // 蒙版裁剪容器: 子项越界部分渲染时被裁剪(radius 为裁剪圆角)
+              clip: {
+                type: 'object',
+                required: ['enabled'],
+                properties: { enabled: { type: 'boolean' }, source: { type: 'string' }, radius: {} },
+              },
             },
           },
           bounds: {
@@ -103,6 +112,19 @@ export function blueprintJsonSchema() {
               stops: { type: 'array', items: { type: 'object', required: ['color'], properties: { color: { type: 'string' }, position: { type: 'number' } } } },
               src: { type: 'string' },
               value: { type: 'string' },
+              // 素材裁切显示: 节点 bounds 为原始素材尺寸, 仅 visibleRect(子坐标系)区域可见, 按 cover 映射
+              crop: {
+                type: 'object',
+                required: ['mode', 'visibleRect'],
+                properties: {
+                  mode: { enum: ['cover'] },
+                  visibleRect: {
+                    type: 'object',
+                    required: ['x', 'y', 'width', 'height'],
+                    properties: { x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' } },
+                  },
+                },
+              },
             },
           },
           stroke: {
@@ -116,6 +138,16 @@ export function blueprintJsonSchema() {
           },
           rotation: { type: 'number' },
           opacity: { type: 'number' },
+          // 蒙版本体形状: 定义父级裁剪边界, 非可见内容
+          clipShape: { type: 'boolean' },
+          // 合并矢量图标: 整组是一个矢量资源; 无 svgKey 时需按节点 id 从设计侧导出
+          mergedVector: { type: 'boolean' },
+          // 容器是裁剪显示框: 子内容真实外接盒(width/height)大于本节点 bounds, 实现以子项真实尺寸为准
+          contentClipped: {
+            type: 'object',
+            required: ['width', 'height'],
+            properties: { width: { type: 'number' }, height: { type: 'number' } },
+          },
           text: { type: 'string' },
           textRuns: { type: 'array', items: { type: 'object', required: ['text'], properties: { text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'number' }, lineHeight: { type: 'number' }, letterSpacing: { type: 'number' } } } },
           fontSize: { type: 'number' },
@@ -162,6 +194,22 @@ export function validateBlueprint(bp, opts = {}) {
     if (ly.alignItems && !ALIGN.includes(ly.alignItems)) push(path + '.layout.alignItems', `非法枚举: ${ly.alignItems}`)
     if (ly.padding !== undefined && (!Array.isArray(ly.padding) || ly.padding.length !== 4 || !ly.padding.every(isNum))) push(path + '.layout.padding', '必须是 4 元数值数组 [top,right,bottom,left](缺省=全 0 可省略)')
     if (ly.gap !== undefined && typeof ly.gap !== 'number' && !Array.isArray(ly.gap)) push(path + '.layout.gap', '必须是数值或数值数组')
+    if (ly.confidence !== undefined && (!isNum(ly.confidence) || ly.confidence < 0 || ly.confidence > 1)) push(path + '.layout.confidence', '必须是 0~1 的有限数值')
+    if (ly.reason !== undefined && typeof ly.reason !== 'string') push(path + '.layout.reason', '必须是字符串')
+    if (ly.clip !== undefined && (!ly.clip || typeof ly.clip !== 'object' || typeof ly.clip.enabled !== 'boolean')) push(path + '.layout.clip', '必须为 {enabled:boolean, source?, radius?}')
+    if (n.clipShape !== undefined && typeof n.clipShape !== 'boolean') push(path + '.clipShape', '必须是布尔')
+    if (n.mergedVector !== undefined && typeof n.mergedVector !== 'boolean') push(path + '.mergedVector', '必须是布尔')
+    if (n.contentClipped !== undefined) {
+      const cc = n.contentClipped
+      if (!cc || !isNum(cc.width) || !isNum(cc.height)) push(path + '.contentClipped', '必须为 {width:number, height:number}(内容真实外接盒)')
+    }
+    if (n.fill?.crop !== undefined) {
+      const cr = n.fill.crop
+      const vr = cr?.visibleRect
+      if (cr?.mode !== 'cover' || !vr || !isNum(vr.x) || !isNum(vr.y) || !isNum(vr.width) || !isNum(vr.height)) {
+        push(path + '.fill.crop', '必须为 {mode:"cover", visibleRect:{x,y,width,height}}')
+      }
+    }
     const b = n.bounds
     if (!b || !isNum(b.x) || !isNum(b.y) || !isNum(b.width) || !isNum(b.height)) push(path + '.bounds', 'x/y/width/height 必须为有限数值')
     if (n.type === 'TEXT' && typeof n.text !== 'string') push(path + '.text', 'TEXT 节点必须有字符串 text')

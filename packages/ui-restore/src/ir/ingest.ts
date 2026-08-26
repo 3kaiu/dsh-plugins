@@ -17,25 +17,33 @@ export function flattenDesignSections(raw) {
   const canvas = raw?.meta?.canvas || { width: 375, height: 812 }
   const styles = {}
   const nodes = []
-  const emit = (n, ox, oy) => {
+  const emit = (n, ox, oy, parentObj) => {
     if (!n || typeof n !== 'object') return
     const ls = n.layoutStyle || {}
     const x = round1((ls.relativeX ?? 0) + ox)
     const y = round1((ls.relativeY ?? 0) + oy)
-    nodes.push({
+    const w = ls.width ?? 0
+    const h = ls.height ?? 0
+    const self = {
       ...n,
-      x, y,
-      width: ls.width ?? 0,
-      height: ls.height ?? 0,
+      x, y, width: w, height: h,
       children: undefined,
       layoutStyle: { ...(n.layoutStyle || {}), relativeX: x, relativeY: y },
-    })
-    for (const c of n.children || []) emit(c, x, y)
+      _ax: x, _ay: y, _aw: w, _ah: h,
+    }
+    if (parentObj) {
+      // A3 源父盒 + A5 子内容外接盒: 展平丢失父子关系, 两类几何事实随节点保留
+      self._parentBox = { x: parentObj._ax, y: parentObj._ay, width: parentObj._aw, height: parentObj._ah }
+      const cu = parentObj._childUnion ?? (parentObj._childUnion = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity })
+      cu.x1 = Math.min(cu.x1, x); cu.y1 = Math.min(cu.y1, y)
+      cu.x2 = Math.max(cu.x2, x + w); cu.y2 = Math.max(cu.y2, y + h)
+    }
+    nodes.push(self)
+    for (const c of n.children || []) emit(c, x, y, self)
   }
   for (const s of raw?.sections || []) {
     Object.assign(styles, s?.dsl?.styles || {})
-    for (const dn of s?.dsl?.nodes || []) emit(dn, s.x ?? 0, s.y ?? 0)
-  }
+    for (const dn of s?.dsl?.nodes || []) emit(dn, s.x ?? 0, s.y ?? 0, null)  }
   return { canvas, styles, nodes }
 }
 

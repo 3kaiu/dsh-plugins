@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- case-408-card 正确实现: 按 blueprint.json 子树(408:8797)逐字段还原。
+     消费姿势: bounds 为唯一真值(stack 差值定位); 文本 softWrap=false; 封面图/mergedVector 用占位(资源待导出)。 -->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 375px; height: 812px; background: #F5F6FA; font-family: "PingFang SC", sans-serif; position: relative; }
+  .card {
+    position: absolute; left: 16px; top: 372px; width: 343px; height: 112px;
+    background: #FFFFFF; border-radius: 12px; overflow: hidden;
+  }
+  .cover { position: absolute; left: 20px; top: 20px; width: 72px; height: 72px; border-radius: 8px; background: #E5DAE5; overflow: hidden; }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .title { position: absolute; left: 104px; top: 26px; white-space: nowrap; font-size: 16px; font-weight: 500; color: #38302B; line-height: 22px; }
+  .sub   { position: absolute; left: 104px; top: 44px; white-space: nowrap; font-size: 10px; font-weight: 400; color: #7C7068; line-height: 17px; }
+  .stat  { position: absolute; left: 104px; top: 72px; white-space: nowrap; font-size: 10px; font-weight: 400; color: #87705A; line-height: 14px; }
+  .badge { position: absolute; right: 4px; bottom: 4px; width: 36px; height: 36px; border-radius: 50%; background: #F2EDE9; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="cover"></div>
+    <div class="title">90天“祖成”英语陪跑课</div>
+    <div class="sub">明星老师陪你学英语</div>
+    <div class="stat">420人在学习</div>
+    <div class="badge"></div>
+  </div>
+</body>
+</html>

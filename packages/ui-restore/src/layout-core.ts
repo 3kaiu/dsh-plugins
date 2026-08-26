@@ -101,7 +101,7 @@ function inferLayout({ container, children }) {
   const kids = children || []
 
   if (kids.length === 0) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [], reason: '无子节点' }
   }
 
   // 旋转节点永远不参与 flex 推断(贴纸/装饰)
@@ -110,7 +110,7 @@ function inferLayout({ container, children }) {
   const absolutes = rotated.map((k) => k.id)
 
   if (stable.length === 0) {
-    return { position: 'absolute', confidence: 0.5, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.5, absolutes: [...absolutes], reason: '全部子节点带旋转' }
   }
 
   const centersX = stable.map((k) => k.x + k.width / 2)
@@ -138,7 +138,7 @@ function inferLayout({ container, children }) {
 
     // 子元素溢出容器(flex 无法表达负 padding) → 放弃反写
     if (pL < -0.5 || pT < -0.5 || pR < -0.5 || pB < -0.5) {
-      return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes] }
+      return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes], reason: '子元素溢出容器' }
     }
 
     // 水平居中: alignItems center,只保留垂直方向的显式 padding
@@ -154,6 +154,7 @@ function inferLayout({ container, children }) {
         position: 'flex',
         confidence: 0.75,
         absolutes,
+        reason: '单子节点水平居中',
       }, cw, ch, stable, absolutes)
     }
     // 垂直居中: justifyContent center,水平位置由 padding 决定
@@ -169,9 +170,10 @@ function inferLayout({ container, children }) {
         position: 'flex',
         confidence: 0.7,
         absolutes,
+        reason: '单子节点垂直居中',
       }, cw, ch, stable, absolutes)
     }
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: '单子节点无对齐信号' }
   }
 
   // 行/列判定: 支持「边缘对齐」「中心对齐」两种信号
@@ -200,7 +202,7 @@ function inferLayout({ container, children }) {
 
   if (!isRow && !isColumn) {
     // 行列都不成立 → absolute(stack 语义), 几何由 bounds 差值守恒
-    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k) => k.id)] }
+    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k) => k.id)], reason: '无行列对齐信号' }
   }
 
   const main = isRow ? 'row' : 'column'
@@ -262,7 +264,7 @@ function inferLayout({ container, children }) {
   const padding = [padTop, padRight, padBottom, padLeft]
   // 负 padding = 子元素溢出容器(flex 无法表达),放弃反写保证视觉不变
   if (padding.some((p) => p < -0.5)) {
-    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes], reason: '子元素溢出容器(负边距)' }
   }
 
   // sizing: 容器主轴/交叉轴是否被内容撑起
@@ -279,6 +281,12 @@ function inferLayout({ container, children }) {
   if (alignItems === 'center') confidence += 0.05
   if (Math.abs(padLeft - padRight) > 0.01 && Math.abs(padTop - padBottom) > 0.01) confidence -= 0.1
 
+  // 判定依据摘要: 主轴信号来源(+等间距), 随蓝图输出供 LLM 评估推理可信度
+  const mainSig = main === 'row'
+    ? (topAligned ? '顶对齐' : centerYAligned ? '中心对齐' : '底对齐')
+    : (leftAligned ? '左对齐' : centerXAligned ? '中心对齐' : '右对齐')
+  const reason = `${main}(${mainSig})${hasUniformGap ? '+等间距' : ''}`
+
   const result = {
     flexDirection: main,
     alignItems,
@@ -292,6 +300,7 @@ function inferLayout({ container, children }) {
     position: 'flex',
     confidence: round1(Math.min(confidence, 1)),
     absolutes,
+    reason,
   }
 
   // 视觉保真验证: 模拟反写后的子元素位置,偏差超阈值 → 降级 absolute(视觉不变优先)
@@ -305,7 +314,7 @@ function inferLayout({ container, children }) {
     if (d > maxDelta) maxDelta = d
   }
   if (maxDelta > 2) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: 'flex模拟偏差>2px,降级保真' }
   }
   return result
 }
@@ -322,7 +331,7 @@ function maybeDowngrade(result, cw, ch, stable, absolutes) {
     if (d > maxDelta) maxDelta = d
   }
   if (maxDelta > 2) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: 'flex模拟偏差>2px,降级保真' }
   }
   return result
 }
@@ -635,14 +644,19 @@ function extractExactStyles(node, styles = {}) {
   return out;
 }
 
-/** paint 引用解析: "paint_xxx" → styles 表值(数组取首个); 其余字符串原样返回 */
+/** paint 引用解析: "paint_xxx" → styles 表值(数组取首个); 支持 {url} 图片对象形态; 其余字符串原样返回 */
 function resolvePaintRef(ref, styles) {
   if (ref == null || ref === '') return null
   if (typeof ref === 'string' && /^paint_/.test(ref)) {
     const def = styles && typeof styles === 'object' ? styles[ref] : null
     const v = def && typeof def === 'object' ? (def.value ?? null) : def ?? null
-    if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : null
-    return typeof v === 'string' ? v : null
+    const first = Array.isArray(v) ? v[0] : v
+    if (first && typeof first === 'object') {
+      // 图片型 paint: {url, filters?} — 返回 url, 由 parseNeutralFill 归一为 image fill
+      if (typeof first.url === 'string' && first.url) return first.url
+      return null
+    }
+    return typeof first === 'string' ? first : null
   }
   return typeof ref === 'string' ? ref : null
 }
@@ -666,6 +680,8 @@ function parseNeutralFill(str) {
   const s = String(str ?? '').trim()
   if (!s) return null
   if (/^url\(/i.test(s)) return { type: 'image', src: s }
+  // 纯 http(s) 资源 URL(图片型 paint 引用解析产物) → image
+  if (/^https?:\/\/\S+$/i.test(s)) return { type: 'image', src: s }
   const lg = s.match(/^linear-gradient\(\s*([^,]+?)\s*,([\s\S]+)\)$/i)
   if (lg) {
     const stops = []
@@ -891,7 +907,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
     }
     // 深度上限: 降级为 absolute 容器, 保留原始 children 防止节点丢失
     if (depth >= MAX_STRUCTURE_DEPTH) {
-      return { ...item, isContainer: true, layout: { position: 'absolute', confidence: 0.3 }, children: kids };
+      return { ...item, isContainer: true, layout: { position: 'absolute', confidence: 0.3, reason: '结构深度上限' }, children: kids };
     }
     const structuredKids = kids.map((k) => structureNode(k, depth + 1));
     const resolvedChildren = aggregateTextColumn(item, structuredKids);
@@ -936,16 +952,25 @@ function sanitizeDslNodes(nodes = [], canvas = { width: 375, height: 812 }) {
   if (!Array.isArray(nodes)) return [];
   // 展平: 子树相对坐标逐层累加为绝对坐标; 扁平输入(children 缺失/空)原样通过
   const flatNodes = [];
-  const walkFlat = (n, ox, oy) => {
+  const walkFlat = (n, ox, oy, parentObj) => {
     if (!n || typeof n !== 'object') return;
     const ls = n.layoutStyle || {};
     const ax = (ls.relativeX ?? ls.x ?? n.x ?? 0) + ox;
     const ay = (ls.relativeY ?? ls.y ?? n.y ?? 0) + oy;
     const kids = Array.isArray(n.children) ? n.children : [];
-    flatNodes.push({ ...n, children: undefined, layoutStyle: { ...(n.layoutStyle || {}), relativeX: ax, relativeY: ay } });
-    for (const k of kids) walkFlat(k, ax, ay);
+    const w = ls.width ?? n.width ?? 0;
+    const h = ls.height ?? n.height ?? 0;
+    const self = { ...n, children: undefined, layoutStyle: { ...(n.layoutStyle || {}), relativeX: ax, relativeY: ay }, _ax: ax, _ay: ay, _aw: w, _ah: h };
+    if (parentObj) {
+      self._parentBox = { x: parentObj._ax, y: parentObj._ay, width: parentObj._aw, height: parentObj._ah };
+      const cu = parentObj._childUnion ?? (parentObj._childUnion = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity });
+      cu.x1 = Math.min(cu.x1, ax); cu.y1 = Math.min(cu.y1, ay);
+      cu.x2 = Math.max(cu.x2, ax + w); cu.y2 = Math.max(cu.y2, ay + h);
+    }
+    flatNodes.push(self);
+    for (const k of kids) walkFlat(k, ax, ay, self);
   };
-  for (const n of nodes) walkFlat(n, 0, 0);
+  for (const n of nodes) walkFlat(n, 0, 0, null);
 
   const seenKeys = new Set();
   const clean = [];
@@ -991,6 +1016,9 @@ function neutralLayoutOf(layoutInfo = {}, exactStyles = {}) {
       : li.flexDirection === 'column' ? 'column' : 'box',
     position: li.position === 'absolute' ? 'absolute' : 'flex',
   };
+  // 推理溯源: confidence/reason 是算法推断元数据(非设计稿事实), 帮 LLM 评估布局可信度
+  if (Number.isFinite(li.confidence)) out.confidence = round1(li.confidence);
+  if (typeof li.reason === 'string' && li.reason) out.reason = li.reason;
   const jc = normEnd(li.justifyContent);
   if (jc && jc !== 'start') out.justifyContent = jc;
   const ai = normEnd(li.alignItems);
@@ -1029,8 +1057,53 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
     if (resolvedScale.source === 'inferred') scaleMeta.confidence = resolvedScale.confidence;
   }
 
+  // 0. 裁剪语义预处理(A2): 展平前沿原始树给蒙版本体形状打标(_maskShape + _clipRadius)。
+  //    展平重建是纯几何驱动, 原 GROUP 分组不可靠(同 bbox 蒙版 GROUP 可能被吸收不存活),
+  //    故标记必须跟 mask 形状自身走; 容器归属由 nodeToBlueprint 递归时按"直接子级含蒙版形状"回填。
+  const markClipSemantics = (list) => {
+    for (const n of Array.isArray(list) ? list : []) {
+      if (!n || typeof n !== 'object') continue;
+      if (n.mask === 'outline' || n.mask === true) {
+        n._maskShape = true;
+        const r = extractExactStyles(n, styles || {}).borderRadius ?? n.borderRadius ?? (n.layoutStyle || {}).borderRadius;
+        if (r != null) n._clipRadius = r;
+      }
+      markClipSemantics(Array.isArray(n.children) ? n.children : []);
+    }
+  };
+  markClipSemantics(nodes);
+
+  // 图片显示框语义(A3): 素材位图越出其源父框可视区(Skill 高频坑: 图片原始尺寸≠显示框)。
+  // 源父几何由展平段以 _parentBox 保留(ingest/sanitize 两级展平均挂), 此处对扁平列表单趟检测;
+  // visibleRect 为父框可视部分在素材自身坐标系下的矩形, 下游按 cover 映射, 无需理解层级。
+  const imageFillOf = (n) => {
+    if (n.type === 'IMAGE') return true;
+    if (typeof n.fill === 'string' && /url\(|image/.test(n.fill)) return true;
+    try { return extractExactStyles(n, styles || {}).fill?.type === 'image'; } catch { return false; }
+  };
+  const markImageCrop = (list) => {
+    for (const n of Array.isArray(list) ? list : []) {
+      if (!n || typeof n !== 'object') continue;
+      const pb = n._parentBox;
+      if (!pb || !imageFillOf(n)) continue;
+      const cls = n.layoutStyle || {};
+      const cx = cls.relativeX ?? cls.x ?? n.x ?? 0;
+      const cy = cls.relativeY ?? cls.y ?? n.y ?? 0;
+      const cw2 = cls.width ?? n.width ?? 0;
+      const chh = cls.height ?? n.height ?? 0;
+      const wx = Math.max(cx, pb.x ?? 0);
+      const wy = Math.max(cy, pb.y ?? 0);
+      const vw = Math.min(cx + cw2, (pb.x ?? 0) + (pb.width ?? 0)) - wx;
+      const vh = Math.min(cy + chh, (pb.y ?? 0) + (pb.height ?? 0)) - wy;
+      if (vw > 0 && vh > 0 && (vw < cw2 - 0.5 || vh < chh - 0.5)) {
+        n._imageCrop = { mode: 'cover', visibleRect: { x: round1(wx - cx), y: round1(wy - cy), width: round1(vw), height: round1(vh) } };
+      }
+    }
+  };
+
   // 1. 脏数据防御清洗
   const cleanNodes = sanitizeDslNodes(nodes, canvas);
+  markImageCrop(cleanNodes);
 
   // 2. 纯几何反向推理拓扑树
   const layoutResult = reverseInferSemanticLayout({ canvas, nodes: cleanNodes });
@@ -1077,11 +1150,32 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
         bp.softWrap = false;
         bp.maxLines = 1;
       }
-      // 文本度量(增强): 字体已初始化时输出实测宽度与换行预测, 未初始化静默跳过
-      if (measurerInfo().available && bp.text) {
+      // 文本度量(增强): 实测宽度与换行预测(字体模式精确 / 启发式兜底), 附字号交叉验证(A6)
+      if (bp.text) {
         const maxW = exactStyles.width || node.layoutStyle?.width || 0;
         const p = predictTextLayout({ text: bp.text, fontSize: bp.fontSize || 14, maxWidth: maxW, letterSpacing: bp.letterSpacing || 0 });
         bp.measured = { singleLineWidth: p.singleLineWidth, fitsOneLine: p.fitsOneLine, wrappedLines: p.lines };
+        // 字号交叉验证(A6): declared 字号下的实测文本宽 vs 框宽, 加框高信号 → fontConfidence/fontNote。
+        // Skill 经验: 单行文本装不下=字体缺失或字号失真; 框高≈字号=装饰字体(如 JoonFont 数值大字)。
+        const declaredFs = bp.fontSize ?? (Number(rawNode.fontSize) || null);
+        if (declaredFs != null && maxW > 0 && p.singleLineWidth != null) {
+          const ratio = p.singleLineWidth / maxW;
+          let fc = ratio <= 1.02 ? 1 : null;
+          let note;
+          if (fc == null && bp.softWrap === false && ratio > 1.05) {
+            fc = 0.3;
+            note = `单行文本实测宽超框 ${Math.round(ratio * 100)}% — 字体缺失或字号失真, 以 bounds 高度反推字号核对`;
+          } else if (fc == null) {
+            fc = 0.8;
+          }
+          const boxH = bp.bounds.height;
+          if (boxH > 0 && Math.abs(boxH - declaredFs) <= Math.max(1, declaredFs * 0.06)) {
+            note = 'decorative: 框高≈字号(装饰字体特征)';
+            fc = Math.max(fc ?? 0, 0.9);
+          }
+          bp.measured.fontConfidence = Math.round(fc * 100) / 100;
+          if (note) bp.measured.fontNote = note;
+        }
       }
     }
     // 样式通道(可选字段, 缺省即无): 纯色 color / 渐变·位图 fill / 描边 stroke / 旋转 / 不透明度
@@ -1090,7 +1184,25 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
     if (exactStyles.stroke) bp.stroke = exactStyles.stroke;
     if (exactStyles.rotation != null) bp.rotation = exactStyles.rotation;
     if (exactStyles.opacity != null) bp.opacity = exactStyles.opacity;
-    // 矢量图标引用: PATH/LAYER 节点的切图键(design 侧资源, 下游经导出表 id->svg 解析)。
+    // 裁剪通道(A2): mask 形状自身即蒙版裁剪边界(形状=bounds+radius), 不依赖容器归属
+    // (展平重建后同 bbox 嵌套组会塌散, 挂在形状上任何树形下都成立); clipShape=true 表示非可见内容
+    if (rawNode._maskShape) {
+      bp.clipShape = true;
+      bp.layout.clip = { enabled: true, source: 'mask' };
+      if (rawNode._clipRadius != null) bp.layout.clip.radius = rawNode._clipRadius;
+    }
+    // 图片显示框(A3): 素材位图仅 visibleRect 区域可见(预处理沿原始树检出)
+    if (rawNode._imageCrop) {
+      bp.fill = { ...(bp.fill || { type: 'image' }), crop: rawNode._imageCrop };
+    }
+    // 合并矢量(A4): _mergedVector 组是单个合并图标; 无 svgKey 时为"待导出矢量", 按 id 从设计侧补切图
+    if (rawNode._mergedVector === true) bp.mergedVector = true;
+    // 容器/内容尺寸冲突(A5): 源树中直接子内容外接盒明显越出本节点 bounds = 该节点是裁剪显示框,
+    // 内容真实尺寸更大(Skill: 以子元素真实尺寸为准)。bounds 是守恒真值不改, 仅记录冲突事实。
+    const cu = rawNode._childUnion;
+    if (cu && Number.isFinite(cu.x1) && (cu.x2 - cu.x1 > (node.width ?? 0) + 8 || cu.y2 - cu.y1 > (node.height ?? 0) + 8)) {
+      bp.contentClipped = { width: round1(cu.x2 - cu.x1), height: round1(cu.y2 - cu.y1) };
+    }    // 矢量图标引用: PATH/LAYER 节点的切图键(design 侧资源, 下游经导出表 id->svg 解析)。
     // 几何归一化重建会丢 svg 字段, 从 node.raw(原节点)回读; svgName 是语义补充。
     const svgRef = rawNode.svgShortKey || rawNode.svgKey || node.svgShortKey || node.svgKey;
     if (svgRef) bp.svgKey = svgRef;
@@ -1296,7 +1408,11 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles = {}, ex
     if (!bp) continue; // 缺树已由 missingIds 记账; 树内节点才查字段
     const facts = extractExactStyles(orig, styles);
     if (facts.color != null) expect(id, 'color', bp.color === facts.color);
-    if (facts.fill != null) expect(id, 'fill', JSON.stringify(bp.fill) === JSON.stringify(facts.fill));
+    if (facts.fill != null) {
+      // crop(A3) 是从源父几何派生的显示框语义, 非设计稿样式事实, 不参与守恒比对
+      const { crop: _crop, ...fillCore } = bp.fill || {};
+      expect(id, 'fill', JSON.stringify(fillCore) === JSON.stringify(facts.fill));
+    }
     if (facts.stroke != null) expect(id, 'stroke', JSON.stringify(bp.stroke) === JSON.stringify(facts.stroke));
     if (facts.rotation != null) expect(id, 'rotation', bp.rotation === facts.rotation);
     if (facts.opacity != null) expect(id, 'opacity', bp.opacity === facts.opacity);

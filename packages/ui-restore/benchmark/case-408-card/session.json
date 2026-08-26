@@ -1,0 +1,20 @@
+{
+ "createdAt": "2026-08-26T11:02:30.482Z",
+ "iteration": 1,
+ "status": "completed",
+ "phases": {
+  "verify-1": {
+   "pixel": {
+    "diffPixels": 0,
+    "diffRatio": 0
+   },
+   "corrections": []
+  }
+ },
+ "verification": {
+  "screenshot": "render.png",
+  "diffRatio": 0,
+  "blockMatchRate": null
+ },
+ "updatedAt": "2026-08-26T11:02:30.483Z"
+}

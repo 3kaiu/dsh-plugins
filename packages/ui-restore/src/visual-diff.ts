@@ -130,15 +130,22 @@ export function diffRegions(bufA, bufB, opts = {}) {
 
   const regions = clusters.slice(0, top).map((c) => {
     if (!nodes) return c
+    const selfArea = (b) => Math.max(b.width * b.height, 1)
     const interArea = (n) => {
       const b = n.bounds
       const w = Math.min(b.x + b.width, c.x + c.width) - Math.max(b.x, c.x)
       const h = Math.min(b.y + b.height, c.y + c.height) - Math.max(b.y, c.y)
       return w > 0 && h > 0 ? w * h : 0
     }
+    // 候选评分 = 相交面积 × 覆盖率(交集/自身面积): 小节点与差异区完全重叠得分高,
+    // 大背景/蒙版节点仅局部重叠被降权 —— 否则候选恒被大节点霸占
+    const score = (n) => {
+      const ia = interArea(n)
+      return ia > 0 ? ia * (ia / selfArea(n.bounds)) : 0
+    }
     const candidates = nodes
       .filter((n) => n.bounds && interArea(n) > 0)
-      .sort((m, n) => interArea(n) - interArea(m))
+      .sort((m, n) => score(n) - score(m))
       .slice(0, 3)
       .map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? String(n.text).slice(0, 20) : (n.text ?? null) }))
     return { ...c, candidates }
@@ -262,5 +269,41 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
     unmatchedDesign: designBlocks.filter((b) => !usedD.has(b)).map((b) => b.text),
     unmatchedRender: renderBlocks.filter((b) => !usedR.has(b)).map((b) => b.text),
     detail: matched.map(({ _d, _r, ...rest }) => rest),
+  }
+}
+
+/**
+ * 差异修正指令 (diffToCorrections): 把视觉 diff 区域翻译为 LLM 可执行的核对任务清单。
+ * 像素差不等于属性差(不猜测 "+4px" 量级), 只负责定位: 差在哪 / 关联哪些蓝图节点 / 去核对什么;
+ * 数值真值始终在蓝图, 修正以 blueprintRegion 下钻的子树为准。
+ *
+ * @param {object} bp generateCodeBlueprint 输出(用于区域→节点关联与指令生成)
+ * @param {object} diff diffRegions 输出 {regions:[{x,y,width,height,pixels,candidates?}], markedRatio}
+ * @returns {{summary:string, corrections:string[]}|null}
+ */
+export function diffToCorrections(bp, diff) {
+  if (!diff || !Array.isArray(diff.regions)) return null
+  const byId = new Map()
+  const idx = (n) => {
+    if (n && n.id) byId.set(n.id, n)
+    for (const c of (n && n.children) || []) idx(c)
+  }
+  for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) idx(r)
+  const corrections = diff.regions.map((r, i) => {
+    const cands = r.candidates || []
+    const nodes = cands.map((c) => byId.get(c.id)).filter(Boolean)
+    const severity = r.pixels > 800 ? 'major' : r.pixels > 200 ? 'minor' : 'noise'
+    const head = `#${i + 1} [${severity}] 区域(${r.x},${r.y} ${r.width}x${r.height}) 标记像素 ${r.pixels}`
+    if (nodes.length) {
+      const desc = nodes
+        .map((n) => `${n.id}(${n.name || ''}${typeof n.text === 'string' && n.text ? ` "${String(n.text).slice(0, 12)}"` : ''})`)
+        .join(', ')
+      return `${head} | 关联节点: ${desc} | 用 blueprintRegion(bp,{ids:[${nodes.map((n) => JSON.stringify(n.id)).join(',')}]}).nodes[0] 下钻, 以蓝图 bounds/layout/样式数值逐项核对渲染实现`
+    }
+    return `${head} | 无蓝图节点命中 — 疑似元素缺失或越界内容, 对照 checklist 检查遗漏项`
+  })
+  return {
+    summary: `${corrections.length} 处差异区域 | 标记像素占比 ${diff.markedRatio}`,
+    corrections,
   }
 }

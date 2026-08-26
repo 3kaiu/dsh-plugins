@@ -2,7 +2,7 @@
 // simulateFlex 标准公式、inferCrossAlign 对齐判定、inferGrid 容差聚类与
 // 各类边界降级。全部自包含,无外部依赖;
 // 与 layout-infer 包的 layout-infer.test.mjs(真实稿回归)互补。
-import { inferLayout, mode, round1, simulateFlex, clusterByAxis, autoHealingLayoutDiff, generateCodeBlueprint, verifyStyleConservation, parseNeutralFill, verifyLayoutTruth, measurerInfo, measureTextWidth, predictTextLayout, comparePng, blockMetrics, textSimilarity, validateBlueprint, blueprintToOutline, detectSiblingComponentGroups, extractDesignTokens, ingestDesignExport, lintDesignExport, extractExactStyles, detectDesignScale, applyDesignScale, resolveDesignScale, restorationChecklist, checklistToText, diffRegions } from "../dist/index.js";
+import { inferLayout, mode, round1, simulateFlex, clusterByAxis, autoHealingLayoutDiff, generateCodeBlueprint, verifyStyleConservation, parseNeutralFill, verifyLayoutTruth, measurerInfo, measureTextWidth, predictTextLayout, comparePng, blockMetrics, textSimilarity, diffToCorrections, validateBlueprint, blueprintToOutline, blueprintRegion, detectSiblingComponentGroups, extractDesignTokens, ingestDesignExport, lintDesignExport, extractExactStyles, detectDesignScale, applyDesignScale, resolveDesignScale, restorationChecklist, checklistToText, diffRegions } from "../dist/index.js";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -440,7 +440,9 @@ console.log("=== 契约固化 ===");
   const outline = blueprintToOutline(res);
   check("outline: 含角色/坐标/文字", outline.includes("[box]") && outline.includes("300x120") && outline.includes("标题"), true);
   check("outline: 含消费指南", outline.includes("消费指南") && outline.includes("softWrap=false"), true);
-  check("outline: 紧凑于 JSON", outline.length < JSON.stringify(res).length, true);
+  // 紧凑性比较排除固定文本消费指南(guide 与节点数无关, 是教学文本)
+  const outlineBare = blueprintToOutline(res, { includeGuide: false });
+  check("outline: 紧凑于 JSON(不含指南)", outlineBare.length < JSON.stringify(res).length, true);
 }
 //#endregion
 
@@ -747,6 +749,255 @@ console.log("=== 命名净化 / svgName / 组节奏 / lint ===");
   function lintOf(inp) { return lintDesignExport(inp); }
   check("lint: 重复 id 判 FAIL", [lint.ok, lint.checks.find((c) => c.check === "duplicate-ids")?.level], [false, "FAIL"]);
   check("lint: 字体断链判 WARN 且给样本", (() => { const c = lint.checks.find((c) => c.check === "missing-font-refs"); return c?.level === "WARN" && c.detail.includes("font_missing") })(), true);
+}
+//#endregion
+
+//#region 布局推理溯源(A1): layout.confidence/reason 进蓝图
+console.log("=== 布局推理溯源(confidence/reason) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  // 场景1: 等距行 → 高置信 flex, reason 描述信号来源
+  const bpRow = generateCodeBlueprint({ canvas, nodes: [{
+    type: "FRAME", name: "row", layoutStyle: { relativeX: 0, relativeY: 0, width: 240, height: 44 }, _color: "#FFFFFF",
+    children: [0, 1, 2].map((i) => ({ type: "FRAME", name: "cell", layoutStyle: { relativeX: 10 + i * 70, relativeY: 10, width: 60, height: 24 }, _color: "#EEEEEE" })),
+  }] });
+  const ly1 = bpRow.tree[0].layout;
+  check("溯源: flex confidence 数值且高置信", [typeof ly1.confidence, ly1.confidence > 0.7 && ly1.confidence <= 1], ["number", true]);
+  check("溯源: flex reason 描述信号来源", ly1.reason, "row(顶对齐)+等间距");
+  check("溯源: schema 校验含新字段仍过", validateBlueprint(bpRow).ok, true);
+
+  // 场景2: 无任何对齐信号 → absolute 是正常决策(stack 差值定位), 带低置信与理由
+  const bpAbs = generateCodeBlueprint({ canvas, nodes: [{
+    type: "FRAME", name: "free", layoutStyle: { relativeX: 0, relativeY: 200, width: 200, height: 200 }, _color: "#FFFFFF",
+    children: [
+      { type: "FRAME", name: "fa", layoutStyle: { relativeX: 10, relativeY: 10, width: 60, height: 20 }, _color: "#EEEEEE" },
+      { type: "FRAME", name: "fb", layoutStyle: { relativeX: 80, relativeY: 80, width: 40, height: 30 }, _color: "#DDDDDD" },
+    ],
+  }] });
+  const ly2 = bpAbs.tree[0].layout;
+  check("溯源: absolute 带置信与理由", [ly2.position, ly2.confidence, ly2.reason], ["absolute", 0.3, "无行列对齐信号"]);
+
+  // 场景3: 不等间距+双轴不对称 padding → conf 0.65, outline 显式标注低置信
+  const bpLow = generateCodeBlueprint({ canvas, nodes: [{
+    type: "FRAME", name: "loose", layoutStyle: { relativeX: 0, relativeY: 450, width: 300, height: 100 }, _color: "#FFFFFF",
+    children: [10, 90, 160].map((x) => ({ type: "FRAME", name: "it", layoutStyle: { relativeX: x, relativeY: 20, width: 40, height: 40 }, _color: "#EEEEEE" })),
+  }] });
+  check("溯源: 低置信 flex=0.7(双轴不对称-0.1, 交叉居中+0.05)", bpLow.tree[0].layout.confidence, 0.7);
+  const outlineLow = blueprintToOutline(bpLow);
+  check("溯源: outline 标注低置信", outlineLow.includes("conf=0.7"), true);
+  check("溯源: 消费指南说明 confidence 语义", outlineLow.includes("layout.confidence"), true);
+
+  // 场景4: 校验器拒绝越界 confidence
+  const badBp = JSON.parse(JSON.stringify(bpRow));
+  badBp.tree[0].layout.confidence = 1.5;
+  check("校验: confidence 超 0~1 报错", validateBlueprint(badBp).errors.some((e) => e.includes("confidence")), true);
+}
+//#endregion
+
+//#region 裁剪语义(A2): 蒙版组→layout.clip, mask:outline→clipShape (408 真实结构缩样)
+console.log("=== 裁剪语义(mask→clip) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  const bp = generateCodeBlueprint({ canvas, nodes: [{
+    type: "GROUP", name: "组 173775", layoutStyle: { relativeX: 0, relativeY: 300, width: 343, height: 112 }, _color: "#FFFFFF",
+    children: [
+      { type: "GROUP", name: "蒙版组 226", layoutStyle: { relativeX: 0, relativeY: 0, width: 343, height: 112 },
+        children: [
+          { type: "GROUP", name: "蒙版组 228", layoutStyle: { relativeX: 0, relativeY: 0, width: 343, height: 112 },
+            children: [
+              { type: "PATH", name: "矩形 6639", mask: "outline", layoutStyle: { relativeX: 0, relativeY: 0, width: 343, height: 112 }, borderRadius: 12, _color: "#FFFFFF" },
+              { type: "LAYER", name: "封面大图", layoutStyle: { relativeX: -20, relativeY: -30, width: 144, height: 219 }, fill: "url(https://cdn.example.com/cover.png)" },
+            ] },
+        ] },
+      { type: "TEXT", name: "标题", layoutStyle: { relativeX: 104, relativeY: 20, width: 167, height: 22 }, text: [{ text: "90天英语陪跑课" }], fontSize: 16, color: "#111E38" },
+    ],
+  }] });
+  const all = [];
+  const walk = (n) => { all.push(n); for (const c of n.children || []) walk(c); };
+  (bp.tree || []).forEach(walk);
+  const clips = all.filter((n) => n.layout?.clip?.enabled);
+  const shapes = all.filter((n) => n.clipShape);
+  check("裁剪: clip 恰好挂在蒙版形状上(不依赖容器归属)", [clips.length, clips[0]?.clipShape], [1, true]);
+  check("裁剪: clip 带蒙版圆角 radius=12", clips[0]?.layout.clip.radius, 12);
+  check("裁剪: clip.source=mask", clips[0]?.layout.clip.source, "mask");
+  check("裁剪: 蒙版本体标记 clipShape", shapes.length >= 1 && shapes.every((s) => s.clipShape === true), true);
+  check("裁剪: schema 过校验", validateBlueprint(bp).ok, true);
+  const outlineC = blueprintToOutline(bp);
+  check("裁剪: outline 显示裁剪与蒙版形状", outlineC.includes("裁剪(r=12)") && outlineC.includes("蒙版形状"), true);
+  check("裁剪: 消费指南含 clip 语义", outlineC.includes("layout.clip"), true);
+
+  // 校验器: 非法 clip 报错
+  const badClip = JSON.parse(JSON.stringify(bp));
+  badClip.tree[0].layout.clip = { source: "mask" };
+  check("校验: clip 缺 enabled 报错", validateBlueprint(badClip).errors.some((e) => e.includes("clip")), true);
+}
+//#endregion
+
+//#region 图片显示框语义(A3): 素材大图越界 → fill.crop cover + visibleRect
+console.log("=== 图片显示框(cover crop) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  // Skill 实测形态: 封面大图 144x219 在 72x88 显示框内 relativeX=-36(水平居中), 垂直越界
+  const bp = generateCodeBlueprint({ canvas, nodes: [{
+    type: "FRAME", name: "封面框", layoutStyle: { relativeX: 20, relativeY: 400, width: 72, height: 88 }, _color: "#E5DAE5",
+    children: [
+      { type: "LAYER", name: "封面大图", layoutStyle: { relativeX: -36, relativeY: -10, width: 144, height: 219 }, fill: "url(https://cdn.example.com/cover.png)" },
+      { type: "LAYER", name: "正常小图", layoutStyle: { relativeX: 0, relativeY: 0, width: 30, height: 30 }, fill: "url(https://cdn.example.com/small.png)" },
+    ],
+  }] });
+  const flat = [];
+  const walkT = (n) => { flat.push(n); for (const c of n.children || []) walkT(c); };
+  (bp.tree || []).forEach(walkT);
+  // 素材 bbox 包含显示框时几何聚类让素材成为父节点 — crop 挂素材自身(双向检测的方向 B), 不依赖父子方向
+  const big = flat.find((n) => n.name?.includes("大图"));
+  const small = flat.find((n) => n.name?.includes("小图"));
+  check("裁图: 越界素材获 crop.cover", [big?.fill?.crop?.mode, big?.clipShape], ["cover", undefined]);
+  check("裁图: visibleRect 精确(素材坐标系)", [big.fill.crop.visibleRect.x, big.fill.crop.visibleRect.y, big.fill.crop.visibleRect.width, big.fill.crop.visibleRect.height], [36, 10, 72, 88]);
+  check("裁图: 完全包含的子图不标 crop", small?.fill?.crop, undefined);
+  check("裁图: schema 过校验", validateBlueprint(bp).ok, true);
+  check("裁图: outline 提示 cover", blueprintToOutline(bp).includes("cover→"), true);
+
+  // 方向 A: 位图子项越出普通容器 → 裁子
+  const bpA = generateCodeBlueprint({ canvas, nodes: [{
+    type: "FRAME", name: "相框", layoutStyle: { relativeX: 0, relativeY: 700, width: 100, height: 60 }, _color: "#FFFFFF",
+    children: [
+      { type: "LAYER", name: "横长素材", layoutStyle: { relativeX: -20, relativeY: 10, width: 140, height: 40 }, fill: "url(https://cdn.example.com/w.png)" },
+    ],
+  }] });
+  let imgA;
+  const walkA = (n) => { if (n.name?.includes("横长")) imgA = n; for (const c of n.children || []) walkA(c); };
+  (bpA.tree || []).forEach(walkA);
+  check("裁图: 方向A 子位图越界被裁", [imgA?.fill?.crop?.mode, imgA?.fill?.crop?.visibleRect.width], ["cover", 100]);
+
+  // 校验器: 非法 crop 报错
+  const badCrop = JSON.parse(JSON.stringify(bp));
+  const badImg = flat.find((n) => n.name?.includes("大图"));
+  const patchIn = (n) => { if (n.id === badImg.id) { n.fill.crop = { mode: "fill" }; return true; } return (n.children || []).some(patchIn); };
+  patchIn({ id: "_root", children: badCrop.tree });
+  check("校验: crop 非法 mode 报错", validateBlueprint(badCrop).errors.some((e) => e.includes("crop")), true);
+}
+//#endregion
+
+//#region 合并矢量(A4): _mergedVector 标注 + 无 key 时列入待导出清单
+console.log("=== 合并矢量(mergedVector) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  const bp = generateCodeBlueprint({ canvas, nodes: [
+    { type: "GROUP", name: "组 174388", _mergedVector: true, layoutStyle: { relativeX: 20, relativeY: 40, width: 18, height: 18 } },
+    { type: "GROUP", name: "icon-ok", _mergedVector: true, svgShortKey: "S9#1", layoutStyle: { relativeX: 60, relativeY: 40, width: 22, height: 22 } },
+  ] });
+  const flat = [];
+  const walkT = (n) => { flat.push(n); for (const c of n.children || []) walkT(c); };
+  (bp.tree || []).forEach(walkT);
+  const noKey = flat.find((n) => n.name?.startsWith("GROUP#") || n.id === "node_0");
+  const withKey = flat.find((n) => n.svgKey === "S9#1");
+  check("矢量: mergedVector 标记进蓝图", [noKey?.mergedVector, withKey?.mergedVector], [true, true]);
+  check("矢量: 带 key 者走 svgKey 通道", withKey?.svgKey, "S9#1");
+  check("矢量: schema 过校验", validateBlueprint(bp).ok, true);
+  check("矢量: outline 提示待导出", blueprintToOutline(bp).includes("合并矢量(待按id导出)"), true);
+  // checklist: 无 key 的进待导出清单(id: 前缀占位)
+  const cl = restorationChecklist(bp);
+  check("合同: 待导出矢量入清单", cl.vectors.some((v) => v.svgKey.startsWith("id:") && v.nodeIds.includes(noKey.id)), true);
+  const clText = checklistToText(cl);
+  check("合同: 文本说明 id: 前缀语义", clText.includes("按节点 id 从设计侧补切图"), true);
+}
+//#endregion
+
+//#region 容器/内容尺寸冲突(A5): 裁剪显示框记录 contentClipped
+console.log("=== 容器内容冲突(contentClipped) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  // Skill 实测形态: 按钮组显示 326x48, 内部 PATH 矩形真实 396x56
+  const bp = generateCodeBlueprint({ canvas, nodes: [{
+    type: "GROUP", name: "按钮组", layoutStyle: { relativeX: 24, relativeY: 500, width: 326, height: 48 }, _color: "#FFFFFF",
+    children: [
+      { type: "PATH", name: "btn-bg", layoutStyle: { relativeX: -70, relativeY: -4, width: 396, height: 56 }, _color: "#F5F5F5" },
+      { type: "TEXT", name: "btn-text", layoutStyle: { relativeX: 130, relativeY: 14, width: 60, height: 20 }, text: [{ text: "开始学习" }], fontSize: 14, color: "#111111" },
+    ],
+  }] });
+  const flat = [];
+  const walkT = (n) => { flat.push(n); for (const c of n.children || []) walkT(c); };
+  (bp.tree || []).forEach(walkT);
+  const grp = flat.find((n) => n.name?.includes("按钮组"));
+  check("冲突: 裁剪框记录 contentClipped", [grp?.contentClipped?.width, grp?.contentClipped?.height], [396, 56]);
+  check("冲突: bounds 保持守恒真值不变", [grp.bounds.width, grp.bounds.height], [326, 48]);
+  check("冲突: schema 过校验", validateBlueprint(bp).ok, true);
+  check("冲突: outline 提示", blueprintToOutline(bp).includes("内容被裁(实际396x56)"), true);
+  const badCc = JSON.parse(JSON.stringify(bp));
+  const g2 = (() => { let r; const w = (n) => { if (n.contentClipped) r = n; (n.children || []).forEach(w); }; (badCc.tree || []).forEach(w); return r; })();
+  g2.contentClipped = { width: "396" };
+  check("校验: contentClipped 非数值报错", validateBlueprint(badCc).errors.some((e) => e.includes("contentClipped")), true);
+}
+//#endregion
+
+//#region 区域下钻(B): blueprintRegion 矩形/id 双模式 + 事实纪律指南
+console.log("=== 区域下钻(blueprintRegion) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  const mk = (name, x, y) => ({ type: "FRAME", name, layoutStyle: { relativeX: x, relativeY: y, width: 100, height: 60 }, _color: "#EEEEEE",
+    children: [{ type: "TEXT", name: name + "-t", layoutStyle: { relativeX: 10, relativeY: 20, width: 50, height: 14 }, text: [{ text: name }], fontSize: 12, color: "#111111" }] });
+  const bp = generateCodeBlueprint({ canvas, nodes: [mk("左卡", 10, 100), mk("右卡", 200, 100)] });
+
+  // 矩形模式: 只命中右卡(含子树), 左卡不进结果
+  const r1 = blueprintRegion(bp, { x: 180, y: 80, width: 150, height: 120 });
+  check("下钻: 矩形命中子树计数", r1.count >= 2 && JSON.stringify(r1.nodes).includes("右卡") && !JSON.stringify(r1.nodes).includes("左卡"), true);
+  // id 模式: 指定节点整棵纳入
+  const right = blueprintRegion(bp, { x: 180, y: 80, width: 150, height: 120 }).nodes[0];
+  const r2 = blueprintRegion(bp, { ids: [right.id] });
+  check("下钻: ids 命中同一子树", r2.count === r1.count && validateBlueprint({ canvas: bp.canvas, tree: r2.nodes, floatings: [] }).ok !== false, true);
+  // 未命中区域 → 空结果
+  const r3 = blueprintRegion(bp, { x: 0, y: 700, width: 50, height: 50 });
+  check("下钻: 未命中返回空", [r3.count, r3.nodes.length], [0, 0]);
+  check("下钻: guide 含事实纪律与下钻用法", blueprintToOutline(bp).includes("禁止修改、取整") && blueprintToOutline(bp).includes("blueprintRegion"), true);
+}
+//#endregion
+
+//#region 差异修正指令(C): diffToCorrections 区域→节点→核对任务
+console.log("=== 差异修正指令(diffToCorrections) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  const bp = generateCodeBlueprint({ canvas, nodes: [
+    { type: "FRAME", name: "标题栏", layoutStyle: { relativeX: 0, relativeY: 8, width: 340, height: 48 }, _color: "#FFFFFF",
+      children: [{ type: "TEXT", name: "t", layoutStyle: { relativeX: 20, relativeY: 14, width: 80, height: 20 }, text: [{ text: "学习中心" }], fontSize: 16, color: "#111111" }] },
+  ] });
+  const fake = {
+    markedRatio: '3.2%',
+    regions: [
+      { x: 10, y: 5, width: 90, height: 40, pixels: 950, candidates: [{ id: bp.tree[0].children[0].id, name: 't' }] },
+      { x: 300, y: 700, width: 60, height: 60, pixels: 120, candidates: [] },
+    ],
+  };
+  const c = diffToCorrections(bp, fake);
+  check("修正: 汇总计数", c.summary.includes('2 处差异区域'), true);
+  check("修正: major 级关联到文本节点", c.corrections[0].includes('[major]') && c.corrections[0].includes('学习中心'), true);
+  check("修正: 给出下钻指令", c.corrections[0].includes('blueprintRegion'), true);
+  check("修正: 无命中给 checklist 提示", c.corrections[1].includes('无蓝图节点命中') && c.corrections[1].includes('[noise]'), true);
+}
+//#endregion
+
+//#region 字号交叉验证(A6): measured.fontConfidence/fontNote
+console.log("=== 字号交叉验证(fontConfidence) ===");
+{
+  const canvas = { width: 375, height: 812 };
+  const bp = generateCodeBlueprint({ canvas, nodes: [
+    // 正常: 2 字 14px 实测宽 28 ≤ 框宽 100 → fc=1
+    { type: "TEXT", name: "正常", layoutStyle: { relativeX: 10, relativeY: 10, width: 100, height: 20 }, text: [{ text: "学习" }], fontSize: 14, color: "#111111" },
+    // 单行装不下: softWrap=false + 4 字 20px(实测 80) > 框 50 → fc=0.3 + 字体缺失提示
+    { type: "TEXT", name: "失真", layoutStyle: { relativeX: 10, relativeY: 60, width: 50, height: 28 }, text: [{ text: "学习中心" }], fontSize: 20, color: "#111111", textMode: "single-line" },
+    // 装饰字体: 框高=字号(38/38) → decorative 提示
+    { type: "TEXT", name: "大字", layoutStyle: { relativeX: 10, relativeY: 120, width: 90, height: 38 }, text: [{ text: "25" }], fontSize: 38, color: "#000000" },
+  ] });
+  const all = [];
+  const walkT = (n) => { all.push(n); for (const c of n.children || []) walkT(c); };
+  (bp.tree || []).forEach(walkT);
+  const ok = all.find((n) => n.name?.includes("正常"));
+  const bad = all.find((n) => n.name?.includes("失真"));
+  const deco = all.find((n) => n.name?.includes("大字"));
+  check("验证: 正常文本 fc=1", ok?.measured?.fontConfidence, 1);
+  check("验证: 单行装不下 fc=0.3+提示", [bad?.measured?.fontConfidence, /字体缺失/.test(bad?.measured?.fontNote || '')], [0.3, true]);
+  check("验证: 装饰字体特征提示", /decorative/.test(deco?.measured?.fontNote || ''), true);
+  check("验证: schema 过校验", validateBlueprint(bp).ok, true);
+  check("验证: guide 说明置信度语义", blueprintToOutline(bp).includes("measured.fontConfidence"), true);
 }
 //#endregion
 

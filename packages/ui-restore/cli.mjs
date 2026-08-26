@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  generateCodeBlueprint, initTextMetrics, validateBlueprint,
+  generateCodeBlueprint, initTextMetrics, validateBlueprint, blueprintRegion,
   blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng,
   ingestDesignExport, lintDesignExport, restorationChecklist, checklistToText, extractDesignTokens, diffRegions,
 } from './dist/index.js';
@@ -174,9 +174,39 @@ async function main() {
     const topN = Number(flag('--top')) || undefined;
     const r = diffRegions(fs.readFileSync(truthPng), fs.readFileSync(renderPng), { nodes, grid: gridN, top: topN });
     console.log(JSON.stringify(r, null, 1));
+    if (bpFlag) {
+      const { diffToCorrections } = await import('./dist/index.js');
+      const c = diffToCorrections(JSON.parse(fs.readFileSync(bpFlag, 'utf8')), r);
+      if (c) {
+        console.log('\n# 修正指令(按严重度逐条核对)');
+        console.log(c.summary);
+        for (const line of c.corrections) console.log(' -', line);
+      }
+    }
     return;
   }
-  console.error('用法: ui-restore <build|blueprint|doctor|verify|diff|regions> ...');
+  if (cmd === 'region') {
+    const designPath = args[0];
+    const rectFlag = flag('--rect');
+    const idsFlag = flag('--ids');
+    if (!designPath || (!rectFlag && !idsFlag)) { console.error('用法: ui-restore region <design.json> --rect x,y,width,height | --ids id1,id2 [--dir <outDir>]'); process.exit(1); }
+    const { bp } = await runBlueprint(designPath);
+    const sel = rectFlag
+      ? (() => { const [x, y, width, height] = rectFlag.split(',').map(Number); return { x, y, width, height }; })()
+      : { ids: idsFlag.split(',').map((s) => s.trim()) };
+    const region = blueprintRegion(bp, sel);
+    if (!region) { console.error('区域下钻失败: 非法参数'); process.exit(1); }
+    const outDir = flag('--dir') || path.dirname(designPath);
+    fs.mkdirSync(outDir, { recursive: true });
+    const base = path.basename(designPath).replace(/\.json$/, '');
+    const tag = rectFlag ? `r${Math.round(sel.x)}_${Math.round(sel.y)}` : 'ids';
+    const outFile = path.join(outDir, `${base}.region-${tag}.json`);
+    fs.writeFileSync(outFile, JSON.stringify(region));
+    console.log(`区域下钻: ${region.count} 节点 → ${outFile}`);
+    for (const n of region.nodes) console.log(`  ${n.type} ${n.name || n.id} @(${n.bounds?.x},${n.bounds?.y})`);
+    return;
+  }
+  console.error('用法: ui-restore <build|blueprint|doctor|verify|diff|regions|region> ...');
   process.exit(1);
 }
 

@@ -250,7 +250,7 @@ function leafToDsl(n, origin) {
   if (Math.abs(n._rotation) > 0.5) out.layoutStyle.rotate = round1(n._rotation)
   // 透传原始渲染字段(全部)
   if (dslRoot) {
-    for (const k of ['fill', '_color', 'effect', 'borderRadius', 'strokeColor', 'strokeType', 'strokeAlign', 'strokeWidth', 'opacity', 'text', 'rowTexts', 'textColor', 'textAlign', 'textMode', 'font', 'svgKey', 'svgShortKey', 'svgName', 'path', 'rotate', 'componentInfo', 'componentId', '_mergedVector', 'flexShrink', 'flexGrow']) {
+    for (const k of ['fill', '_color', 'effect', 'borderRadius', 'strokeColor', 'strokeType', 'strokeAlign', 'strokeWidth', 'opacity', 'text', 'rowTexts', 'textColor', 'textAlign', 'textMode', 'font', 'svgKey', 'svgShortKey', 'svgName', 'path', 'rotate', 'componentInfo', 'componentId', '_mergedVector', 'flexShrink', 'flexGrow', 'mask']) {
       if (dslRoot[k] !== undefined) out[k] = dslRoot[k]
     }
     // 内部子节点树原样保留(相对该节点自身的相对坐标)

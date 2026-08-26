@@ -36,6 +36,11 @@ export function restorationChecklist(bp) {
       const entry = vectorMap.get(n.svgKey)
       if (!entry.name && n.svgName) entry.name = n.svgName
       entry.ids.add(n.id)
+    } else if (n.mergedVector) {
+      // 合并矢量但无 svgKey: 资源缺口, 以节点 id 为占位键列入待导出清单
+      const ph = `id:${n.id}`
+      if (!vectorMap.has(ph)) vectorMap.set(ph, { name: n.name || null, ids: new Set() })
+      vectorMap.get(ph).ids.add(n.id)
     }
     if (n.fill && n.fill.type === 'image') {
       images.push({ id: n.id, src: n.fill.src || null, bounds: n.bounds })
@@ -106,8 +111,8 @@ export function checklistToText(cl, opts = {}) {
   }
   if (cl.vectors.length) {
     lines.push('')
-    lines.push(`## 矢量切图 (${cl.vectors.length}) — 经资源导出表解析, 不得省略或用近似图形替代`)
-    for (const v of cl.vectors) lines.push(`- ${v.svgKey} ← [${v.nodeIds.join(', ')}]`)
+    lines.push(`## 矢量切图 (${cl.vectors.length}) — 经资源导出表解析, 不得省略或用近似图形替代; id: 前缀为待导出资源(按节点 id 从设计侧补切图)`)
+    for (const v of cl.vectors) lines.push(`- ${v.svgKey} ← [${v.nodeIds.join(', ')}]${v.svgName ? ` (${v.svgName})` : ''}`)
   }
   if (cl.images.length) {
     lines.push('')
