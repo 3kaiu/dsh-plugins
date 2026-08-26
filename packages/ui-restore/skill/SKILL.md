@@ -105,16 +105,17 @@ ui-restore regions <truth.png> <render.png> --bp <blueprint.json>
 
 ## ⑦ 回归基准(benchmark)
 
-真实案例回归目录约定(每个 case 一个目录, 放在项目侧或 benchmark/ 下):
+回归案例属**使用侧**资产, 不进 core 包(核心库保持业务中立): 统一放仓库根 `benchmarks/`。每个 case 一个目录:
 
 ```
-case/
-├── design.json     # 设计稿导出(形态 A/B/C 均可)
-├── truth.png       # 设计稿参考渲染图
-├── blueprint.json  # ui-restore build 产物(四闸全 PASS 的基线)
-└── generated/      # LLM 实现产物的渲染截图
+benchmarks/
+└── case-<名称>/
+    ├── design.json     # 设计稿导出(形态 A/B/C 均可)
+    ├── truth.png       # 参考图: 几何快照(snapshot 命令)/设计侧导出图/正确实现截图 三选一
+    ├── restore.html    # 正确实现(LLM 按蓝图还原的产物, 技术栈不限)
+    └── generated/      # 注入偏差版与迭代截图
 ```
 
 - 回归 = 对每个 case 重跑 `build` 四闸 + `diff`(blockMatchRate=1, diffRatio<2%)+`regions` 归零
-- **判定对象是还原结果而非算法输出**: 新案例先入 benchmark 再改算法; 任何算法改动跑全量 case 防回归
+- **判定对象是还原结果而非算法输出**: 新案例先入 benchmarks 再改算法; 任何算法改动跑全量 case 防回归
 - 差异修正入口: `regions --bp <blueprint.json>` 输出末尾附修正指令(区域→关联节点→下钻核对), 数值真值始终以蓝图为准

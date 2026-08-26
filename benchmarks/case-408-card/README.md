@@ -13,15 +13,15 @@
 ## 复现闭环(analyze → 实现 → 截图 → verify → fix)
 
 ```bash
-cd packages/ui-restore
+cd /Users/edy/dev/dsh-plugins/packages/ui-restore
 # 1. 分析: 设计稿 → 蓝图 + 四闸
-node adapters/restore.mjs analyze ../../output/study-408-8738-raw.json --dir /tmp/bm
+node packages/ui-restore/adapters/restore.mjs analyze ../../output/study-408-8738-raw.json --dir /tmp/bm
 # 2. 截图(系统 Chrome headless, 零依赖)
-node adapters/screenshot.mjs benchmark/case-408-card/restore.html     benchmark/case-408-card/truth.png --width 375 --height 812
-node adapters/screenshot.mjs benchmark/case-408-card/restore-bad.html benchmark/case-408-card/render.png --width 375 --height 812
+node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-408-card/restore.html     benchmarks/case-408-card/truth.png --width 375 --height 812
+node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-408-card/restore-bad.html benchmarks/case-408-card/render.png --width 375 --height 812
 # 3. 对比: 应检出差异区域并精准关联标题节点 408:8798
-node adapters/restore.mjs verify benchmark/case-408-card/truth.png benchmark/case-408-card/render.png \
-  --bp /tmp/bm/study-408-8738-raw.blueprint.json --session benchmark/case-408-card/session.json
+node packages/ui-restore/adapters/restore.mjs verify benchmarks/case-408-card/truth.png benchmarks/case-408-card/render.png \
+  --bp /tmp/bm/study-408-8738-raw.blueprint.json --session benchmarks/case-408-card/session.json
 # 4. 修正(把 bad 改回正确)后重截图再 verify → diffRatio=0, status=completed
 ```
 

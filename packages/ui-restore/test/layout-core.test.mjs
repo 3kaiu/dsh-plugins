@@ -809,7 +809,7 @@ console.log("=== 裁剪语义(mask→clip) ===");
               { type: "LAYER", name: "封面大图", layoutStyle: { relativeX: -20, relativeY: -30, width: 144, height: 219 }, fill: "url(https://cdn.example.com/cover.png)" },
             ] },
         ] },
-      { type: "TEXT", name: "标题", layoutStyle: { relativeX: 104, relativeY: 20, width: 167, height: 22 }, text: [{ text: "90天英语陪跑课" }], fontSize: 16, color: "#111E38" },
+      { type: "TEXT", name: "标题", layoutStyle: { relativeX: 104, relativeY: 20, width: 167, height: 22 }, text: [{ text: "示例卡片标题文本" }], fontSize: 16, color: "#111E38" },
     ],
   }] });
   const all = [];

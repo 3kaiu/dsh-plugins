@@ -15,12 +15,12 @@
 ## 复现
 
 ```bash
-cd packages/ui-restore
-node adapters/restore.mjs analyze /Users/edy/dev/dsh-plugins/output/study-live-phone-raw.json --dir /tmp/bm-live
-node adapters/screenshot.mjs benchmark/case-live-course-card/restore.html     benchmark/case-live-course-card/truth.png --width 375 --height 812
-node adapters/screenshot.mjs benchmark/case-live-course-card/restore-bad.html benchmark/case-live-course-card/render.png --width 375 --height 812
-node adapters/restore.mjs verify benchmark/case-live-course-card/truth.png benchmark/case-live-course-card/render.png \
-  --bp /tmp/bm-live/study-live-phone-raw.blueprint.json --session benchmark/case-live-course-card/session.json
+cd /Users/edy/dev/dsh-plugins/packages/ui-restore
+node packages/ui-restore/adapters/restore.mjs analyze /Users/edy/dev/dsh-plugins/output/study-live-phone-raw.json --dir /tmp/bm-live
+node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore.html     benchmarks/case-live-course-card/truth.png --width 375 --height 812
+node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore-bad.html benchmarks/case-live-course-card/render.png --width 375 --height 812
+node packages/ui-restore/adapters/restore.mjs verify benchmarks/case-live-course-card/truth.png benchmarks/case-live-course-card/render.png \
+  --bp /tmp/bm-live/study-live-phone-raw.blueprint.json --session benchmarks/case-live-course-card/session.json
 ```
 
 ## 已验证结论(2026-08)
