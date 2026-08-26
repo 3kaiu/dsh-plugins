@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 const require = createRequire("/tmp/pw/package.json");
 const { chromium } = require("playwright-core");
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
+const DIR = process.argv[2] || "../../packages/layout-infer/fixtures/mg-demo-2025";
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 const htmlPath = `${DIR}/demo.html`;
 

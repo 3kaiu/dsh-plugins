@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 const require = createRequire("/tmp/pw/package.json");
 const { chromium } = require("playwright-core");
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban";
+const DIR = process.argv[2] || "../../packages/layout-infer/fixtures/mg-gaiban";
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 
 const browser = await chromium.launch({
@@ -129,7 +129,7 @@ console.log(`6. 状态栏区文本: ${chrome.top.length ? chrome.top.join("|") :
 
 // 7) 头部图标组件平移校验:html 源码中 40:0188 的 svg 小图形 translate(12,7)(已位图化,从源码断言)
 import { readFileSync } from "node:fs";
-const htmlSrc = readFileSync("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban/demo.html", "utf8");
+const htmlSrc = readFileSync("../../packages/layout-infer/fixtures/mg-gaiban/demo.html", "utf8");
 const aligned = htmlSrc.includes("translate(12.00,7.00)");
 console.log(`7. 头部图标 svg 平移(源码): ${aligned ? "translate(12.00,7.00) ✓" : "缺失 ✗"}`);
 

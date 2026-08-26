@@ -8,6 +8,11 @@ export const BASE = {
   target: "node20",
   minify: true,
   legalComments: "none",
+  // CJS 依赖(如 pngjs)在 ESM 输出里运行时 require node 内置模块:
+  // 注入 createRequire 使 typeof require === 'function', 由 Node 解析内置模块
+  banner: {
+    js: "import { createRequire as __cR } from 'node:module'; const require = __cR(import.meta.url);",
+  },
 };
 
 /** 宿主 profile 提供的运行时依赖,构建时保持 external(从 node_modules 解析) */

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const require = createRequire("/tmp/pw/package.json");
 const { chromium } = require("playwright-core");
 
-const URL = "file:///Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo.html";
+const URL = "file://../../packages/layout-infer/fixtures/mg-gaiban2/demo.html";
 const checks = [
   ["标题 课程", "课程", 34, 53, 0, 0],
   ["课程学习成果", "课程学习成果", 355.5, 196, 0, 0],
@@ -85,7 +85,7 @@ const tpl = await page.evaluate(() => ({
 console.log(`模板: ${tpl.templates}, dupIds: ${tpl.dupIds}`);
 
 // DOM 结构:冗余 wrapper
-const html = readFileSync("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo.html", "utf8");
+const html = readFileSync("../../packages/layout-infer/fixtures/mg-gaiban2/demo.html", "utf8");
 const wrappers = (html.match(/<div style="position:absolute;left:[\d.]+px;top:[\d.]+px;"><div/g) || []).length;
 console.log(`纯定位 wrapper: ${wrappers}`);
 
@@ -104,6 +104,6 @@ if (slice && Math.abs(slice.x - 140) <= 2 && Math.abs(slice.y - 237.76) <= 2 && 
   console.log(`统计区切图: 0/1 通过`);
 }
 
-await page.screenshot({ path: "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo-full.png", fullPage: true });
+await page.screenshot({ path: "../../packages/layout-infer/fixtures/mg-gaiban2/demo-full.png", fullPage: true });
 console.log("截图: demo-full.png");
 await browser.close();

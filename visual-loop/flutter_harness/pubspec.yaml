@@ -1,0 +1,14 @@
+name: visual_harness
+description: 视觉闭环 PoC 渲染器 - 中立蓝图的确定性 Flutter 投影(仅本地验证用, 不发布)
+publish_to: none
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_svg: ^2.3.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true

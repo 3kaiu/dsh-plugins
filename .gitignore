@@ -3,3 +3,7 @@ dist
 *.tgz
 output/
 .dsh/
+.DS_Store
+visual-loop/build/
+visual-loop/flutter_harness/.dart_tool/
+visual-loop/flutter_harness/build/

@@ -19,7 +19,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2";
+const DIR = process.argv[2] || "../../packages/layout-infer/fixtures/mg-gaiban2";
 const FULL = path.join(DIR, "dsl-full.json");
 const SVGJSON = path.join(DIR, "svgs-official.json");
 const OUT = path.join(DIR, "stacked-draft.json");

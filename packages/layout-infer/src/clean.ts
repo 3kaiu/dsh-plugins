@@ -6,7 +6,7 @@
 //   2) dsl: 标准 DSL 树(语义容器 + relativeX/Y + flexContainerInfo + 渲染字段)
 //   3) description: 技术中立的结构描述文本(缩进树, 无任何前端技术词汇),
 //      LLM 可直接据此理解布局结构, 再自由选择实现技术(React/Vue/Flutter/...)
-import { cleanToStandardDsl, describeStructure } from "@3kaiu/dsh-plugin-kit";
+import { cleanToStandardDsl, describeStructure } from "@ui-restore/core";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
 const renderJson = (args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }];
@@ -19,7 +19,7 @@ export function applyCleanTool(ctx) {
     defineTool({
       name: "clean_layout",
       description:
-        "把『拍平稿』(只有绝对坐标的扁平碎片列表, 如 MasterGo 堆叠稿的 sections)清洗为标准 DSL 树, 并生成技术中立的结构描述。输出三段: stats(清洗统计)、dsl(标准 DSL: 语义容器树 status-bar/nav-bar/hero/learn-card/sticker-card/stats-row/content-tabs/tab-bar + 每节点相对父容器的 relativeX/relativeY + 容器 flexContainerInfo(flexDirection/justifyContent/alignItems/gap={row,column}/padding=[top,right,bottom,left]) + 叶子保留原始渲染字段(文本/图标svgKey/颜色/效果/旋转)), description(缩进树文本, 供 LLM 直接理解布局结构)。\n\n结果技术中立: 不包含 div/css/flexbox 等任何具体前端技术词汇, LLM 可据此结构自由选择实现技术(React/React Native/Flutter/Vue/小程序/SwiftUI 等)。清洗后每个叶子的页面绝对坐标与输入完全一致(容差 2px)。",
+        "把『拍平稿』(只有绝对坐标的扁平碎片列表, 如 MasterGo 堆叠稿的 sections)清洗为标准 DSL 树, 并生成技术中立的结构描述。输出三段: stats(清洗统计)、dsl(标准 DSL: 语义容器树 status-bar/nav-bar/hero/feature-card/sticker-card/stats-row/segmented-bar/tab-bar + 每节点相对父容器的 relativeX/relativeY + 容器 flexContainerInfo(flexDirection/justifyContent/alignItems/gap={row,column}/padding=[top,right,bottom,left]) + 叶子保留原始渲染字段(文本/图标svgKey/颜色/效果/旋转)), description(缩进树文本, 供 LLM 直接理解布局结构)。\n\n结果技术中立: 不包含 div/css/flexbox 等任何具体前端技术词汇, LLM 可据此结构自由选择实现技术(React/React Native/Flutter/Vue/小程序/SwiftUI 等)。清洗后每个叶子的页面绝对坐标与输入完全一致(容差 2px)。",
       parameters: {
         canvas: {
           type: "object",

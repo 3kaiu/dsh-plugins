@@ -5,7 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { annotate } from "../dist/index.js";
-import { inferLayout } from "@3kaiu/dsh-plugin-kit";
+import { inferLayout } from "@ui-restore/core";
 
 const PREFIX = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "mg-pure-sec-");
 
@@ -29,8 +29,9 @@ console.log("容器:", all.containers);
 console.log("flex:", all.flex, "absolute:", all.absolute);
 if (all.total !== 132) throw new Error("节点总数应为 132, got " + all.total);
 if (all.containers !== 44) throw new Error("容器应为 44, got " + all.containers);
-if (all.flex !== 16) throw new Error("flex 应为 16, got " + all.flex);
-if (all.absolute !== 28) throw new Error("absolute 应为 28, got " + all.absolute);
+// 19/25: 不等间距容器(P1-7)不再降级,经 spacing 数组以 flex 保留(视觉验证 ≤2px 门禁仍在)
+if (all.flex !== 19) throw new Error("flex 应为 19, got " + all.flex);
+if (all.absolute !== 25) throw new Error("absolute 应为 25, got " + all.absolute);
 console.log("标注统计与验证一致 ✓");
 
 // 2. 抽查容器: 标题栏(sec11)应为 flex row

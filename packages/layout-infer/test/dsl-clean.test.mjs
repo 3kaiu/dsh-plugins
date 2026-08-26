@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cleanToStandardDsl } from "@3kaiu/dsh-plugin-kit/dsl-clean";
+import { cleanToStandardDsl, describeStructure } from "@ui-restore/core";
 
 const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "mg-stacked-sections.json");
 const fx = JSON.parse(readFileSync(FIXTURE, "utf8"));
@@ -73,6 +73,9 @@ function render(node, parentOrigin, out, flexPlaced) {
     const kids = node.children;
     // 技术中立格式: gap={row,column}, padding=[top,right,bottom,left]
     const gap = info.gap ? (typeof info.gap === "object" ? info.gap.row : 0) : 0;
+    // 不等间距: spacing 数组按相邻对(主轴排序)给出 per-pair gap
+    const spacing = Array.isArray(info.spacing) ? info.spacing : null;
+    const gapAt = (i) => (spacing && i > 0 && i - 1 < spacing.length ? spacing[i - 1] : gap);
     const pads = Array.isArray(info.padding) ? info.padding : [];
     const pT = pads[0] || 0;
     const pR = pads[1] != null ? pads[1] : pT;
@@ -99,12 +102,13 @@ function render(node, parentOrigin, out, flexPlaced) {
         cursor += (dir === "row" ? k.layoutStyle.width : k.layoutStyle.height) + slot;
       });
     } else {
-      sorted.forEach((k) => {
+      sorted.forEach((k, idx) => {
         placements.push({ k, main: cursor });
-        cursor += (dir === "row" ? k.layoutStyle.width : k.layoutStyle.height) + gap;
+        cursor += (dir === "row" ? k.layoutStyle.width : k.layoutStyle.height) + gapAt(idx + 1);
       });
       if (info.justifyContent === "center" || info.justifyContent === "flex-end") {
-        const total = sorted.reduce((s, k) => s + (dir === "row" ? k.layoutStyle.width : k.layoutStyle.height), 0) + gap * (sorted.length - 1);
+        let total = sorted.reduce((s, k) => s + (dir === "row" ? k.layoutStyle.width : k.layoutStyle.height), 0);
+        for (let i = 1; i < sorted.length; i++) total += gapAt(i);
         const offset = info.justifyContent === "center" ? (mainSize - total) / 2 : mainSize - total;
         for (const p of placements) p.main += offset;
       }
@@ -145,7 +149,7 @@ const walkNames = (ns) => {
   }
 };
 walkNames(result.root.children);
-const mustHave = ["hero-background", "status-bar", "nav-bar", "learn-card", "sticker-card", "stats-row", "content-tabs", "tab-bar"];
+const mustHave = ["hero-background", "status-bar", "nav-bar", "feature-card", "sticker-card", "stats-row", "segmented-bar", "tab-bar"];
 for (const m of mustHave) assert([...names].some((n) => n.startsWith(m)), "缺少语义容器 " + m + ", 实际: " + [...names].join(","));
 const wantTabs = ["tab-item-首页", "tab-item-对话", "tab-item-学习", "tab-item-场景", "tab-item-我的"];
 for (const t of wantTabs) assert([...names].includes(t), "缺少 " + t);
@@ -156,3 +160,43 @@ assert(result.stats.background === 1, "background 应 1");
 assert(result.stats.offCanvas === 1, "offCanvas 应 1");
 
 console.log("清洗算法回归 ✓ 几何一致(maxDelta=" + maxDelta.toFixed(2) + "px) 语义命名 ✓ stats=" + JSON.stringify(result.stats));
+
+// ---- 5. describeStructure: svgName / 重复项压缩 / 系统元素标记 ----
+function repItem(x, y, label) {
+  return {
+    id: `i${x}${y}`,
+    name: "列表项",
+    type: "FRAME",
+    layoutStyle: { relativeX: x, relativeY: y, width: 100, height: 60 },
+    children: [
+      { id: `t${x}${y}`, name: "文本", type: "TEXT", layoutStyle: { relativeX: 12, relativeY: 10, width: 60, height: 20 }, text: label },
+    ],
+  };
+}
+const synthetic = {
+  meta: { canvas: { width: 375, height: 812 } },
+  root: {
+    id: "root",
+    name: "页面",
+    type: "FRAME",
+    layoutStyle: { relativeX: 0, relativeY: 0, width: 375, height: 812 },
+    children: [
+      { id: "ic", name: "图标", type: "PATH", layoutStyle: { relativeX: 0, relativeY: 0, width: 24, height: 24 }, svgName: "arrow-right", svgShortKey: "S0#0" },
+      { id: "time", name: "9:41", type: "TEXT", layoutStyle: { relativeX: 30, relativeY: 20, width: 40, height: 16 }, text: "9:41" },
+      {
+        id: "list",
+        name: "列表",
+        type: "FRAME",
+        layoutStyle: { relativeX: 0, relativeY: 100, width: 375, height: 300 },
+        children: [repItem(0, 0, "课程A"), repItem(0, 80, "课程B"), repItem(0, 160, "课程C"), repItem(0, 240, "课程D")],
+      },
+    ],
+  },
+};
+const desc = describeStructure(synthetic);
+assert(desc.includes("图标名:arrow-right"), "describeStructure 应输出 svgName");
+assert(desc.includes("系统元素(安全区/状态栏)"), "describeStructure 应标记系统元素");
+assert(desc.includes("重复项x4"), "describeStructure 应输出重复项x4");
+const foldedCount = (desc.match(/\(重复项,结构同上一项\)/g) || []).length;
+assert(foldedCount === 3, "应折叠 3 个重复项, 实际 " + foldedCount);
+console.log("describeStructure 增强 ✓ svgName/重复项压缩/系统元素标记 全部生效");

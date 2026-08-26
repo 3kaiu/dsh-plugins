@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs && node test/stacked-restore.test.mjs && node test/dsl-clean.test.mjs"
+    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs && node test/dsl-clean.test.mjs && node test/repeat.test.mjs"
   },
   "dsh": {
     "bundle": {
@@ -21,9 +21,9 @@
     }
   },
   "devDependencies": {
-    "@3kaiu/dsh-plugin-kit": "workspace:*",
     "@deepseek-ai/dsh-tools": "next",
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.24.2",
+    "@ui-restore/core": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "*"

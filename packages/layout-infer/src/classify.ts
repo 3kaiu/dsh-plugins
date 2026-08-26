@@ -1,3 +1,6 @@
+
+import { extractExactStyles } from '@ui-restore/core';
+
 // classify.js — 还原决策分类层(Step 1)
 // 输入: MasterGo DSL({styles, nodes, components}) 或纯几何节点树
 // 输出: 每节点 {kind, sizing, position, spacing} 语义决策,均带 confidence + reason;
@@ -9,7 +12,7 @@
 //   2. 类型直读: TEXT / PATH / image-fill —— 决定 text/icon/image
 //   3. 语义命名: icon/logo/img/avatar 等设计规范约定
 //   4. 几何反推: gap/padding(无原生间距字段时复用 inferLayout)
-import { inferLayout } from '@3kaiu/dsh-plugin-kit'
+import { inferLayout, detectRepeatGroups, systemChromeOf } from '@ui-restore/core'
 
 const round = (n) => Math.round((n || 0) * 100) / 100
 const ICON_NAME = /icon|ic[_-]|logo|glyph/i
@@ -168,8 +171,31 @@ function spacingOf(node) {
   return out
 }
 
+// ---- 切图决策 ----
+// export-png: 位图内容(IMAGE 类型 / url()/data:image 填充),需导出切图
+// code-draw: 纯色或简单渐变填充,代码可直接绘制,不切图
+function renderDecisionOf(node, styles) {
+  const paintStr = JSON.stringify(paintValue(styles, node.fill) ?? '')
+  if (/url\(|data:image|\.png|\.jpe?g|\.webp/i.test(paintStr)) {
+    return { render: 'export-png', reason: '位图内容,需导出切图' }
+  }
+  // 多段渐变/含阴影蒙版的复杂填充仍建议切图,简单填充走代码绘制
+  const gradientStops = (paintStr.match(/gradient/gi) || []).length
+  if (gradientStops > 1 || /mask/i.test(paintStr)) {
+    return { render: 'export-png', reason: '复杂渐变/蒙版,代码绘制成本高,建议切图' }
+  }
+  return { render: 'code-draw', reason: '纯色/简单渐变,代码可直接绘制' }
+}
+
+// 切图建议文件名: 语义名 + 画板后缀(窄板 _phone / 宽板 _tablet)
+function suggestAssetFileName(node, canvasWidth) {
+  const base = (node.name || 'image').replace(/[^\w\u4e00-\u9fa5-]+/g, '_').replace(/^_+|_+$/g, '') || 'image'
+  const suffix = canvasWidth != null && canvasWidth >= 700 ? '_tablet' : '_phone'
+  return `${base}${suffix}.png`
+}
+
 // ---- 资产收集 ----
-function collectAssets(node, styles, assets) {
+function collectAssets(node, styles, assets, canvasWidth) {
   const ls = node.layoutStyle || {}
   if (node.type === 'PATH' || Array.isArray(node.path)) {
     assets.inlineSvg.push({
@@ -180,12 +206,16 @@ function collectAssets(node, styles, assets) {
     })
   }
   if (node.type === 'IMAGE' || /url\(|data:image/i.test(JSON.stringify(paintValue(styles, node.fill) ?? ''))) {
+    const decision = renderDecisionOf(node, styles)
     assets.images.push({
       id: node.id,
       name: node.name || '',
       fill: paintValue(styles, node.fill),
       width: round(ls.width),
       height: round(ls.height),
+      render: decision.render,
+      renderReason: decision.reason,
+      suggestedFileName: decision.render === 'export-png' ? suggestAssetFileName(node, canvasWidth) : null,
     })
   }
   if (node.type === 'TEXT' && Array.isArray(node.text)) {
@@ -197,14 +227,47 @@ function collectAssets(node, styles, assets) {
   }
 }
 
+// ---- 重复结构(repeater)标注 ----
+// 预扫描原始节点树: 同父兄弟中连续同构(结构指纹相同)且数量>=3 的段标记为重复组。
+// 组内首项携带 repeat 元数据,其余项仅标 repeatItem,供 codegen 生成列表循环。
+function buildRepeatMap(nodes, map) {
+  for (const group of detectRepeatGroups(nodes || [])) {
+    group.itemIds.forEach((id, idx) => {
+      if (id == null) return
+      if (idx === 0) {
+        map.set(id, {
+          repeat: {
+            count: group.count,
+            axis: group.axis,
+            itemWidth: group.itemWidth,
+            itemHeight: group.itemHeight,
+            gap: group.gap,
+            itemIds: group.itemIds,
+          },
+        })
+      } else {
+        map.set(id, { repeatItem: true, repeatOf: group.itemIds[0] })
+      }
+    })
+  }
+  for (const n of nodes || []) {
+    if (n.children && n.children.length) buildRepeatMap(n.children, map)
+  }
+}
+
 // ---- 递归分类 ----
-function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved) {
+function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth) {
   const ls = node.layoutStyle || {}
   const kids = node.children || []
+  const absY = (parentAbsY || 0) + (ls.relativeY || 0)
   stats.total++
 
-  const kind = kindOf(node, styles)
-  const sizing = sizingOf(node)
+  // 系统元素(状态栏/Home Indicator)优先于常规 kind: 生成代码时应剔除
+  const sys = systemChromeOf(node, absY)
+  const kind = sys || kindOf(node, styles)
+  const sizing = sys
+    ? { main: 'environment', cross: 'environment', confidence: 1, reason: ['系统元素,尺寸由安全区/运行环境决定'] }
+    : sizingOf(node)
   const position = positionOf(node, parentAbsolute)
   const spacing = kids.length > 0 ? spacingOf(node) : null
 
@@ -212,6 +275,7 @@ function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved) {
   else if (kind.kind === 'icon') stats.icons++
   else if (kind.kind === 'image') stats.images++
   else if (kind.kind === 'container') stats.containers++
+  else if (kind.kind === 'system-chrome') stats.systemChrome++
   else if (kind.kind === 'shape') stats.shapes++
   else stats.spacers++
   if (sizing.main === 'auto' || sizing.cross === 'auto') stats.autoMain++
@@ -219,7 +283,7 @@ function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved) {
   if (position.position === 'absolute') stats.absolute++
   else stats.flow++
 
-  collectAssets(node, styles, assets)
+  collectAssets(node, styles, assets, canvasWidth)
 
   // 低置信度节点收集(供 agent 询问用户 / 视觉确认)
   if (kind.kind === 'container' && sizing.main == null && sizing.cross == null) {
@@ -252,19 +316,24 @@ function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved) {
     confidence: round(Math.min(kind.confidence, sizing.confidence, position.confidence)),
     children: [],
   }
+  const rep = repeatMap && repeatMap.get(node.id)
+  if (rep) {
+    if (rep.repeat) entry.repeat = rep.repeat
+    else { entry.repeatItem = true; entry.repeatOf = rep.repeatOf }
+  }
 
   // 原生 flex 语义(flexContainerInfo.flexDirection)优先于几何反推:
   // 拍平稿才允许几何反推的 absolute 覆盖。
   const abs =
     position.position === "absolute" ||
     (!(node.flexContainerInfo && node.flexContainerInfo.flexDirection) && spacing && spacing.position === "absolute");
-  entry.children = classifyNodes(kids, styles, stats, assets, abs, unresolved)
+  entry.children = classifyNodes(kids, styles, stats, assets, abs, unresolved, repeatMap, absY, canvasWidth)
   return entry
 }
 
-function classifyNodes(nodes, styles, stats, assets, parentAbsolute, unresolved) {
+function classifyNodes(nodes, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth) {
   const out = []
-  for (const n of nodes || []) out.push(classifyNode(n, styles, stats, assets, parentAbsolute, unresolved))
+  for (const n of nodes || []) out.push(classifyNode(n, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth))
   return out
 }
 
@@ -280,6 +349,7 @@ export function classifyDsl(dsl) {
     images: 0,
     shapes: 0,
     spacers: 0,
+    systemChrome: 0,
     autoMain: 0,
     fixedMain: 0,
     absolute: 0,
@@ -287,7 +357,11 @@ export function classifyDsl(dsl) {
   }
   const assets = { inlineSvg: [], images: [], texts: [] }
   const unresolved = []
-  const tree = classifyNodes(nodes, styles, stats, assets, false, unresolved)
+  const repeatMap = new Map()
+  buildRepeatMap(nodes, repeatMap)
+  // 画板宽度: 顶层节点最大宽度(用于切图 _phone/_tablet 命名建议)
+  const canvasWidth = nodes.reduce((m, n) => Math.max(m, (n.layoutStyle && n.layoutStyle.width) || 0), 0) || null
+  const tree = classifyNodes(nodes, styles, stats, assets, false, unresolved, repeatMap, 0, canvasWidth)
   return { stats, tree, assets, unresolved }
 }
 

@@ -1,0 +1,24 @@
+{
+  "name": "@ui-restore/core",
+  "version": "1.0.0",
+  "description": "通用 UI 还原核心:设计稿 DSL → 中立蓝图 → 多重门禁验证。零宿主依赖,技术栈中立。",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/layout-core.test.mjs"
+  },
+  "dependencies": {
+    "opentype.js": "^2.0.0",
+    "pixelmatch": "^7.0.0",
+    "pngjs": "^7.0.0",
+    "yoga-layout": "^3.2.1"
+  },
+  "bin": {
+    "ui-restore": "./cli.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.0"
+  }
+}
