@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- case-live-course-card 正确实现: 按 live-phone blueprint 子树(408:9126, 327x185 @24,104)逐字段还原。
+     结构: 卡片底(327x173)+底部遮罩(327x22 贴底) + 标题两行 + 双 chip + 按钮 + 指示器条。
+     chip/按钮 PATH 底走 svgKey 切图通道, 此处以近似色块占位(资源待导出), 几何严格按蓝图。 -->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 375px; height: 812px; background: #F5F6FA; font-family: "PingFang SC", sans-serif; position: relative; }
+  .card { position: absolute; left: 24px; top: 104px; width: 327px; height: 173px; background: #FFFFFF; border-radius: 12px; overflow: hidden; }
+  .cover { position: absolute; left: 0; top: 0; width: 100px; height: 75px; background: #E5DAE5; }
+  /* 标题: @(156,128 相对卡 132,24) 168 宽两行 16px w500 */
+  .title { position: absolute; left: 132px; top: 24px; width: 168px; font-size: 16px; font-weight: 500; color: #111E38; line-height: 22px; white-space: normal; word-break: break-all; }
+  /* chip1 杨家成老师: 底 62x20 @(132,79), 文本 50x14 @(138,82) */
+  .chip1 { position: absolute; left: 140px; top: 79px; width: 62px; height: 20px; border-radius: 10px; background: #FFF4E5; }
+  .chip1 span { position: absolute; left: 6px; top: 3px; font-size: 10px; font-weight: 500; color: #F1950A; line-height: 14px; white-space: nowrap; }
+  /* chip2 抖音千万粉丝: 底 72x20 @(200,79), 文本 @(206,82) */
+  .chip2 { position: absolute; left: 200px; top: 79px; width: 72px; height: 20px; border-radius: 10px; background: #EFF1F7; }
+  .chip2 span { position: absolute; left: 6px; top: 3px; font-size: 10px; font-weight: 500; color: #8D94A2; line-height: 14px; white-space: nowrap; }
+  /* 按钮 进直播间: 底 88x34 @(220,119), 文本 48x17 @(239,127) */
+  .btn { position: absolute; left: 220px; top: 119px; width: 78px; height: 34px; border-radius: 17px; background: #FFFFFF; box-shadow: inset 0 -2px 0 #FF984E; }
+  .btn span { position: absolute; left: 19px; top: 8px; font-size: 12px; font-weight: 500; color: #240F00; line-height: 17px; white-space: nowrap; }
+  /* 底部遮罩条 327x22 贴底 */
+  .maskbar { position: absolute; left: 0; bottom: 0; width: 327px; height: 22px; background: #EFF1F7; }
+  /* 指示器 19.5x6 @(155,181 相对卡) */
+  .dots { position: absolute; left: 155px; top: 181px; width: 19.5px; height: 6px; }
+  .dots i { position: absolute; top: 1.5px; width: 5.5px; height: 3px; border-radius: 1.5px; background: #C9CFDA; }
+  .dots i.on { left: 0; background: #FF984E; }
+  .dots i.off { left: 7.5px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="cover"></div>
+    <div class="title">硬控厨房：从备料到摆盘的家庭料理口语</div>
+    <div class="chip1"><span>杨家成老师</span></div>
+    <div class="chip2"><span>抖音千万粉丝</span></div>
+    <div class="btn"><span>进直播间</span></div>
+    <div class="maskbar"></div>
+    <div class="dots"><i class="on"></i><i class="off"></i></div>
+  </div>
+</body>
+</html>

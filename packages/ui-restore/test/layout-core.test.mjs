@@ -2,7 +2,7 @@
 // simulateFlex 标准公式、inferCrossAlign 对齐判定、inferGrid 容差聚类与
 // 各类边界降级。全部自包含,无外部依赖;
 // 与 layout-infer 包的 layout-infer.test.mjs(真实稿回归)互补。
-import { inferLayout, mode, round1, simulateFlex, clusterByAxis, autoHealingLayoutDiff, generateCodeBlueprint, verifyStyleConservation, parseNeutralFill, verifyLayoutTruth, measurerInfo, measureTextWidth, predictTextLayout, comparePng, blockMetrics, textSimilarity, diffToCorrections, validateBlueprint, blueprintToOutline, blueprintRegion, detectSiblingComponentGroups, extractDesignTokens, ingestDesignExport, lintDesignExport, extractExactStyles, detectDesignScale, applyDesignScale, resolveDesignScale, restorationChecklist, checklistToText, diffRegions } from "../dist/index.js";
+import { inferLayout, mode, round1, simulateFlex, clusterByAxis, autoHealingLayoutDiff, generateCodeBlueprint, verifyStyleConservation, parseNeutralFill, verifyLayoutTruth, measurerInfo, measureTextWidth, predictTextLayout, comparePng, blockMetrics, textSimilarity, diffToCorrections, renderGeometrySnapshot, validateBlueprint, blueprintToOutline, blueprintRegion, detectSiblingComponentGroups, extractDesignTokens, ingestDesignExport, lintDesignExport, extractExactStyles, detectDesignScale, applyDesignScale, resolveDesignScale, restorationChecklist, checklistToText, diffRegions } from "../dist/index.js";
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -998,6 +998,29 @@ console.log("=== 字号交叉验证(fontConfidence) ===");
   check("验证: 装饰字体特征提示", /decorative/.test(deco?.measured?.fontNote || ''), true);
   check("验证: schema 过校验", validateBlueprint(bp).ok, true);
   check("验证: guide 说明置信度语义", blueprintToOutline(bp).includes("measured.fontConfidence"), true);
+}
+//#endregion
+
+//#region 几何参考快照(C③): renderGeometrySnapshot 确定性 + 偏差检出
+console.log("=== 几何参考快照(renderGeometrySnapshot) ===");
+{
+  const canvas = { width: 200, height: 200 };
+  const bp = generateCodeBlueprint({ canvas, nodes: [
+    { type: "FRAME", name: "box", layoutStyle: { relativeX: 20, relativeY: 20, width: 100, height: 60 }, _color: "#FF0000",
+      children: [{ type: "TEXT", name: "t", layoutStyle: { relativeX: 10, relativeY: 20, width: 80, height: 20 }, text: [{ text: "学习中心" }], fontSize: 16, color: "#000000" }] },
+  ] });
+  const a = renderGeometrySnapshot(bp);
+  const b = renderGeometrySnapshot(bp);
+  check("快照: 尺寸按画布", [a.width, a.height], [200, 200]);
+  check("快照: 同蓝图渲染逐像素确定", comparePng(a.png, b.png).diffRatio, 0);
+  // 平移偏差检出: 同一节点右移 10px 后的蓝图画进画布, 与基准对比应非零
+  const bpShift = generateCodeBlueprint({ canvas, nodes: [
+    { type: "FRAME", name: "box", layoutStyle: { relativeX: 30, relativeY: 20, width: 100, height: 60 }, _color: "#FF0000",
+      children: [{ type: "TEXT", name: "t", layoutStyle: { relativeX: 10, relativeY: 20, width: 80, height: 20 }, text: [{ text: "学习中心" }], fontSize: 16, color: "#000000" }] },
+  ] });
+  const c = renderGeometrySnapshot(bpShift);
+  const d = comparePng(a.png, c.png);
+  check("快照: 位置偏差可检出", d.diffPixels > 0 && d.diffRatio < 0.2, true);
 }
 //#endregion
 

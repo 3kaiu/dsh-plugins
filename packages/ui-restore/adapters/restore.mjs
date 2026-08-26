@@ -11,11 +11,14 @@
 //     node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--session s.json]
 //   status   查看/推进会话状态(iteration 记账, maxIterations=5 由调用方遵守)
 //     node adapters/restore.mjs status --session <s.json>
+//   snapshot 蓝图 → 几何参考快照(truth 来源之一: geometry 级, 无需正确实现)
+//     node adapters/restore.mjs snapshot <blueprint.json> <out.png> [--scale N]
 //
 // RestoreSession(d2c 第六节): 单个 JSON 文件即全部状态; 无数据库无队列。
 import fs from 'node:fs';
 import path from 'node:path';
 import { analyzeDesign, verifyScreenshots } from './pipeline.mjs';
+import { renderGeometrySnapshot } from '../dist/index.js';
 
 const MAX_ITERATIONS = 5;
 const args = process.argv.slice(2);
@@ -93,6 +96,19 @@ async function main() {
       });
       console.log(`\nsession: iteration=${iteration}/${MAX_ITERATIONS} status=${done ? 'completed' : 'correcting'} (${sp})`);
     }
+    return;
+  }
+
+  if (cmd === 'snapshot') {
+    // 参考图来源(d2c 第十四节): 蓝图 → 几何参考快照, truth 不再依赖"正确实现"
+    const bpPath = args[1];
+    const outPng = flag('out') || args[2];
+    if (!bpPath || !outPng) { console.error('用法: restore.mjs snapshot <blueprint.json> <out.png> [--scale N] [--background #FFF]'); process.exit(1); }
+    const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
+    const r = renderGeometrySnapshot(bp, { scale: Number(flag('scale')) || 1, background: flag('background') || undefined });
+    fs.mkdirSync(path.dirname(path.resolve(outPng)), { recursive: true });
+    fs.writeFileSync(outPng, r.png);
+    console.log(`几何快照: ${outPng} (${r.width}x${r.height}) — geometry 级参考: 可检出位置/尺寸/颜色块差异, 不含字形细节`);
     return;
   }
 

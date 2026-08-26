@@ -307,3 +307,72 @@ export function diffToCorrections(bp, diff) {
     corrections,
   }
 }
+
+/**
+ * 几何参考快照 (renderGeometrySnapshot): 从蓝图确定性光栅化 truth 参考图(d2c 第十四节 Reference Snapshot)。
+ *
+ * 定位与局限(诚实边界):
+ *  - 能检出: 位置/尺寸/层级/颜色块级差异(geometry+color 级)
+ *  - 不能检出: 字形/抗锯齿/阴影羽化等渲染细节级差异
+ *  - 文本画为"墨迹条"(宽=measured.singleLineWidth, 高≈fontSize), 非真实字形
+ * z 序 = 数组序自下而上(与蓝图消费约定一致)。
+ *
+ * @param {object} bp generateCodeBlueprint 输出
+ * @param {object} [opts] {scale=1, background='#FFFFFF'}
+ * @returns {{png:Buffer, width:number, height:number}}
+ */
+export function renderGeometrySnapshot(bp, opts = {}) {
+  const scale = opts.scale ?? 1
+  const W = Math.round((bp?.canvas?.width ?? 375) * scale)
+  const H = Math.round((bp?.canvas?.height ?? 812) * scale)
+  const png = new PNG({ width: W, height: H })
+  const hex2rgb = (s) => {
+    const m = String(s || '').trim().match(/^#([0-9a-fA-F]{3,8})$/)
+    if (!m) return null
+    let h = m[1]
+    if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join('')
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
+    return { r, g, b }
+  }
+  // 底色
+  const bg = hex2rgb(opts.background ?? '#FFFFFF') ?? { r: 255, g: 255, b: 255 }
+  for (let i = 0; i < W * H; i++) {
+    png.data[i * 4] = bg.r; png.data[i * 4 + 1] = bg.g; png.data[i * 4 + 2] = bg.b; png.data[i * 4 + 3] = 255
+  }
+  const fillRect = (x0, y0, w0, h0, rgb, alpha = 1) => {
+    const x1 = Math.max(0, Math.round(x0 * scale)), y1 = Math.max(0, Math.round(y0 * scale))
+    const x2 = Math.min(W, Math.ceil((x0 + w0) * scale)), y2 = Math.min(H, Math.ceil((y0 + h0) * scale))
+    for (let y = y1; y < y2; y++) {
+      for (let x = x1; x < x2; x++) {
+        const i = (y * W + x) * 4
+        png.data[i] = Math.round(png.data[i] * (1 - alpha) + rgb.r * alpha)
+        png.data[i + 1] = Math.round(png.data[i + 1] * (1 - alpha) + rgb.g * alpha)
+        png.data[i + 2] = Math.round(png.data[i + 2] * (1 - alpha) + rgb.b * alpha)
+        png.data[i + 3] = 255
+      }
+    }
+  }
+  const walk = (n) => {
+    if (!n || typeof n !== 'object' || !n.bounds) return
+    const b = n.bounds
+    const isText = n.type === 'TEXT' || (typeof n.text === 'string' && n.text !== '')
+    if (isText) {
+      // 文本墨迹条: 宽=min(实测宽,bounds宽), 高≈fontSize 居中于 bounds
+      const rgb = hex2rgb(n.color) ?? { r: 40, g: 40, b: 40 }
+      const fs = n.fontSize ?? Math.round(b.height * 0.72)
+      const inkW = Math.min(n.measured?.singleLineWidth ?? b.width, b.width)
+      const inkH = Math.min(fs, b.height)
+      fillRect(b.x, b.y + (b.height - inkH) / 2, inkW, inkH, rgb, 0.85)
+    } else {
+      let col = n.color ?? null
+      if (n.fill?.type === 'solid') col = n.fill.value ?? col
+      else if (n.fill?.type === 'gradient') col = n.fill.stops?.[0]?.color ?? col
+      else if (n.fill?.type === 'image') col = col ?? '#CFCFCF' // 位图占位灰
+      const rgb = hex2rgb(col)
+      if (rgb && !n.clipShape) fillRect(b.x, b.y, b.width, b.height, rgb)
+    }
+    for (const c of Array.isArray(n.children) ? n.children : []) walk(c)
+  }
+  for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) walk(r)
+  return { png: PNG.sync.write(png), width: W, height: H }
+}

@@ -1,0 +1,30 @@
+{
+ "createdAt": "2026-08-26T11:07:59.837Z",
+ "iteration": 2,
+ "status": "completed",
+ "phases": {
+  "verify-1": {
+   "pixel": {
+    "diffPixels": 427,
+    "diffRatio": 0
+   },
+   "corrections": [
+    "#1 [minor] 区域(144,168 96x48) 标记像素 680 | 关联节点: 408:9131(PATH:组 174191), 408:9132(杨家成老师 \"杨家成老师\"), 408:9157(PATH:组 174230) | 用 blueprintRegion(bp,{ids:[\"408:9131\",\"408:9132\",\"408:9157\"]}).nodes[0] 下钻, 以蓝图 bounds/layout/样式数值逐项核对渲染实现",
+    "#2 [noise] 区域(288,216 48x48) 标记像素 76 | 关联节点: 408:9160(PATH:组 174100), 408:9162(进直播间 \"进直播间\"), 408:9157(PATH:组 174230) | 用 blueprintRegion(bp,{ids:[\"408:9160\",\"408:9162\",\"408:9157\"]}).nodes[0] 下钻, 以蓝图 bounds/layout/样式数值逐项核对渲染实现"
+   ]
+  },
+  "verify-2": {
+   "pixel": {
+    "diffPixels": 0,
+    "diffRatio": 0
+   },
+   "corrections": []
+  }
+ },
+ "verification": {
+  "screenshot": "render.png",
+  "diffRatio": 0,
+  "blockMatchRate": null
+ },
+ "updatedAt": "2026-08-26T11:08:13.459Z"
+}
