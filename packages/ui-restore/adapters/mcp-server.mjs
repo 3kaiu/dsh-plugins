@@ -5,7 +5,8 @@
 // 只回答"设计稿 → 描述产物 → 验证", 代码生成在下游。
 //
 // 工具面(粗粒度原则, d2c 规划: MCP 是接口不是大脑):
-//   ui_restore_run         主入口 workflow: analyze=设计稿→UI Truth 产物包 / verify=两图对比+修正指令
+//   ui_restore_run         主入口 workflow: analyze=设计稿→UI Truth 产物包 / verify=两图对比+修正指令(+防退化记账)
+//                                              restore=确定性状态机推进(绝不内置 LLM —— 实现/修码永远在调用方)
 //   ui_restore_blueprint   设计稿 json → 蓝图 + outline + 契约/真值摘要
 //   ui_restore_verify      蓝图 json → 契约校验 + 真值摘要
 //   ui_restore_region      蓝图区域下钻(rect/ids → 子树), 大页面按需取精确数值
@@ -22,7 +23,7 @@ import {
   validateBlueprint, blueprintRegion, verifyLayoutTruth, blueprintToOutline, extractDesignTokens,
 } from '../dist/index.js';
 // 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
-import { analyzeDesign, buildBlueprint, verifyScreenshots } from './pipeline.mjs';
+import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.mjs';
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
@@ -32,21 +33,50 @@ const server = new McpServer({ name: 'ui-restore', version: '1.0.0' });
 // 主入口 workflow tool(d2c: 普通情况下 Agent 只需要这一个)。确定性 pipeline, 非第二层 LLM。
 server.tool(
   'ui_restore_run',
-  'UI 还原主入口。mode=analyze(默认): 设计稿导出 json → UI Truth 产物包(blueprint/outline/checklist/tokens/assets + INDEX) + 四闸门禁, 之后按产物包消费指南实现; mode=verify: 参考图 vs 渲染截图 → 像素/块级指标 + 差异区域 + LLM 可读修正指令(数值真值以蓝图为准, 用 ui_restore_region 下钻)。实现与修码由你(LLM)完成。',
+  'UI 还原主入口。mode=analyze(默认): 设计稿导出 json → UI Truth 产物包 + 四闸门禁; mode=verify: 参考图 vs 渲染截图 → 像素/块级指标 + 差异区域(含渲染侧文本块交叉引用 domHints) + LLM 可读修正指令; session_path 提供时附 iteration 记账与防退化(质量劣化自动要求回滚到最佳轮); mode=restore: 纯确定性状态机 —— 依会话返回当前 phase 与下一步动作(analyze→implement→correct→done/report), 绝不内置 LLM, 实现/修码由你完成。',
   {
-    design_path: z.string().optional().describe('设计稿导出 json 路径(mode=analyze 必填)'),
+    mode: z.enum(['analyze', 'verify', 'restore']).optional().describe('缺省按参数推断(有图=verify, 否则 analyze)'),
+    design_path: z.string().optional().describe('设计稿导出 json 路径(mode=analyze 必填; restore 首次进会话时可用于自动补 analyze)'),
     out_dir: z.string().optional().describe('产物目录(mode=analyze)'),
     scale: z.string().optional().describe('画布倍率归一: 正数或 auto(mode=analyze)'),
     expect_sections: z.number().optional().describe('预期 section 数(MCP 枚举已知时传入防漏拉)(mode=analyze)'),
+    session_path: z.string().optional().describe('会话 json(iteration 记账 + best 防退化 + restore 推进状态)。verify/restore 强烈建议提供'),
     truth_png: z.string().optional().describe('参考图路径(mode=verify 必填)'),
     render_png: z.string().optional().describe('渲染截图路径(mode=verify 必填)'),
     blueprint_path: z.string().optional().describe('蓝图 json 路径(mode=verify 必填)'),
     truth_blocks: z.string().optional().describe('真值文本块清单 json(可选, 与 render_blocks 成对启用块级 blockMatchRate)'),
-    render_blocks: z.string().optional().describe('渲染文本块清单 json(可选, 与 truth_blocks 成对)'),
+    render_blocks: z.string().optional().describe('渲染文本块清单 json(可选, 与 truth_blocks 成对; 区域附带 domHints 渲染侧交叉引用)'),
   },
-  async ({ design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks }) => {
-    const mode = truth_png || render_png ? 'verify' : 'analyze';
-    if (mode === 'verify') {
+  async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }) => {
+    const loadSession = () => (session_path && fs.existsSync(session_path) ? JSON.parse(fs.readFileSync(session_path, 'utf8')) : null);
+    const saveSession = (patch) => {
+      if (!session_path) return null;
+      const s = { ...(loadSession() || { createdAt: new Date().toISOString() }), ...patch, updatedAt: new Date().toISOString() };
+      fs.mkdirSync(path.dirname(path.resolve(session_path)), { recursive: true });
+      fs.writeFileSync(session_path, JSON.stringify(s, null, 1));
+      return s;
+    };
+    const m = mode || (truth_png || render_png ? 'verify' : 'analyze');
+
+    // 第三态: restore 编排器 —— 只做确定性推进决策, 不实现任何 LLM 行为
+    if (m === 'restore') {
+      if (!session_path) return text('mode=restore 需要 session_path(单个 json 即全部会话状态)');
+      let s = loadSession();
+      if (!s?.phases?.analyze) {
+        if (!design_path) return text('mode=restore: 会话尚无 analyze 记录 —— 提供 design_path 即自动执行 analyze 后进入 implement');
+        const r = await analyzeDesign(design_path, { outDir: out_dir, scale, expectSections: expect_sections });
+        s = saveSession({ status: 'analyzed', source: { designPath: design_path }, phases: { ...(s?.phases || {}), analyze: r.summary }, artifacts: r.files });
+        const g = r.summary.gates;
+        const lint = r.lint.checks.filter((c) => c.level !== 'INFO' && c.level !== 'PASS').map((c) => `! [${c.level}] ${c.check}: ${c.detail}`);
+        const adv = restoreAdvisor(s);
+        return text([`[analyze 完成] 门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`, ...lint, '', `恢复点: phase=${adv.phase}`, '下一步:', ...adv.actions.map((a) => ' · ' + a)].join('\n'));
+      }
+      const adv = restoreAdvisor(s);
+      const bestLine = s.best ? `best: iter#${s.best.iteration} key=${JSON.stringify(s.best.key)}${s.best.screenshot ? ` screenshot=${s.best.screenshot}` : ''}` : '';
+      return text([`恢复点: phase=${adv.phase} (status=${s.status || 'none'}, iteration=${s.iteration || 0}/${MAX_ITERATIONS})`, ...(bestLine ? [bestLine] : []), '下一步:', ...adv.actions.map((a) => ' · ' + a)].join('\n'));
+    }
+
+    if (m === 'verify') {
       if (!truth_png || !render_png || !blueprint_path) return text('mode=verify 需要 truth_png + render_png + blueprint_path');
       // 统一走 pipeline.verifyScreenshots(审计收敛: 删除本地 walk/compare 拷贝;
       // 并补上块级层 —— 主入口此前反而拿不到 blockMatchRate, 而 AGENT 完成条件要求它=1)
@@ -57,12 +87,27 @@ server.tool(
         r.regions ? `差异区域: ${JSON.stringify(r.regions.regions?.slice(0, 5))}` : '',
         r.corrections ? `修正指令 — ${r.corrections.summary}` : '',
         ...(r.corrections ? r.corrections.corrections.map((c) => ' - ' + c) : []),
-        '数值真值以 blueprint 为准; 用 ui_restore_region 下钻关联节点后修码, 修完重新截图再 verify。',
       ];
+      if (session_path) {
+        // 防退化与迭代记账(evaluateVerify 单一实现): 劣化轮次会被明确拒绝并要求回滚
+        const d = evaluateVerify(r, loadSession() || {});
+        saveSession({
+          status: d.status, iteration: d.iteration, best: d.best, regressed: d.regressed, lastGuidance: d.guidance,
+          verification: { screenshot: render_png, diffRatio: r.pixel.diffRatio, blockMatchRate: r.blocks?.blockMatchRate ?? null },
+          phases: { ...(loadSession()?.phases || {}), [`verify-${d.iteration}`]: { pixel: r.pixel, blocks: r.blocks, corrections: r.corrections?.corrections } },
+        });
+        lines.push(`session: iteration=${d.iteration}/${MAX_ITERATIONS} status=${d.status}${d.regressed ? ' [REGRESSED]' : ''}`);
+        for (const g of d.guidance) lines.push('· ' + g);
+      } else {
+        lines.push('数值真值以 blueprint 为准; 用 ui_restore_region 下钻关联节点后修码, 修完重新截图再 verify。');
+      }
       return text(lines.filter(Boolean).join('\n'));
     }
     if (!design_path) return text('mode=analyze 需要 design_path');
     const r = await analyzeDesign(design_path, { outDir: out_dir, scale, expectSections: expect_sections });
+    if (session_path) {
+      saveSession({ status: 'analyzed', source: { designPath: design_path }, phases: { ...(loadSession()?.phases || {}), analyze: r.summary }, artifacts: r.files });
+    }
     const g = r.summary.gates;
     const lines = [
       `门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`,

@@ -151,7 +151,86 @@ export function verifyScreenshots(opts) {
     for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
     const regions = diffRegions(pT, pR, { nodes: leaves, grid: opts.grid, top: opts.top });
     out.regions = regions;
+    // 局部修复链路(渲染侧半边): 差异区域 × 渲染文本块 相交 → LLM 可按文本内容直接定位代码段
+    if (opts.blocksRender) {
+      const rb = readJson(opts.blocksRender);
+      for (const rg of out.regions.regions || []) {
+        rg.domHints = (Array.isArray(rb) ? rb : [])
+          .filter((b) => b.x < rg.x + rg.width && b.x + b.width > rg.x && b.y < rg.y + rg.height && b.y + b.height > rg.y)
+          .slice(0, 5)
+          .map(({ text, x, y, width, height }) => ({ text, x, y, width, height }));
+      }
+    }
     out.corrections = diffToCorrections(bp, regions);
   }
   return out;
+}
+
+/* ── 会话决策层(V1.5): verify 记账 / 防退化 / 阶段推进 —— workflow runner(restore.mjs)与 MCP 共用同一实现 ── */
+
+export const MAX_ITERATIONS = 5;
+
+/** 质量键(字典序比较, 无人为权重): 区域数 → 标记像素占比 → 像素差异率, 均越小越好 */
+export function verifyQualityKey(r) {
+  const inf = Number.POSITIVE_INFINITY;
+  return [
+    r.regions?.clusterCount ?? inf,
+    r.regions?.markedRatio ?? (r.pixel?.diffRatio == null ? inf : Math.min(1, r.pixel.diffRatio)),
+    r.pixel?.diffRatio ?? inf,
+  ];
+}
+function lexLess(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? Number.POSITIVE_INFINITY, y = b[i] ?? Number.POSITIVE_INFINITY;
+    if (x < y) return true;
+    if (x > y) return false;
+  }
+  return false;
+}
+
+/**
+ * verify 结果 → 会话补丁: 状态机三分(completed/correcting/exhausted)
+ * + 防退化最佳记录(best, 质量键字典序) + 回滚判定(regressed) + 下一步指引(guidance)。
+ * 设计原则: 结果变差不接受 —— 调用方据此回滚代码到 best.iteration 轮再局部重改。
+ * @param {object} r verifyScreenshots 返回值
+ * @param {object} [prev] 既有 session(iteration/best/lastGuidance)
+ * @param {object} [opts] {maxIterations=MAX_ITERATIONS}
+ */
+export function evaluateVerify(r, prev = {}, opts = {}) {
+  const maxIter = opts.maxIterations ?? MAX_ITERATIONS;
+  const iteration = (prev.iteration || 0) + 1;
+  // 验收: BMR>=1 或矢量字形豁免(BMR<1 但几何干净且无待修指令, 与 SKILL §⑤ 一致); 无块级退回几何判据
+  const cleanGeometry = r.regions ? (r.regions.clusterCount === 0 && r.pixel.diffRatio < 0.02) : r.pixel.diffRatio === 0;
+  const reached = r.blocks?.blockMatchRate != null
+    ? (r.blocks.blockMatchRate >= 1 || (cleanGeometry && !(r.corrections?.corrections?.length)))
+    : cleanGeometry;
+  const status = reached ? 'completed' : iteration >= maxIter ? 'exhausted' : 'correcting';
+  const key = verifyQualityKey(r);
+  const best = prev.best && lexLess(prev.best.key, key) ? prev.best : { key, iteration };
+  const regressed = !reached && !!prev.best && lexLess(best.key, key);
+  const guidance = [];
+  if (regressed) guidance.push(`本轮质量劣于最佳(第 ${best.iteration} 轮): 先把代码回滚到该轮检查点(git), 再仅针对上轮修正指令的精确数值局部重改, 禁止引入新的全局改动`);
+  if (status === 'correcting') guidance.push('按修正指令局部修复(ui_restore_region 下钻取数值真值), 仅动关联节点对应代码; 完成后重新截图(连同文本块清单)再 verify');
+  if (status === 'exhausted') guidance.push('迭代预算耗尽: 输出剩余差异清单与最可能原因后结束循环');
+  return { iteration, status, reached, regressed, best, guidance };
+}
+
+/** restore 编排器(纯确定性状态机, 绝不内置 LLM): 依据 session 给出当前阶段与下一步动作 */
+export function restoreAdvisor(session) {
+  const s = session || {};
+  if (!s.phases?.analyze) {
+    return { phase: 'analyze', actions: ['MasterGo MCP 分页拉全各 section DSL 并聚合成一个 json(不可跳过 section)', '对本工具传 mode=analyze(design_path + session_path)生成 UI Truth 产物包与四闸门禁'] };
+  }
+  switch (s.status || 'analyzed') {
+    case 'analyzed':
+      return { phase: 'implement', actions: ['按 INDEX 阅读顺序消费: checklist(合同) → outline(空间心智) → blueprint(精确数值, 大页面用 region 下钻)', '在目标项目实现(不改架构不加依赖), svgKey 经 assets 导出表解析', '实现完成后: dom-blocks.mjs 同源产出 渲染图+文本块清单', '携带 truth_png/render_png/blueprint_path(+两份块清单)回传 mode=verify'] };
+    case 'correcting':
+      return { phase: 'correct', actions: [...(s.lastGuidance || [])] };
+    case 'completed':
+      return { phase: 'done', actions: [`验收达成(iteration=${s.iteration}); 对照存档以 best.screenshot 为准`] };
+    case 'exhausted':
+      return { phase: 'report', actions: ['整理剩余差异清单、分两层归因(UI Truth 失真 / 实现-定位失准)与 V2 建议, 结束'] };
+    default:
+      return { phase: 'unknown', actions: [`未知会话状态: ${s.status}`] };
+  }
 }

@@ -15,13 +15,24 @@
 //   snapshot 蓝图 → 几何参考快照(truth 来源之一: geometry 级, 无需正确实现)
 //     node adapters/restore.mjs snapshot <blueprint.json> <out.png> [--scale N]
 //
+//   restore  确定性状态机推进(V1.5): 依会话给出当前阶段与下一步动作(analyze→implement→correct→done/report)
+//     node adapters/restore.mjs restore [design.json] --session <s.json>
+//
+//   profile  项目扫描 → Target Profile(v4 A-R: 观察与决策分离, 未知=unknown)
+//     node adapters/restore.mjs profile <projectDir> [--out p.json] [--styling x] [--framework x]
+//   generate 蓝图+profile → contract → 资产 → React tsx + preview.html + .restore-map.json(v4 Phase 2)
+//     node adapters/restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets a.json] [--out subdir]
+//
 // RestoreSession(d2c 第六节): 单个 JSON 文件即全部状态; 无数据库无队列。
 import fs from 'node:fs';
 import path from 'node:path';
-import { analyzeDesign, verifyScreenshots } from './pipeline.mjs';
-import { renderGeometrySnapshot } from '../dist/index.js';
+import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verifyQualityKey, MAX_ITERATIONS } from './pipeline.mjs';
+import {
+  renderGeometrySnapshot,
+  analyzeProject, resolveProfile, saveProfile, loadProfile,
+  planGeneration, resolveAssets, emitReact, emitPreviewHtml,
+} from '../dist/index.js';
 
-const MAX_ITERATIONS = 5;
 const args = process.argv.slice(2);
 const cmd = args[0];
 const flag = (name) => {
@@ -87,28 +98,37 @@ async function main() {
     }
     const sp = flag('session');
     if (sp) {
-      const s = loadSession(sp) || { phases: {} };
-      const iteration = (s.iteration || 0) + 1;
-      // 验收达成判据: 有块级指标时看 blockMatchRate, 否则退回"像素零差/区域归零"。
-      // 矢量字形豁免(SKILL §⑤ 语义修订): 设计稿文本呈 svgKey 字形时 DOM 无对应文本节点,
-      // BMR 天然<1 —— 此时若区域归零且像素残差噪声级、无待修指令, 不判失败(否则此类稿
-      // 会永远 correcting 烧完迭代预算)。
-      const cleanGeometry = r.regions
-        ? r.regions.clusterCount === 0 && r.pixel.diffRatio < 0.02
-        : r.pixel.diffRatio === 0;
-      const reached = r.blocks?.blockMatchRate != null
-        ? (r.blocks.blockMatchRate >= 1 || (cleanGeometry && !r.corrections?.corrections?.length))
-        : cleanGeometry;
-      // 状态语义三分(审计修订): completed=验收通过 / exhausted=迭代预算耗尽但未达标 /
-      // correcting=待继续修码。旧实现把"打满 5 轮"也记 completed, 失败与穷尽混同。
-      const status = reached ? 'completed' : iteration >= MAX_ITERATIONS ? 'exhausted' : 'correcting';
+      // 记账/验收/防退化全部走 pipeline.evaluateVerify 单一实现(V1.5):
+      // 质量键 [区域数, 标记占比, diffRatio] 字典序比较(零人为权重); 劣化轮次被拒绝并要求回滚到最佳轮。
+      // 矢量字形豁免与状态三分语义同前(completed/correcting/exhausted)。
+      const prev = loadSession(sp) || {};
+      const d = evaluateVerify(r, prev);
+      let bestRec = d.best;
+      // 新一轮成为最佳 → 把该轮渲染截图快照进 session 同目录(防退化后的回滚对照物)
+      if (JSON.stringify(bestRec.key) === JSON.stringify(verifyQualityKey(r))) {
+        try {
+          const snapPath = path.join(path.dirname(path.resolve(sp)), `best-render-${d.iteration}.png`);
+          fs.copyFileSync(renderPng, snapPath);
+          bestRec = { ...bestRec, screenshot: snapPath };
+        } catch { /* 存证失败不影响主流程 */ }
+      }
       saveSession(sp, {
-        status,
-        iteration,
+        status: d.status,
+        iteration: d.iteration,
+        best: bestRec,
+        regressed: d.regressed,
+        lastGuidance: d.guidance,
         verification: { screenshot: renderPng, diffRatio: r.pixel.diffRatio, blockMatchRate: r.blocks?.blockMatchRate ?? null },
-        phases: { ...(s.phases || {}), [`verify-${iteration}`]: { pixel: r.pixel, blocks: r.blocks, corrections: r.corrections?.corrections } },
+        phases: { ...(prev.phases || {}), [`verify-${d.iteration}`]: { pixel: r.pixel, blocks: r.blocks, corrections: r.corrections?.corrections } },
       });
-      console.log(`\nsession: iteration=${iteration}/${MAX_ITERATIONS} status=${status} (${sp})`);
+      console.log(`\nquality key[clusters/marked/diff]: ${JSON.stringify(verifyQualityKey(r))} — best iter#${bestRec.iteration}`);
+      console.log(`session: iteration=${d.iteration}/${MAX_ITERATIONS} status=${d.status} (${sp})`);
+      if (d.regressed) console.log('[REGRESSED] 本轮劣于最佳 —— 按下方指引先回滚再局部重改');
+      for (const g of d.guidance) console.log('· ' + g);
+    }
+    // 局部修复辅助(W3): 差异区域 × 渲染文本块交叉引用 —— LLM 直接按文本定位代码段
+    for (const rg of (r.regions?.regions || []).filter((x) => x.domHints?.length).slice(0, 3)) {
+      console.log(`定位辅助: 区域(${rg.x},${rg.y} ${rg.width}x${rg.height}) 渲染侧文本块: ` + rg.domHints.map((b) => `"${b.text}"@(${b.x},${b.y})`).join(', '));
     }
     return;
   }
@@ -126,6 +146,61 @@ async function main() {
     return;
   }
 
+  if (cmd === 'profile') {
+    // v4 A-R: 项目扫描 → Target Profile(观察与决策分离, 未知=unknown)
+    const projectDir = args[1];
+    if (!projectDir) { console.error('用法: restore.mjs profile <projectDir> [--out profile.json] [--styling x] [--framework x] [--assetDir dir]'); process.exit(1); }
+    const r = analyzeProject(projectDir, {
+      overrides: {
+        framework: flag('framework'), language: flag('language'),
+        styling: flag('styling'), build: flag('build'), assetDir: flag('assetDir'),
+      },
+    });
+    const out = flag('out') || path.join(projectDir, 'restore.profile.json');
+    saveProfile(r.profile, out);
+    console.log(`Target Profile → ${out}`);
+    for (const k of ['framework', 'language', 'styling', 'build']) {
+      const d = r.profile.decisions[k] || {};
+      console.log(`  ${k}: ${d.chosen} (${d.because}, conf=${d.confidence})`);
+    }
+    console.log(`  assetDir: ${r.profile.assetDir} | componentLibraries: ${r.profile.componentLibraries.join(', ') || '(无)'}`);
+    return;
+  }
+
+  if (cmd === 'generate') {
+    // v4 Phase 2: blueprint + profile → 契约决策 → 资产解析 → React tsx + preview.html + restore-map
+    const bpPath = args[1];
+    const projectDir = flag('project');
+    if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X]'); process.exit(1); }
+    const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
+    const profile = flag('profile') ? loadProfile(flag('profile')) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
+    const plan = planGeneration(bp, profile);
+    const assetsPath = flag('assets');
+    const assets = resolveAssets(bp, plan, {
+      assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath, 'utf8')) : { vectors: [], images: [] },
+      assetDir: profile.assetDir,
+      projectDir, // 落盘已解析资产
+    });
+    const outDir = path.join(projectDir, flag('out') || 'restore');
+    const baseName = flag('base-name') || 'Restore';
+    const reactOut = emitReact(bp, plan, assets, profile, { baseName });
+    const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
+    fs.mkdirSync(outDir, { recursive: true });
+    for (const f of [...reactOut.files, ...htmlOut.files]) {
+      const p = path.join(outDir, f.path);
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, f.content);
+    }
+    const mapPath = path.join(outDir, '.restore-map.json');
+    fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
+    // 资产违约摘要(missing=占位+违约, 禁止近似替代)
+    const miss = (assets.assets || []).filter((a) => a.status === 'missing');
+    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
+    if (miss.length) console.log(`! 资产违约 ${miss.length} 处(几何占位, 禁止近似替代): ` + miss.slice(0, 5).map((a) => `${a.id}:${a.key}`).join(', ') + (miss.length > 5 ? ' ...' : ''));
+    if (plan.warnings.length) console.log(`! contract 警告 ${plan.warnings.length} 条(首条: ${plan.warnings[0]})`);
+    return;
+  }
+
   if (cmd === 'status') {
     const sp = flag('session');
     if (!sp) { console.error('用法: restore.mjs status --session <s.json>'); process.exit(1); }
@@ -133,7 +208,28 @@ async function main() {
     return;
   }
 
-  console.error('用法: restore.mjs <analyze|verify|status> ...');
+  if (cmd === 'restore') {
+    // V1.5 编排器入口: 与 MCP ui_restore_run(mode=restore) 同一语义 —— 只推进状态机, 不内置 LLM
+    const sp = flag('session');
+    if (!sp) { console.error('用法: restore.mjs restore [design.json] --session <s.json>'); process.exit(1); }
+    let s = loadSession(sp);
+    // 位置参数只在首个参数且非旗标时视为 design.json(本文件 flag() 不消费参数值, 防止把 --session 的值误当设计稿)
+    const designPath = args[1] && !String(args[1]).startsWith('--') ? args[1] : null;
+    if (!s?.phases?.analyze && designPath) {
+      const r = await analyzeDesign(designPath, { outDir: flag('dir') || path.dirname(designPath) });
+      saveSession(sp, { status: 'analyzed', source: { designPath }, phases: { ...(loadSession(sp)?.phases || {}), analyze: r.summary }, artifacts: r.files });
+      console.log(`[analyze 完成] 门禁: 契约 ${r.summary.gates.contract} | 几何 ${r.summary.gates.geometry} | 样式 ${r.summary.gates.style} | 真值 ${r.summary.gates.truth}`);
+      s = loadSession(sp);
+    }
+    const adv = restoreAdvisor(s);
+    console.log(`恢复点: phase=${adv.phase} (status=${s?.status || 'none'}, iteration=${s?.iteration || 0}/${MAX_ITERATIONS})`);
+    if (s?.best) console.log(`best: iter#${s.best.iteration} key=${JSON.stringify(s.best.key)}${s.best.screenshot ? ` screenshot=${s.best.screenshot}` : ''}`);
+    console.log('下一步:');
+    for (const a of adv.actions) console.log(' · ' + a);
+    return;
+  }
+
+  console.error('用法: restore.mjs <analyze|verify|snapshot|restore|status|profile|generate> ...');
   process.exit(1);
 }
 

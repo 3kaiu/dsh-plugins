@@ -20,14 +20,12 @@ Actual Rendering > Source Code Appearance (验收看截图 diff, 不看代码"�
 - 手动分析的布局结论
 - 布局、字体、尺寸、颜色数值
 
-## 流程(五阶段)
+## 流程(五阶段 → v4 三阶段收敛)
 
 ```
-Phase 1 Design Input    MasterGo MCP 取数 → ui_restore_run(analyze) → UI Truth 产物包
-Phase 2 Project Context 读 package.json/src/入口/组件/样式方案, 不改架构不加依赖
-Phase 3 Implementation  按 checklist 合同逐项实现(UI Truth + 项目上下文)
-Phase 4 Verify          启动项目 → 截图(adapters/screenshot.mjs) → compare
-Phase 5 Correction Loop 按修正指令修码 → 重截图 → 再 compare; maxIterations=5
+Phase 1 Understand      MasterGo MCP 取数 → analyze → UI Truth + Target Profile(Analyzer/Resolver)
+Phase 2 Generate        Generation Contract + Asset Resolver → Strategy IR → React/HTML 双 serializer(+DOM Map)
+Phase 3 Converge        Render → Verify(组合门禁 global+region+geometry) → Region→Node→Source 定位 → Patch Contract → 受限 LLM Repair → Patch Validator → Convergence Score → 收敛
 ```
 
 ### 工具调用映射
@@ -36,10 +34,17 @@ Phase 5 Correction Loop 按修正指令修码 → 重截图 → 再 compare; max
 |------|------|
 | 取数 | MasterGo MCP 的 section 枚举 + 逐 section DSL(分页取全, 不可跳过) |
 | 分析 | `ui_restore_run`(mode=analyze) 或 CLI `node adapters/restore.mjs analyze <design.json> --session s.json` |
+| 画像 | `restore.mjs profile <projectDir> [--out p.json]` / `ui-restore profile <dir>` → Target Profile(置信度排序，未知=unknown；绝不默认 css-modules) |
+| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json]` / `ui-restore generate <bp> --project <dir>` → React.tsx + preview.html + .restore-map.json(Strategy IR 单源双 serializer) |
 | 下钻 | `ui_restore_region`(rect/ids → 完整精确子树), 大页面禁止整页蓝图进上下文 |
-| 对比 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json` |
+| 对比/门禁 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json`；`ui-restore gate <truth.png> <render.png> --bp <bp>` 组合验收(global+region+geometry+assets) |
+| 定位 | `adapters/loop.mjs` 的 `locateRegions`：Pixel Region → DOM([data-restore-node]) → Blueprint node → restore-map → 源文件 |
+| 受限修复 | `src/target/patch.ts` Patch Contract + `validatePatch`；`adapters/loop.mjs` 的 `repairWithLlm`（受限修改器，越界/依赖/重写/资产替代四重拒收） |
+| 收敛评分 | `src/verify/score.ts` Convergence Score：global+region+geometry+changedArea+contract 权重和，单调收敛(P50≤3/P90≤5/P95≤8) |
+| 编排推进 | `ui_restore_run(mode=restore)` 或 `restore.mjs restore [design.json] --session s.json` —— 确定性状态机；`adapters/loop.mjs runConvergeLoop` 完整收敛循环 |
+| 防退化 | verify 会话记账自动执行: 质量劣化即 `[REGRESSED]`, 先 git 回滚到 best.iteration 轮再局部重改；Score 单调收敛仲裁 |
 | 截图/块清单 | `adapters/screenshot.mjs`(仅图) / `adapters/dom-blocks.mjs`(文本块清单 + 同源截图, Web 渲染体; 块清单成对传入 verify 即得 blockMatchRate) |
-| 回归 | `node scripts/run-benchmarks.mjs` 全量 benchmark(改算法前后各跑一次) |
+| 回归 | `node scripts/run-benchmarks.mjs` 全量 benchmark(改算法前后各跑一次); `node scripts/truth-spike.mjs` Truth 三级定量 |
 
 ## 修正优先级(diff 多于 3 处时按序处理, 不乱修)
 

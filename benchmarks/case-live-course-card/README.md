@@ -11,6 +11,7 @@
 | `restore.html` | 正确实现 —— blueprint 子树逐字段还原(bounds 差值定位) |
 | `restore-bad.html` | 注入 2 处已知偏差: chip1 left +8px, 按钮宽 -10px |
 | `truth.png` / `render.png` / `session.json` | 运行时产物 |
+| `generated/` | 盲还原迭代产物(v15-blind, w4-*)与轮次质量报告 w4-report.md |
 
 ## 复现
 
@@ -29,3 +30,10 @@ node packages/ui-restore/adapters/restore.mjs verify benchmarks/case-live-course
 
 - 两处偏差分别检出为 #1(minor, chip 区域→关联 408:9132 文本+408:9131 chip 底) 与 #2(noise, 按钮区域→408:9160/408:9162)
 - 修正后重跑 → `0 处差异区域`, session `status=completed`(iteration=2)
+
+## W4 盲还属实测(2026-08-27)
+
+见 `generated/w4-report.md`。零上下文子代理按产物包盲还 → 探针 → verify → 修正指令迭代:
+3 轮收敛 completed(质量键 [7,0.17,0.15]→[2,0.08,0.06]→[1,0,0], r3 BMR=1, 残差 835px 抗锯齿级)。
+附带输入修复: design.json 补 `meta.canvas=375×812`(原文件丢 meta 致画布误推 688 宽);
+真值闸 0.5px 为滑动指示器亚像素吸附已知例外。教训: 盲还任务书必须显式限定案例范畴。

@@ -22,9 +22,20 @@ description: UI 1:1 还原。设计稿 DSL → 中立蓝图 → 验证门禁。�
 ```bash
 # 分析: 设计稿 json → UI Truth 产物包 + 四闸门禁(session 记账)
 node adapters/restore.mjs analyze <design.json> --dir <out> [--scale auto] --session s.json
-# 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + iteration 记账(maxIterations=5)
-#   成对提供 --blocks-truth/--blocks-render 即启用块级层(blockMatchRate)
+# 画像: 项目 → Target Profile(置信度排序，未知=unknown)
+node adapters/restore.mjs profile <projectDir> --out profile.json
+# 生成: 蓝图 + 画像 → Generation Contract + Asset  → React/HTML 双 serializer + DOM Map
+node adapters/restore.mjs generate <blueprint.json> --project <dir> --profile profile.json [--assets assets.json] --out restore
+# 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + 组合门禁 + 收敛评分 + iteration 记账
+#   成对提供 --blocks-truth/--blocks-render 即启用块级层(blockMatchRate); 记账含防退化:
+#   质量键[区域数,标记占比,diffRatio]字典序 + Score 单调收敛，劣化轮次拒绝并要求回滚到最佳轮(session.best + best-render-N.png 存证)
 node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--blocks-truth mT.json --blocks-render mR.json] --session s.json
+# 组合门禁单验(供 CI): global+region+geometry 组合，任一 FAIL 即整体 FAIL
+node packages/ui-restore/cli.mjs gate <truth.png> <render.png> --bp <blueprint.json>
+# 收敛编排(受限 Repair 循环): Region→Node→Source 定位 → PatchContract → 受限 LLM → Validator → Score
+node adapters/loop.mjs --bp <blueprint.json> --map <restore/.restore-map.json> --truth <truth.png> --render <render.png> --project <dir> [--max 8]
+# 编排推进(V1.5): 确定性状态机 —— 依会话给出 phase 与下一步动作(analyze→implement→correct→done/report), 不内置 LLM
+node adapters/restore.mjs restore [design.json] --session s.json
 # 截图(可选能力, 需 pnpm add -D playwright && npx playwright install chromium):
 node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812]
 # Web 渲染探针: 同一会话产出 文本块清单 + 同源截图(png 与块坐标严格同空间):
@@ -32,6 +43,8 @@ node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [
 ```
 
 MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff`。
+
+Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch}.ts`；Verify 层: `src/verify/{gate,score,errors}.ts`；Emit 层: `src/emit/{style-ir,react,html}.ts`；编排: `adapters/loop.mjs`。
 
 ## 修正优先级(差异多于 3 处时按序处理)
 
@@ -99,7 +112,7 @@ ui-restore build <design.json> --dir <out> [--scale auto]
 ui-restore regions <truth.png> <render.png> --bp <blueprint.json>
 ```
 
-输出差异区域聚类(按像素量降序)+ 每区域相交的蓝图节点候选(id/name/text)——直接指到"哪个节点没还原对",修码后重跑⑤直到收敛。
+输出差异区域聚类(按像素量降序)+ 每区域相交的蓝图节点候选(id/name/text)——直接指到"哪个节点没还原对"。提供渲染侧文本块清单时附 `domHints`(区域内 DOM 文本块坐标), 可按文本内容直接定位代码段。修码后重跑⑤直到收敛; **防退化**: session.best 记录历史最佳质量键, 任一轮劣于最佳即要求先回滚(git)再局部重改, 不接受越修越坏。
 
 ## 判定标准(1:1 的定义)
 

@@ -14,6 +14,7 @@ import path from 'node:path';
 import {
   validateBlueprint, blueprintRegion,
   blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng, diffRegions,
+  evaluateGate, computeScore,
 } from './dist/index.js';
 // 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.mjs
 import { buildBlueprint, writeArtifactBundle, collectLeaves } from './adapters/pipeline.mjs';
@@ -158,7 +159,76 @@ async function main() {
     for (const n of region.nodes) console.log(`  ${n.type} ${n.name || n.id} @(${n.bounds?.x},${n.bounds?.y})`);
     return;
   }
-  console.error('用法: ui-restore <build|blueprint|doctor|verify|diff|regions|region> ...');
+  if (cmd === 'profile') {
+    const projectDir = args[0];
+    if (!projectDir) { console.error('用法: ui-restore profile <projectDir> [--out profile.json] [--styling x] [--framework x]'); process.exit(1); }
+    const { analyzeProject, saveProfile } = await import('./dist/index.js');
+    const overrides = { framework: flag('--framework'), language: flag('--language'), styling: flag('--styling'), build: flag('--build'), assetDir: flag('--assetDir') };
+    for (const k of Object.keys(overrides)) if (overrides[k] == null) delete overrides[k];
+    const r = analyzeProject(projectDir, { overrides });
+    const out = flag('--out') || path.join(projectDir, 'restore.profile.json');
+    saveProfile(r.profile, out);
+    console.log(`Target Profile → ${out}`);
+    for (const k of ['framework','language','styling','build']) {
+      const d = r.profile.decisions[k]||{}; console.log(`  ${k}: ${d.chosen} (${d.because}, conf=${d.confidence})`);
+    }
+    console.log(`  assetDir: ${r.profile.assetDir} | libs: ${r.profile.componentLibraries.join(', ')||'(无)'}`);
+    return;
+  }
+  if (cmd === 'generate') {
+    const bpPath = args[0];
+    const projectDir = flag('--project');
+    if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X]'); process.exit(1); }
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml } = await import('./dist/index.js');
+    const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
+    const profile = flag('--profile') ? loadProfile(flag('--profile')) : resolveProfile({ framework:[], language:[], styling:[], build:[], componentLibraries:[], entry:{} });
+    const plan = planGeneration(bp, profile);
+    const assetsPath = flag('--assets');
+    const assets = resolveAssets(bp, plan, { assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath,'utf8')) : { vectors:[], images:[] }, assetDir: profile.assetDir, projectDir });
+    const outDir = path.join(projectDir, flag('--out') || 'restore');
+    const baseName = flag('--base-name') || 'Restore';
+    const reactOut = emitReact(bp, plan, assets, profile, { baseName });
+    const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
+    fs.mkdirSync(outDir, { recursive: true });
+    for (const f of [...reactOut.files, ...htmlOut.files]) {
+      const p = path.join(outDir, f.path); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, f.content);
+    }
+    // DOM Map: 合并主图与预览 selector(同源 1:1)
+    const mapPath = path.join(outDir, '.restore-map.json');
+    fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
+    const miss = (assets.assets||[]).filter((a)=>a.status==='missing');
+    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
+    if (miss.length) console.log(`! 资产违约 ${miss.length} 处: `+ miss.slice(0,5).map((a)=>`${a.id}:${a.key}`).join(', '));
+    if (plan.warnings.length) console.log(`! warnings: ${plan.warnings[0]}`);
+    return;
+  }
+  if (cmd === 'gate') {
+    const [truthPng, renderPng] = args;
+    const bpPath = flag('--bp');
+    if (!truthPng || !renderPng) { console.error('用法: ui-restore gate <truth.png> <render.png> [--bp <blueprint.json>] [--assets <assets.json>]'); process.exit(1); }
+    const bp = bpPath ? JSON.parse(fs.readFileSync(bpPath,'utf8')) : null;
+    const pixel = comparePng(fs.readFileSync(truthPng), fs.readFileSync(renderPng));
+    let regions = null;
+    if (bp) {
+      const leaves = collectLeaves(bp);
+      regions = diffRegions(fs.readFileSync(truthPng), fs.readFileSync(renderPng), { nodes: leaves });
+    }
+    const contract = bp ? validateBlueprint(bp) : null;
+    let assets = null;
+    const assetsPath = flag('--assets');
+    if (assetsPath && fs.existsSync(assetsPath)) {
+      const raw = JSON.parse(fs.readFileSync(assetsPath,'utf8'));
+      const list = raw.vectors || raw.assets || [];
+      assets = { summary: { missing: list.filter((v)=>!v.svg && !v.path && !v.src).length, total: list.length } };
+    }
+    const gate = evaluateGate({ pixel, regions, blueprint: bp, contract, assets });
+    const score = computeScore({ pixel, regions, blueprint: bp, contract, assets });
+    console.log(`gate: ${gate.verdict} | score: ${score.score}`);
+    for (const r of gate.reasons) console.log(` ! ${r}`);
+    console.log(JSON.stringify({ gate, score }, null, 1));
+    process.exit(gate.pass ? 0 : 2);
+  }
+  console.error('用法: ui-restore <build|blueprint|doctor|verify|diff|regions|region|profile|generate|gate> ...');
   process.exit(1);
 }
 
