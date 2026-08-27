@@ -32,10 +32,11 @@ export * from "./target/resolve.ts";
 export * from "./target/profile.ts";
 export * from "./target/contract.ts";
 export * from "./target/asset-resolver.ts";
-// verify 扩展(v4 Phase 3): 组合验收 / 错误分类 / 收敛评分
+// verify 扩展(v4 Phase 3): 组合验收 / 错误分类 / 收敛评分 / Vision 兜底
 export * from "./verify/errors.ts";
 export * from "./verify/gate.ts";
 export * from "./verify/score.ts";
+export * from "./verify/vision.ts";
 // emit(v4 Phase 2): Strategy IR → React/preview 序列化
 export * from "./emit/style-ir.ts";
 export * from "./emit/react.ts";

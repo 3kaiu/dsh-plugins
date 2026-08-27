@@ -26,6 +26,7 @@ Actual Rendering > Source Code Appearance (验收看截图 diff, 不看代码"�
 Phase 1 Understand      MasterGo MCP 取数 → analyze → UI Truth + Target Profile(Analyzer/Resolver)
 Phase 2 Generate        Generation Contract + Asset Resolver → Strategy IR → React/HTML 双 serializer(+DOM Map)
 Phase 3 Converge        Render → Verify(组合门禁 global+region+geometry) → Region→Node→Source 定位 → Patch Contract → 受限 LLM Repair → Patch Validator → Convergence Score → 收敛
+Phase 3.5 Vision          仅当确定性说不清时：region 成对裁图 → Vision 诊断 → 回灌 PatchRequest（`src/verify/vision.ts`）
 ```
 
 ### 工具调用映射
@@ -41,7 +42,8 @@ Phase 3 Converge        Render → Verify(组合门禁 global+region+geometry) �
 | 定位 | `adapters/loop.mjs` 的 `locateRegions`：Pixel Region → DOM([data-restore-node]) → Blueprint node → restore-map → 源文件 |
 | 受限修复 | `src/target/patch.ts` Patch Contract + `validatePatch`；`adapters/loop.mjs` 的 `repairWithLlm`（受限修改器，越界/依赖/重写/资产替代四重拒收） |
 | 收敛评分 | `src/verify/score.ts` Convergence Score：global+region+geometry+changedArea+contract 权重和，单调收敛(P50≤3/P90≤5/P95≤8) |
-| 编排推进 | `ui_restore_run(mode=restore)` 或 `restore.mjs restore [design.json] --session s.json` —— 确定性状态机；`adapters/loop.mjs runConvergeLoop` 完整收敛循环 |
+| Vision 兜底 | `src/verify/vision.ts` `shouldTriggerVision`/`diagnoseWithVision` + `loop.mjs` 回灌；确定性低置信/无候选时成对裁图→Vision→`[Vision] detail` |
+| 编排推进 | `ui_restore_run(mode=restore)` 或 `restore.mjs restore [design.json] --session s.json` —— 确定性状态机；`adapters/loop.mjs runConvergeLoop({visionClient})` 完整收敛循环 |
 | 防退化 | verify 会话记账自动执行: 质量劣化即 `[REGRESSED]`, 先 git 回滚到 best.iteration 轮再局部重改；Score 单调收敛仲裁 |
 | 截图/块清单 | `adapters/screenshot.mjs`(仅图) / `adapters/dom-blocks.mjs`(文本块清单 + 同源截图, Web 渲染体; 块清单成对传入 verify 即得 blockMatchRate) |
 | 回归 | `node scripts/run-benchmarks.mjs` 全量 benchmark(改算法前后各跑一次); `node scripts/truth-spike.mjs` Truth 三级定量 |

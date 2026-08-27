@@ -20,7 +20,7 @@ import {
 import { evaluateGate } from '../dist/index.js'
 import { computeScore, updateConvergence, isBetter } from '../dist/index.js'
 import { createPatchRequest, validatePatch, PATCH_POLICY } from '../dist/index.js'
-import { classifyRegions } from '../dist/index.js'
+import { classifyRegions, shouldTriggerVision, diagnoseWithVision } from '../dist/index.js'
 
 // ---------- ⑧ Region → Node → Source 定位 ----------
 
@@ -344,9 +344,42 @@ export async function runConvergeLoop(opts) {
       if (state.reason.includes('连续') || state.reason.includes('最大迭代')) return { status: 'exhausted', iteration: iter, verify: v, state, best: state.best }
     }
 
-    // 定位 → 分类 → 请求
+    // 定位 → 分类 → (必要时 Vision 兜底) → 请求
     const locate = locateRegions({ regions: v.regions, blueprint: bp, restoreMap })
-    const errors = classifyRegions(v.regions, bp) // P0-5
+    let errors = classifyRegions(v.regions, bp) // P0-5
+    // Phase 3.5 Vision fallback: 确定性说不清时启用
+    let visionDiagnoses = []
+    if (shouldTriggerVision({ gate: v.gate, regions: v.regions, errors })) {
+      try {
+        const truthBuf = fs.readFileSync(curTruth)
+        const renderBuf = fs.readFileSync(curRender)
+        visionDiagnoses = await diagnoseWithVision({
+          truthPng: truthBuf,
+          renderPng: renderBuf,
+          regions: v.regions,
+          blueprint: bp,
+          visionClient: opts.visionClient,
+          topN: 2,
+        })
+        // 回灌：将 Vision 诊断转为错误分类，附加到 errors（带 vision 标记）
+        for (const vd of visionDiagnoses) {
+          errors.push({
+            category: vd.category,
+            kind: vd.kind,
+            nodeId: vd.region.candidates?.[0]?.id ?? locate.affectedNodes[0] ?? null,
+            detail: `[Vision] ${vd.detail}`,
+            expected: null,
+            actual: null,
+            confidence: vd.confidence,
+            repair: { firstAction: `Vision诊断: ${vd.detail}` },
+            source: 'vision',
+          })
+        }
+      } catch (e) {
+        // Vision 失败不阻断主流程
+        console.error(`Vision fallback 失败: ${String(e)}`)
+      }
+    }
     const requests = buildPatchRequests(locate, errors, { iteration: iter, gateFailed: v.gate.failedGates })
 
     if (!requests.length) return { status: 'exhausted', iteration: iter, verify: v, state, best: state.best, reason: '无定位到的 PatchRequest' }

@@ -42,9 +42,9 @@ node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812
 node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--engine auto|playwright|cdp]
 ```
 
-MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff`。
+MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff` / `ui_restore_profile` / `ui_restore_generate` / `ui_restore_gate`。
 
-Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch}.ts`；Verify 层: `src/verify/{gate,score,errors}.ts`；Emit 层: `src/emit/{style-ir,react,html}.ts`；编排: `adapters/loop.mjs`。
+Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html}.ts`；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底 `diagnoseWithVision`）。
 
 ## 修正优先级(差异多于 3 处时按序处理)
 
@@ -113,6 +113,10 @@ ui-restore regions <truth.png> <render.png> --bp <blueprint.json>
 ```
 
 输出差异区域聚类(按像素量降序)+ 每区域相交的蓝图节点候选(id/name/text)——直接指到"哪个节点没还原对"。提供渲染侧文本块清单时附 `domHints`(区域内 DOM 文本块坐标), 可按文本内容直接定位代码段。修码后重跑⑤直到收敛; **防退化**: session.best 记录历史最佳质量键, 任一轮劣于最佳即要求先回滚(git)再局部重改, 不接受越修越坏。
+
+## ⑥+ Vision 兜底(3.5)
+
+仅当确定性 `gate FAIL` 但 `classifyRegions` 无候选/低置信时触发：`shouldTriggerVision` → `cropPngRegion` 成对裁图 → Vision LLM → `diagnoseWithVision` → 回灌 `PatchRequest.errors`（`[Vision] detail`），走同一受限 Repair 通道。
 
 ## 判定标准(1:1 的定义)
 
