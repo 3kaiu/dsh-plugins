@@ -259,17 +259,29 @@ server.tool(
     assets_path: z.string().optional().describe('回填后的 assets.json 路径'),
     out_subdir: z.string().optional().describe('相对 project_dir 的子目录，缺省 restore'),
     base_name: z.string().optional().describe('组件名，缺省 Restore'),
-    serializer: z.enum(['inline','tailwind']).optional().describe('强制 serializer，缺省按 profile.styling 自动（tailwind→Tailwind, 其他→inline）'),
+    serializer: z.enum(['inline','tailwind','vue','flutter','miniprogram']).optional().describe('强制 serializer，缺省按 framework/profile 自动（miniprogram→小程序, flutter→Flutter, vue→Vue, tailwind→Tailwind, 其他→inline）'),
   },
   async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact } = await import('../dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact, emitVue, emitFlutter, emitMiniProgram } = await import('../dist/index.js');
     const bp = readJson(blueprint_path);
     const profile = profile_path ? (await import('../dist/index.js')).loadProfile(profile_path) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
     const plan = planGeneration(bp, profile);
     const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: project_dir });
     const outDir = path.join(project_dir, out_subdir || 'restore');
-    const ser = serializer || (profile.styling === 'tailwind' ? 'tailwind' : 'inline')
-    const reactOut = ser === 'tailwind' ? emitTailwindReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' }) : emitReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' });
+    let ser = serializer
+    if(!ser){
+      if(profile.framework === 'miniprogram') ser = 'miniprogram'
+      else if(profile.framework === 'flutter') ser = 'flutter'
+      else if(profile.framework === 'vue') ser = 'vue'
+      else if(profile.styling === 'tailwind') ser = 'tailwind'
+      else ser = 'inline'
+    }
+    let reactOut
+    if(ser === 'miniprogram') reactOut = emitMiniProgram(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
+    else if(ser === 'flutter') reactOut = emitFlutter(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
+    else if(ser === 'vue') reactOut = emitVue(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
+    else if(ser === 'tailwind') reactOut = emitTailwindReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
+    else reactOut = emitReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' });
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
@@ -312,6 +324,34 @@ server.tool(
     const gate = evaluateGate({ pixel, regions, blueprint, contract, assets });
     const score = computeScore({ pixel, regions, blueprint, contract, assets });
     return text({ gate, score, pixel, regions: regions ? { clusterCount: regions.clusterCount, markedRatio: regions.markedRatio } : null });
+  }
+);
+
+server.tool(
+  'ui_restore_merge',
+  'V2 合并：已生成文件（restore/）合入既有项目，冲突重命名，绝不覆盖业务代码',
+  {
+    project_dir: z.string(),
+    from_dir: z.string().optional().describe('生成目录，缺省 <project>/restore'),
+    on_conflict: z.enum(['rename','skip','overwrite']).optional(),
+  },
+  async ({ project_dir, from_dir, on_conflict }) => {
+    const { mergeIntoProject, canMerge } = await import('../dist/index.js');
+    const srcDir = from_dir ? path.resolve(from_dir) : path.join(project_dir, 'restore');
+    if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);
+    const check = canMerge(project_dir);
+    const files:any[] = [];
+    const walk = (dir:string, base='')=>{
+      for(const e of fs.readdirSync(dir, {withFileTypes:true})){
+        const rel = path.join(base, e.name);
+        const abs = path.join(dir, e.name);
+        if(e.isDirectory()) walk(abs, rel);
+        else files.push({ path: rel, content: fs.readFileSync(abs,'utf8') });
+      }
+    };
+    walk(srcDir);
+    const res = mergeIntoProject(project_dir, files, { onConflict: on_conflict || 'rename' });
+    return text({ ...res, check });
   }
 );
 

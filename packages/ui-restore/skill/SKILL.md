@@ -24,8 +24,8 @@ description: UI 1:1 还原。设计稿 DSL → 中立蓝图 → 验证门禁。�
 node adapters/restore.mjs analyze <design.json> --dir <out> [--scale auto] --session s.json
 # 画像: 项目 → Target Profile(置信度排序，未知=unknown)
 node adapters/restore.mjs profile <projectDir> --out profile.json
-# 生成: 蓝图 + 画像 → Generation Contract + Asset  → React/HTML 双 serializer + Tailwind ⑰ + DOM Map
-node adapters/restore.mjs generate <blueprint.json> --project <dir> --profile profile.json [--assets assets.json] --out restore [--serializer inline|tailwind]
+# 生成: 蓝图 + 画像 → Generation Contract + Asset  → 多重 serializer(React/Vue/Flutter/小程序/Tailwind) + DOM Map
+node adapters/restore.mjs generate <blueprint.json> --project <dir> --profile profile.json [--assets assets.json] --out restore [--serializer inline|tailwind|vue|flutter|miniprogram]
 # 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + 组合门禁 + 收敛评分 + iteration 记账
 #   成对提供 --blocks-truth/--blocks-render 即启用块级层(blockMatchRate); 记账含防退化:
 #   质量键[区域数,标记占比,diffRatio]字典序 + Score 单调收敛，劣化轮次拒绝并要求回滚到最佳轮(session.best + best-render-N.png 存证)
@@ -44,7 +44,7 @@ node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [
 
 MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff` / `ui_restore_profile` / `ui_restore_generate` / `ui_restore_gate`。
 
-Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind}.ts`；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底）。
+Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram}.ts`；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
 
 ## 修正优先级(差异多于 3 处时按序处理)
 

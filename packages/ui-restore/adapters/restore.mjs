@@ -20,8 +20,10 @@
 //
 //   profile  项目扫描 → Target Profile(v4 A-R: 观察与决策分离, 未知=unknown)
 //     node adapters/restore.mjs profile <projectDir> [--out p.json] [--styling x] [--framework x]
-//   generate 蓝图+profile → contract → 资产 → React tsx + preview.html + .restore-map.json(v4 Phase 2)
-//     node adapters/restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets a.json] [--out subdir]
+  //   generate 蓝图+profile → contract → 资产 → 多重 serializer + preview.html + .restore-map.json(v4 Phase 2 含 Vue/Flutter/小程序/Tailwind)
+  //     node adapters/restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets a.json] [--out subdir] [--serializer inline|tailwind|vue|flutter|miniprogram]
+  //   merge    已生成文件 → 合入既有项目(V2 隔离后合入，冲突重命名)
+  //     node adapters/restore.mjs merge <projectDir> [--from <generatedDir>] [--on-conflict rename|skip|overwrite]
 //
 // RestoreSession(d2c 第六节): 单个 JSON 文件即全部状态; 无数据库无队列。
 import fs from 'node:fs';
@@ -30,7 +32,8 @@ import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verif
 import {
   renderGeometrySnapshot,
   analyzeProject, resolveProfile, saveProfile, loadProfile,
-  planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact,
+  planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact, emitVue, emitFlutter, emitMiniProgram,
+  mergeIntoProject, canMerge,
 } from '../dist/index.js';
 
 const args = process.argv.slice(2);
@@ -171,7 +174,7 @@ async function main() {
     // v4 Phase 2: blueprint + profile → 契约决策 → 资产解析 → React tsx + preview.html + restore-map
     const bpPath = args[1];
     const projectDir = flag('project');
-    if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X] [--serializer inline|tailwind]'); process.exit(1); }
+    if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
     const profile = flag('profile') ? loadProfile(flag('profile')) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
     const plan = planGeneration(bp, profile);
@@ -183,8 +186,20 @@ async function main() {
     });
     const outDir = path.join(projectDir, flag('out') || 'restore');
     const baseName = flag('base-name') || 'Restore';
-    const serializer = flag('serializer') || (profile.styling === 'tailwind' ? 'tailwind' : 'inline')
-    const reactOut = serializer === 'tailwind' ? emitTailwindReact(bp, plan, assets, profile, { baseName }) : emitReact(bp, plan, assets, profile, { baseName });
+    let serializer = flag('serializer')
+    if(!serializer){
+      if(profile.framework === 'miniprogram') serializer = 'miniprogram'
+      else if(profile.framework === 'flutter') serializer = 'flutter'
+      else if(profile.framework === 'vue') serializer = 'vue'
+      else if(profile.styling === 'tailwind') serializer = 'tailwind'
+      else serializer = 'inline'
+    }
+    let reactOut
+    if(serializer === 'miniprogram') reactOut = emitMiniProgram(bp, plan, assets, profile, { baseName })
+    else if(serializer === 'flutter') reactOut = emitFlutter(bp, plan, assets, profile, { baseName })
+    else if(serializer === 'vue') reactOut = emitVue(bp, plan, assets, profile, { baseName })
+    else if(serializer === 'tailwind') reactOut = emitTailwindReact(bp, plan, assets, profile, { baseName })
+    else reactOut = emitReact(bp, plan, assets, profile, { baseName });
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
@@ -196,9 +211,37 @@ async function main() {
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
     // 资产违约摘要(missing=占位+违约, 禁止近似替代)
     const miss = (assets.assets || []).filter((a) => a.status === 'missing');
-    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
+    const ext = serializer === 'vue' ? '.vue' : serializer === 'flutter' ? '.dart' : serializer === 'miniprogram' ? '.wxml/.wxss/.js/.json' : '.tsx'
+    console.log(`generate → ${outDir}: ${reactOut.componentName}${ext}(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
     if (miss.length) console.log(`! 资产违约 ${miss.length} 处(几何占位, 禁止近似替代): ` + miss.slice(0, 5).map((a) => `${a.id}:${a.key}`).join(', ') + (miss.length > 5 ? ' ...' : ''));
     if (plan.warnings.length) console.log(`! contract 警告 ${plan.warnings.length} 条(首条: ${plan.warnings[0]})`);
+    return;
+  }
+
+  if (cmd === 'merge') {
+    // ⑳ V2 合并：已生成文件 → 合入既有项目（保守，冲突重命名）
+    const projectDir = args[1];
+    const fromDir = flag('from') || flag('src');
+    if (!projectDir) { console.error('用法: restore.mjs merge <projectDir> [--from <generatedDir>] [--on-conflict rename|skip|overwrite]'); process.exit(1); }
+    const srcDir = fromDir ? path.resolve(fromDir) : path.join(projectDir, 'restore')
+    if (!fs.existsSync(srcDir)) { console.error(`生成目录不存在: ${srcDir}`); process.exit(1); }
+    const check = canMerge(projectDir)
+    if (!check.ok) console.log(`! 预检: ${check.reasons.join('; ')}`);
+    // 收集 srcDir 下所有文件（递归）
+    const files = []
+    const walk = (dir, base='')=>{
+      for(const e of fs.readdirSync(dir, {withFileTypes:true})){
+        const rel = path.join(base, e.name)
+        const abs = path.join(dir, e.name)
+        if(e.isDirectory()) walk(abs, rel)
+        else files.push({ path: rel, content: fs.readFileSync(abs,'utf8') })
+      }
+    }
+    walk(srcDir)
+    const res = mergeIntoProject(projectDir, files, { onConflict: flag('on-conflict') || 'rename' })
+    console.log(`merge → ${res.written.length} 文件: ${res.written.map(w=> `${w.path}(${w.action})`).join(', ')}`)
+    if(res.conflicts.length) console.log(`! 冲突 ${res.conflicts.length} 处: ${res.conflicts.map(c=> c.path+':'+c.reason).join('; ')}`)
+    if(res.entrySuggestion) console.log(res.entrySuggestion)
     return;
   }
 
@@ -230,7 +273,7 @@ async function main() {
     return;
   }
 
-  console.error('用法: restore.mjs <analyze|verify|snapshot|restore|status|profile|generate> ...');
+  console.error('用法: restore.mjs <analyze|verify|snapshot|restore|status|profile|generate|merge> ...');
   process.exit(1);
 }
 

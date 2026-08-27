@@ -38,12 +38,17 @@ export * from "./verify/errors.ts";
 export * from "./verify/gate.ts";
 export * from "./verify/score.ts";
 export * from "./verify/vision.ts";
-// emit(v4 Phase 2): Strategy IR → React/preview 序列化(双 serializer + Tailwind ⑰)
+// emit(v4 Phase 2): Strategy IR → React/Vue/Flutter/MiniProgram/preview 序列化(多重 serializer ⑭⑮⑯⑰)
 export * from "./emit/style-ir.ts";
 export * from "./emit/react.ts";
 export * from "./emit/html.ts";
 export * from "./emit/tailwind.ts";
+export * from "./emit/vue.ts";
+export * from "./emit/flutter.ts";
+export * from "./emit/miniprogram.ts";
 // Enhancement Semantic ⑲
 export * from "./ir/semantic.ts";
+// V2 Merge ⑳
+export * from "./target/merge.ts";
 // target 受限 Patch 契约与校验(⑨⑪)
 export * from "./target/patch.ts";

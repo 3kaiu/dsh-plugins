@@ -24,7 +24,7 @@ Actual Rendering > Source Code Appearance (验收看截图 diff, 不看代码"�
 
 ```
 Phase 1 Understand      MasterGo MCP 取数 → analyze → UI Truth + Target Profile(Analyzer/Resolver)
-Phase 2 Generate        Generation Contract + Asset Resolver → Strategy IR → React/HTML 双 serializer(+DOM Map)
+Phase 2 Generate        Generation Contract + Asset Resolver → Strategy IR → 多重 serializer(React/Vue/Flutter/小程序/Tailwind/HTML) + DOM Map
 Phase 3 Converge        Render → Verify(组合门禁 global+region+geometry) → Region→Node→Source 定位 → Patch Contract → 受限 LLM Repair → Patch Validator → Convergence Score → 收敛
 Phase 3.5 Vision          仅当确定性说不清时：region 成对裁图 → Vision 诊断 → 回灌 PatchRequest（`src/verify/vision.ts`）
 ```
@@ -36,7 +36,8 @@ Phase 3.5 Vision          仅当确定性说不清时：region 成对裁图 → 
 | 取数 | MasterGo MCP 的 section 枚举 + 逐 section DSL(分页取全, 不可跳过) |
 | 分析 | `ui_restore_run`(mode=analyze) 或 CLI `node adapters/restore.mjs analyze <design.json> --session s.json` |
 | 画像 | `restore.mjs profile <projectDir> [--out p.json]` / `ui-restore profile <dir>` → Target Profile(置信度排序，未知=unknown；绝不默认 css-modules) |
-| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json] [--serializer inline|tailwind]` / `ui-restore generate <bp> --project <dir>` → React.tsx(+Tailwind ⑰) + preview.html + .restore-map.json(Strategy IR 单源三 serializer) |
+| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json] [--serializer inline|tailwind|vue|flutter|miniprogram]` / `ui-restore generate` → 按 `profile.framework` 自动选 React/Vue/Flutter/小程序(+Tailwind ⑰) + preview.html + .restore-map.json(Strategy IR 单源多 serializer) |
+| 合并 | `restore.mjs merge <projectDir> [--from <generatedDir>]` / `ui-restore merge` / `ui_restore_merge` — V2 合并：生成文件合入既有项目，冲突重命名，`src/target/merge.ts:1` |
 | 下钻 | `ui_restore_region`(rect/ids → 完整精确子树), 大页面禁止整页蓝图进上下文 |
 | 对比/门禁 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json`；`ui-restore gate <truth.png> <render.png> --bp <bp>` 组合验收(global+region+geometry+assets) |
 | 定位 | `adapters/loop.mjs` 的 `locateRegions`：Pixel Region → DOM([data-restore-node]) → Blueprint node → restore-map → 源文件 |
