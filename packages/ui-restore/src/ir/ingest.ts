@@ -6,6 +6,16 @@
 
 const round1 = (n) => Math.round((n || 0) * 100) / 100
 
+/** 防原型污染: 仅拷贝自有可枚举键, 跳过 __proto__/constructor/prototype 等危险键 */
+function safeAssignStyles(target, src) {
+  if (!src || typeof src !== 'object') return target
+  for (const k of Object.keys(src)) {
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue
+    target[k] = src[k]
+  }
+  return target
+}
+
 /**
  * 展平多 section 设计导出 (flattenDesignSections)
  * 子树相对坐标逐层累加为画布绝对坐标; 合并各 section 的 dsl.styles 引用表。
@@ -15,7 +25,7 @@ const round1 = (n) => Math.round((n || 0) * 100) / 100
  */
 export function flattenDesignSections(raw) {
   const canvas = raw?.meta?.canvas || { width: 375, height: 812 }
-  const styles = {}
+  const styles = Object.create(null)
   const nodes = []
   const emit = (n, ox, oy, parentObj) => {
     if (!n || typeof n !== 'object') return
@@ -42,7 +52,7 @@ export function flattenDesignSections(raw) {
     for (const c of n.children || []) emit(c, x, y, self)
   }
   for (const s of raw?.sections || []) {
-    Object.assign(styles, s?.dsl?.styles || {})
+    safeAssignStyles(styles, s?.dsl?.styles)
     for (const dn of s?.dsl?.nodes || []) emit(dn, s.x ?? 0, s.y ?? 0, null)  }
   return { canvas, styles, nodes }
 }

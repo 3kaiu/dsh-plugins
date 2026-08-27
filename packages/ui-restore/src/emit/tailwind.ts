@@ -40,7 +40,7 @@ function mapOne(k: string, v: string|number): string[] | null {
       return null
     }
     case 'backgroundSize': return v==='cover' ? ['bg-cover'] : null
-    case 'backgroundPosition': return [`bg-[position:${escArbitrary(String(v))}]`]
+    case 'backgroundPosition': return [`bg-[${escArbitrary(String(v))}]`]
     case 'backgroundRepeat': return v==='no-repeat' ? ['bg-no-repeat'] : null
     case 'borderRadius': {
       const s=String(v).trim()

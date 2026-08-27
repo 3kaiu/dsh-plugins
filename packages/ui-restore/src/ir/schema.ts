@@ -225,6 +225,7 @@ export function validateBlueprint(bp, opts = {}) {
     }
     const b = n.bounds
     if (!b || !isNum(b.x) || !isNum(b.y) || !isNum(b.width) || !isNum(b.height)) push(path + '.bounds', 'x/y/width/height 必须为有限数值')
+    else if (b.width <= 0 || b.height <= 0) push(path + '.bounds', 'width/height 必须为正数(非占位/非退化)')
     if (n.type === 'TEXT' && typeof n.text !== 'string') push(path + '.text', 'TEXT 节点必须有字符串 text')
     for (const c of Array.isArray(n.children) ? n.children : []) checkNode(c, path + '/' + (c.id ?? '?'))
   }
@@ -238,6 +239,7 @@ export function validateBlueprint(bp, opts = {}) {
     if (typeof bg.id !== 'string' || !bg.id) push(p + '.id', '必须有非空字符串 id')
     const bb = bg.bounds
     if (!bb || !isNum(bb.x) || !isNum(bb.y) || !isNum(bb.width) || !isNum(bb.height)) push(p + '.bounds', 'x/y/width/height 必须为有限数值')
+    else if (bb.width <= 0 || bb.height <= 0) push(p + '.bounds', 'width/height 必须为正数')
   }
 
   return { ok: errors.length === 0, errors }

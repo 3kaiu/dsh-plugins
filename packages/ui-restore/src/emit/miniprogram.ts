@@ -12,17 +12,17 @@ const pascal = (s:string) => {
 }
 const esc = (s:string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-function pxToRpx(v: string|number): string {
-  if(typeof v==='number') return `${Math.round(v*2)}rpx`
+function pxToRpx(v: string|number, scale: number): string {
+  if(typeof v==='number') return `${Math.round(v*scale)}rpx`
   const n=parseFloat(String(v))
-  if(!isNaN(n) && String(v).includes('px')) return `${Math.round(n*2)}rpx`
+  if(!isNaN(n) && String(v).includes('px')) return `${Math.round(n*scale)}rpx`
   return String(v)
 }
 
-function styleToWxss(style: Record<string, any>): string {
-  // 复用 styleToCssDeclarations 再 px→rpx
+function styleToWxss(style: Record<string, any>, scale: number): string {
+  // 复用 styleToCssDeclarations 再 px→rpx（按画布宽度归一, 非硬编码 ×2）
   const decl = styleToCssDeclarations(style)
-  return decl.replace(/([0-9.]+)px/g, (_, n)=> `${Math.round(parseFloat(n)*2)}rpx`)
+  return decl.replace(/([0-9.]+)px/g, (_, n)=> `${Math.round(parseFloat(n)*scale)}rpx`)
 }
 
 export function emitMiniProgram(bp:any, plan:any, assets:any, profile:any, opts:any = {}){
@@ -34,18 +34,21 @@ export function emitMiniProgram(bp:any, plan:any, assets:any, profile:any, opts:
   }
   const roots = buildElementTree(bp, ctx)
 
+  // rpx 归一基准: 750rpx = 画布宽度(非硬编码 ×2, 支持 390/414 等非 375 设计稿)
+  const rpxScale = 750 / (bp.canvas?.width || 375)
+
   const mapEntries:any[] = []
   const wxmlLines:string[] = []
   const wxssLines:string[] = []
 
   // 根容器样式
-  wxssLines.push(`.restore-root{position:relative;width:${pxToRpx(bp.canvas.width)};height:${pxToRpx(bp.canvas.height)};overflow:hidden;background:#FFFFFF;}`)
+  wxssLines.push(`.restore-root{position:relative;width:${pxToRpx(bp.canvas.width, rpxScale)};height:${pxToRpx(bp.canvas.height, rpxScale)};overflow:hidden;background:#FFFFFF;}`)
 
   const render = (el:any, indent:number, cls:string)=>{
     const pad=' '.repeat(indent)
     const clsName = `node-${el.nodeId.replace(/[^a-zA-Z0-9]/g,'-')}`
     const style = el.style || {}
-    const wxss = styleToWxss(style)
+    const wxss = styleToWxss(style, rpxScale)
     if(wxss) wxssLines.push(`.${clsName}{${wxss}}`)
     const attrs = [`data-restore-node="${el.nodeId}"`, `class="${clsName}"`]
     if(el.assetMissing) attrs.push(`data-asset-missing="${el.assetMissing}"`)
@@ -58,10 +61,12 @@ export function emitMiniProgram(bp:any, plan:any, assets:any, profile:any, opts:
     wxmlLines.push(`${pad}<view ${attrs.join(' ')}>`)
     mapEntries.push({ nodeId: el.nodeId, file: `pages/${componentName.toLowerCase()}/${componentName.toLowerCase()}.wxml`, selector: `[data-restore-node="${el.nodeId}"]`, line: wxmlLines.length })
     if(el.rawSvg){
-      // 小程序不支持内联 SVG，转为 image 占位（仍需消毒校验，防恶意 svgKey 注入）
-      const _clean = sanitizeSvg(el.rawSvg)
-      void _clean
-      wxmlLines.push(`${pad}  <image style="width:100%;height:100%" src="" />`)
+      // 小程序 <image> 不支持内联 SVG: 引用已落盘矢量文件(asset-resolver 已写盘),
+      // 缺失时退回占位并标记 assetMissing(gate 计违约), 严禁空 src 或形状近似替代
+      const a = ctx.assetByNode.get(el.nodeId)
+      const src = a?.file ? a.file : ''
+      if(src) wxmlLines.push(`${pad}  <image mode="aspectFit" style="width:100%;height:100%" src="${src}" />`)
+      else { wxmlLines.push(`${pad}  <view class="svg-placeholder" style="width:100%;height:100%">SVG</view>`); el.assetMissing = el.assetMissing || el.nodeId }
     }
     if(el.textRuns?.length){
       for(const r of el.textRuns){

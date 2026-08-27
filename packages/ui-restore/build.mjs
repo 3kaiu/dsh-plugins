@@ -6,12 +6,23 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// 运行时第三方依赖保持 external(从宿主 node_modules 解析), 不打包进产物
+const RUNTIME_EXTERNALS = [
+  "opentype.js",
+  "pixelmatch",
+  "pngjs",
+  "yoga-layout",
+  "ws",
+  "@modelcontextprotocol/sdk",
+  "zod",
+];
 await build({
   ...BASE,
   entryPoints: [path.join(__dirname, "src/index.ts")],
   outdir: path.join(__dirname, "dist"),
   splitting: true,
   format: "esm",
+  external: RUNTIME_EXTERNALS,
   chunkNames: "chunks/[name]-[hash]",
 });
 console.log("built dist/index.js (+ chunks)");

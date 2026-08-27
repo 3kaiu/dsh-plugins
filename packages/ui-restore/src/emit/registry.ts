@@ -23,13 +23,19 @@ const _registry = new Map<string, EmitterAdapter>()
 // 保证 Flutter 项目不加载 React/Vue 代码，符合“按需热插拔”与“无用耦合最小化”
 const BUILTINS: Record<string, () => Promise<EmitterAdapter>> = {
   react: async () => { const { emitReact } = await import('./react.ts'); return { id:'react', framework:'react', description:'React inline 样式（默认）', emit: emitReact } },
+  inline: async () => { const { emitReact } = await import('./react.ts'); return { id:'inline', framework:'react', description:'React inline 样式（react 别名）', emit: emitReact } },
   vue: async () => { const { emitVue } = await import('./vue.ts'); return { id:'vue', framework:'vue', description:'Vue 3 SFC', emit: emitVue } },
   flutter: async () => { const { emitFlutter } = await import('./flutter.ts'); return { id:'flutter', framework:'flutter', description:'Flutter Widget', emit: emitFlutter } },
   miniprogram: async () => { const { emitMiniProgram } = await import('./miniprogram.ts'); return { id:'miniprogram', framework:'miniprogram', description:'小程序 WXML/WXSS', emit: emitMiniProgram } },
   tailwind: async () => { const { emitTailwindReact } = await import('./tailwind.ts'); return { id:'tailwind', styling:'tailwind', description:'React + Tailwind 任意值', emit: emitTailwindReact } },
   unocss: async () => { const { emitTailwindReact } = await import('./tailwind.ts'); return { id:'unocss', styling:'unocss', description:'UnoCSS (Tailwind 兼容)', emit: emitTailwindReact } },
+  html: async () => { const { emitPreviewHtml } = await import('./html.ts'); return { id:'html', description:'预览用 HTML（inline 样式）', emit: emitPreviewHtml } },
 }
-// html 预览不参与 framework 选择，单独由调用方直接 import emitPreviewHtml
+
+// framework 别名：next 实为 react 生态，统一映射到 react 适配器，避免 silent 误解析
+const FRAMEWORK_ALIASES: Record<string, string> = { next: 'react', 'react-dom': 'react' }
+// 已知但本插件无适配器的 framework：出现时明确报错，不再静默退化为 React
+const UNSUPPORTED_FRAMEWORKS = new Set(['svelte', 'solid-js', 'solid', 'angular', 'ember', 'riot', 'preact'])
 
 export function registerAdapter(adapter: EmitterAdapter){
   if(!adapter || !adapter.id || typeof adapter.emit!=='function') throw new Error('registerAdapter: 非法适配器')
@@ -45,12 +51,28 @@ export function listAdapters(): EmitterAdapter[] {
 }
 export function listAvailableAdapterIds(): string[] {
   // 已注册 + 内置未加载的 id 合并，保 CLI/MCP 帮助信息完整（热插拔未加载时亦可见）
-  return [...new Set([..._registry.keys(), ...Object.keys(BUILTINS), 'html'])]
+  return [...new Set([..._registry.keys(), ...Object.keys(BUILTINS)])]
 }
 export function getAvailableAdapterIds(): string[] { return listAvailableAdapterIds() }
 
 export function unregisterAdapter(id:string){
   _registry.delete(id)
+}
+
+function normalizeFramework(fw?: string): string {
+  if (!fw) return 'unknown'
+  return FRAMEWORK_ALIASES[fw] || fw
+}
+
+/** 加载内置适配器,失败时给出可读错误(避免底层模块错误透传为不透明崩溃) */
+async function loadBuiltin(id: string): Promise<EmitterAdapter> {
+  const loader = BUILTINS[id]
+  if (!loader) throw new Error(`未知适配器: ${id}`)
+  try {
+    return await loader()
+  } catch (e) {
+    throw new Error(`加载适配器 "${id}" 失败: ${e instanceof Error ? e.message : String(e)}`)
+  }
 }
 
 /**
@@ -60,13 +82,13 @@ export function unregisterAdapter(id:string){
 export function resolveAdapter(profile:any, explicit?: string): EmitterAdapter {
   if(explicit && _registry.has(explicit)) return _registry.get(explicit)!
   if(explicit) throw new Error(`未知 serializer: ${explicit}，可用: ${[..._registry.keys()].join(', ')}`)
-  const fw = profile?.framework
+  const fw = normalizeFramework(profile?.framework)
   const styling = profile?.styling
   if(styling){
     const hit = [..._registry.values()].find(a=> a.styling===styling)
     if(hit) return hit
   }
-  if(fw){
+  if(fw && fw !== 'unknown'){
     const hit = [..._registry.values()].find(a=> a.framework===fw)
     if(hit) return hit
   }
@@ -79,36 +101,41 @@ export function resolveAdapter(profile:any, explicit?: string): EmitterAdapter {
  */
 export async function resolveAdapterAsync(profile:any, explicit?: string): Promise<EmitterAdapter> {
   if(explicit){
-    if(_registry.has(explicit)) return _registry.get(explicit)!
+    const key = explicit === 'inline' ? 'react' : explicit
+    if(_registry.has(key)) return _registry.get(key)!
     // 按需加载显式指定的适配器
-    if(BUILTINS[explicit]){
-      const a = await BUILTINS[explicit]()
+    if(BUILTINS[key]){
+      const a = await loadBuiltin(key)
       registerAdapter(a)
       return a
     }
-    throw new Error(`未知 serializer: ${explicit}，可用: ${[..._registry.keys()].join(', ')}, 内置: ${Object.keys(BUILTINS).join(', ')}`)
+    throw new Error(`未知 serializer: ${explicit}，可用: ${Object.keys(BUILTINS).join(', ')}`)
   }
-  const fw = profile?.framework
+  const fw = normalizeFramework(profile?.framework)
   const styling = profile?.styling
   // styling 优先
   if(styling && BUILTINS[styling] && !_registry.has(styling)){
-    const a = await BUILTINS[styling]()
+    const a = await loadBuiltin(styling)
     registerAdapter(a)
   }
   if(styling){
     const hit = [..._registry.values()].find(a=> a.styling===styling)
     if(hit) return hit
   }
-  if(fw && BUILTINS[fw] && !_registry.has(fw)){
-    const a = await BUILTINS[fw]()
+  if(fw && fw !== 'unknown' && BUILTINS[fw] && !_registry.has(fw)){
+    const a = await loadBuiltin(fw)
     registerAdapter(a)
   }
-  if(fw){
+  if(fw && fw !== 'unknown'){
     const hit = [..._registry.values()].find(a=> a.framework===fw)
     if(hit) return hit
   }
+  // 显式 framework 无适配器 → 不再静默退化 React，明确报错要求用户指定
+  if(fw && fw !== 'unknown'){
+    throw new Error(`无法确定目标技术栈：探测到 framework="${fw}" 但无对应适配器。请显式传 --serializer（可选: ${Object.keys(BUILTINS).join(', ')}）`)
+  }
   if(!_registry.has('react')){
-    const a = await BUILTINS.react()
+    const a = await loadBuiltin('react')
     registerAdapter(a)
   }
   return _registry.get('react')!

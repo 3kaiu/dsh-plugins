@@ -15,7 +15,7 @@
 // 环境变量: DSH_HOME(默认 ~/.dsh)、DSH_PROFILE(默认 web)、
 //          DSH_PLUGIN_REPO(默认 3kaiu/dsh-plugins)
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,8 +39,9 @@ const jsonFetch = async (url) => {
 };
 
 const pnpmAdd = (spec, label) => {
+  // --ignore-scripts: 插件无需构建步骤, 且防止恶意 tarball 的 install 脚本执行
   console.log(`[install-remote] add ${label} <- ${spec}`);
-  const r = spawnSync("pnpm", ["add", "-w", spec], { cwd: profileDir, stdio: "inherit" });
+  const r = spawnSync("pnpm", ["add", "-w", "--ignore-scripts", spec], { cwd: profileDir, stdio: "inherit" });
   if(r.status!==0) throw new Error(`pnpm add 失败: ${label}`);
 };
 
@@ -60,7 +61,8 @@ if (!existsSync(join(profileDir, "package.json"))) {
   console.error(`web profile not found: ${profileDir}`);
   process.exit(1);
 }
-mkdirSync(join(tmpdir(), "dsh-tgz"), { recursive: true });
+// 随机后缀临时目录: 防止已知固定路径 dsh-tgz 被本地攻击者预建为符号链接(TOCTOU/任意写)
+const tmpRoot = mkdtempSync(join(tmpdir(), "dsh-tgz-"));
 
 // 2. 下载 SHA256SUMS 与全部 tarball,逐文件校验(fail-closed)。
 // 信任模型说明:校验和与产物同源,只能发现传输损坏/资产错配,
@@ -75,6 +77,7 @@ const downloadTo = async (url, dest) => {
   if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
   writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
 };
+const isValidName = (n) => /^[A-Za-z0-9._-]+$/.test(n);
 const sumsTxt = await fetchText(`${downloadBase}/SHA256SUMS`);
 const sums = new Map(sumsTxt.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
   const [sum, ...rest] = l.split(/\s+/);
@@ -86,8 +89,12 @@ if (ONLY.length > 0) {
 }
 const verified = [];
 for (const name of tgzNames) {
+  if (!isValidName(name)) {
+    console.error(`[install-remote] 非法资产名(疑似路径穿越): ${name};中止安装`);
+    process.exit(1);
+  }
   const url = `${downloadBase}/${name}`;
-  const tmp = join(tmpdir(), "dsh-tgz", name);
+  const tmp = join(tmpRoot, name);
   await downloadTo(url, tmp);
   const want = sums.get(name);
   const got = createHash("sha256").update(readFileSync(tmp)).digest("hex");
@@ -96,13 +103,21 @@ for (const name of tgzNames) {
     process.exit(1);
   }
   console.log(`[install-remote] SHA-256 校验通过: ${name} ${got.slice(0, 12)}…`);
-  verified.push({ name, url });
+  // 记录本地已校验路径: 安装即装此文件, 而非重新从网络拉取(避免校验/安装不一致 TOCTOU)
+  verified.push({ name, local: tmp });
 }
 
-// 3. 安装(URL spec 持久化;本地已校验,与 install-local --release 同一信任模型)
-for (const { name, url } of verified) pnpmAdd(url, name);
+// 3. 安装(装已校验的本地文件; --ignore-scripts 防 tarball install 脚本执行)
+for (const { name, local } of verified) pnpmAdd(`file:${local}`, name);
 
 // 4. reconcile bundles + 清理旧 patch 条目(逻辑与 install-local 一致)
+// 供应链防护: 仅允许已知受信插件进入 dsh.profile.bundles(自动 require 并执行其 main),
+// 任意声明 dsh.bundle.patch 的第三方包不得静默注入 harness(否则构成 RCE 面)。
+const TRUSTED_BUNDLES = new Set([
+  "@3kaiu/dsh-llm-opencode-zen",
+  "@3kaiu/dsh-layout-infer",
+  "@3kaiu/dsh-plugin-kit",
+]);
 const pkgFile = join(profileDir, "package.json");
 const pkg = JSON.parse(readFileSync(pkgFile, "utf8"));
 const stale = Object.keys(pkg.dependencies ?? {}).filter((name) =>
@@ -110,11 +125,16 @@ const stale = Object.keys(pkg.dependencies ?? {}).filter((name) =>
 for (const name of stale) delete pkg.dependencies[name];
 const bundles = pkg.dsh?.profile?.bundles ?? [];
 for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
-  if (!/^https?:/.test(spec)) continue;
-  const abs = join(profileDir, "node_modules", name);
+  if (!/^(file:|https?:)/.test(spec)) continue;
+  const local = spec.startsWith("file:");
+  const abs = local ? resolve(spec.slice("file:".length)) : join(profileDir, "node_modules", name);
   if (!existsSync(join(abs, "package.json"))) continue;
   const manifest = JSON.parse(readFileSync(join(abs, "package.json"), "utf8"));
   if (manifest.dsh?.bundle?.patch === void 0) continue;
+  if (!TRUSTED_BUNDLES.has(name)) {
+    console.warn(`[install-remote] 跳过未授权 bundle(不注入 harness): ${name} — 若为新插件请在 TRUSTED_BUNDLES 显式登记`);
+    continue;
+  }
   if (!bundles.includes(name)) bundles.push(name);
 }
 pkg.dsh = { ...pkg.dsh, profile: { ...pkg.dsh?.profile, bundles } };

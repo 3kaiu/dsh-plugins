@@ -52,12 +52,46 @@ function borderRadiusCss(radius) {
 
 function boxShadowCss(effects) {
   if (!Array.isArray(effects) || !effects.length) return undefined
-  return effects
+  // 仅阴影类生效；LAYER_BLUR/BACKGROUND_BLUR 单独走 filter/backdrop-filter(见 buildElementTree)
+  const parts = effects
+    .filter((e) => e.type === 'INNER_SHADOW' || e.type === 'DROP_SHADOW')
     .map((e) => {
       const inset = e.type === 'INNER_SHADOW' ? 'inset ' : ''
       return `${inset}${num(e.offsetX)}px ${num(e.offsetY)}px ${num(e.blur)}px ${num(e.spread)}px ${e.color}`
     })
-    .join(', ')
+  return parts.length ? parts.join(', ') : undefined
+}
+
+/** 把 alpha 烘焙进 CSS 颜色(#rgb/#rrggbb/#rrggbbaa/rgb()/rgba())，避免整树透明度泄漏到子元素 */
+function withAlpha(cssColor, alpha) {
+  if (typeof cssColor !== 'string') return cssColor
+  const m = /^#([0-9a-fA-F]{3,8})$/.exec(cssColor.trim())
+  if (m) {
+    let hex = m[1]
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
+    if (hex.length === 6) hex += 'ff'
+    if (hex.length !== 8) return cssColor // 非标准长度(4/5/7 位)原样返回, 避免 NaN
+    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16)
+    const a = (parseInt(hex.slice(6, 8), 16) / 255) * alpha
+    return `rgba(${r}, ${g}, ${b}, ${Math.round(a * 1000) / 1000})`
+  }
+  const rm = /^rgba?\(([^)]+)\)$/.exec(cssColor.trim())
+  if (rm) {
+    const p = rm[1].split(',').map((s) => s.trim())
+    const baseA = p[3] != null ? parseFloat(p[3]) : 1
+    return `rgba(${p[0]}, ${p[1]}, ${p[2]}, ${Math.round(baseA * alpha * 1000) / 1000})`
+  }
+  return cssColor
+}
+
+/** 容器透明度烘焙：把 frame opacity 仅作用于背景（solid/gradient），子代保持不透明 */
+function backgroundWithOpacity(n, opacity) {
+  if (n.fill?.type === 'solid') return withAlpha(n.fill.value, opacity)
+  if (n.fill?.type === 'gradient') {
+    const stops = (n.fill.stops || []).map((s) => `${withAlpha(s.color, opacity)} ${num(s.position)}%`).join(', ')
+    return `linear-gradient(${num(n.fill.angle)}deg, ${stops})`
+  }
+  return null
 }
 
 function typographyStyle(n, fontStack) {
@@ -68,14 +102,15 @@ function typographyStyle(n, fontStack) {
   if (n.letterSpacing != null) s.letterSpacing = n.letterSpacing
   if (n.color) s.color = n.color
   if (n.textAlign) s.textAlign = n.textAlign
-  s.fontFamily = fontStack
+    s.fontFamily = fontStack
   if (n.softWrap === false) s.whiteSpace = 'nowrap'
-  else s.wordBreak = 'break-all' // CJK 折行 + 长单词兜底(基准实现同款)
+  else s.overflowWrap = 'break-word' // 拉丁文按词折行(CJK 默认按字折行, 避免 break-all 切断单词)
   if (n.maxLines != null && n.maxLines > 0) {
     s.display = '-webkit-box'
     s.WebkitBoxOrient = 'vertical'
     s.WebkitLineClamp = n.maxLines
     s.overflow = 'hidden'
+    s.textOverflow = 'ellipsis'
     s.whiteSpace = 'normal'
   }
   return s
@@ -106,7 +141,9 @@ export function buildElementTree(bp, ctx) {
       style: {
         position: 'absolute', left: num(b.x), top: num(b.y),
         width: num(b.width) || undefined, height: num(b.height) || undefined,
-        background: bg.fill?.type === 'gradient' ? gradientCss(bg.fill) : (bg.fill ?? bg.color),
+        background: bg.fill?.type === 'gradient' ? gradientCss(bg.fill)
+          : bg.fill?.type === 'solid' ? bg.fill.value
+          : (bg.color ?? undefined),
       },
       children: [],
     })
@@ -157,8 +194,29 @@ export function buildElementTree(bp, ctx) {
     if (radius != null) style.borderRadius = radius
     const shadow = boxShadowCss(ly.effects)
     if (shadow) style.boxShadow = shadow
+    // 模糊/磨砂层: LAYER_BLUR → filter:blur(装饰光晕/虚化); BACKGROUND_BLUR → backdrop-filter(毛玻璃)
+    // 此前被 boxShadowCss 忽略(甚至生成无效阴影串), 现单独处理
+    for (const e of (ly.effects || [])) {
+      if (e.type === 'LAYER_BLUR') {
+        style.filter = `blur(${num(e.blur)}px)`
+      } else if (e.type === 'BACKGROUND_BLUR') {
+        style.backdropFilter = `blur(${num(e.blur)}px)`
+        style.webkitBackdropFilter = `blur(${num(e.blur)}px)`
+        // 毛玻璃需半透明底才可见, 无 solid/gradient 背景时补一层半透明兜底
+        if (!style.background && n.fill?.type !== 'solid' && n.fill?.type !== 'gradient') style.background = 'rgba(255,255,255,0.5)'
+      }
+    }
     if (n.stroke?.color && num(n.stroke.width) > 0) style.border = `${num(n.stroke.width)}px ${n.stroke.style || 'solid'} ${n.stroke.color}`
-    if (n.opacity != null && n.opacity !== 1) style.opacity = n.opacity
+    // 透明度：容器(含子元素)必须把 alpha 烘焙进背景，否则整棵子树被淡化（设计规则：frame opacity 仅作用于背景）
+    if (n.opacity != null && n.opacity !== 1) {
+      const containerWithChildren = Array.isArray(n.children) && n.children.length > 0
+      if (containerWithChildren && (n.fill?.type === 'solid' || n.fill?.type === 'gradient')) {
+        style.background = backgroundWithOpacity(n, n.opacity)
+      } else if (!containerWithChildren) {
+        // 叶子: 整元素淡化(含背景/文本); 含子元素但无背景: 按规则不淡化子代, 保持不透明
+        style.opacity = n.opacity
+      }
+    }
     if (n.rotation) style.transform = `rotate(${num(n.rotation)}deg)`
 
     const el = {
@@ -190,12 +248,14 @@ export function buildElementTree(bp, ctx) {
     }
 
     // ---- 矢量(高风险②): 已解析=内联; 缺失=几何占位+违约标记 ----
-    if (n.svgKey) {
-      const a = ctx.assetByNode.get(n.id) || ctx.assetByNode.get(n.svgKey)
+    // 含 mergedVector(无 svgKey, 按节点 id 反查) —— 同样不可近似替代
+    if (n.svgKey || (n as any).mergedVector) {
+      const key = n.svgKey || n.id
+      const a = ctx.assetByNode.get(n.id) || ctx.assetByNode.get(key)
       if (a?.status === 'resolved' && (a.rawSvg || a.svg)) el.rawSvg = a.rawSvg || a.svg
       else {
         el.style.background = el.style.background || '#C9D0DD'
-        el.assetMissing = n.svgKey
+        el.assetMissing = key
       }
       return el
     }
@@ -207,6 +267,9 @@ export function buildElementTree(bp, ctx) {
       for (const child of n.children) {
         const childEl = emitNode(child, b, true)
         const cb = child.bounds || { x: 0, y: 0, width: 0, height: 0 }
+        // 防止 flex 算法压缩子项显式宽度: 固定不伸缩(flex 容器自身定主轴)
+        childEl.style.flexShrink = 0
+        childEl.style.flexGrow = 0
         // 主轴: cursor 递进兑现间距(带符号); 交叉轴: 相对父 bounds 的偏移一次兑现
         const main = (isRow ? num(cb.x) : num(cb.y)) - cursor
         const cross = isRow ? num(cb.y) - num(b.y) : num(cb.x) - num(b.x)

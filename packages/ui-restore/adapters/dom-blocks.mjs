@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { WebSocket } from 'ws';
 import { findSystemChrome, toUrl } from './screenshot.mjs';
 
 /** 页内收集脚本: 遍历可见 TEXT 节点 → Range 客户端矩形并集(跨行文本取外接框, 对齐蓝图的整块 TEXT 叶子模型)。

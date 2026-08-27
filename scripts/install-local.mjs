@@ -16,7 +16,7 @@
 //     从 GitHub Release 下载 tarball 安装(下载后先做 SHA-256 校验,通过才
 //     交给 pnpm;Release 需为重建后的产物,含 SHA256SUMS 资产)
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -41,8 +41,9 @@ if (!existsSync(join(profileDir, "package.json"))) {
 
 // 1. 安装依赖
 const pnpmAddSync = (spec, label) => {
+  // --ignore-scripts: 插件无需构建步骤, 防 tarball install 脚本执行
   console.log(`[install-local] add ${label} <- ${spec}`);
-  const r = spawnSync("pnpm", ["add", "-w", spec], { cwd: profileDir, stdio: "inherit" });
+  const r = spawnSync("pnpm", ["add", "-w", "--ignore-scripts", spec], { cwd: profileDir, stdio: "inherit" });
   if(r.status!==0) throw new Error(`pnpm add 失败: ${label}`);
 };
 const fetchBuf = async (url) => {
@@ -56,8 +57,8 @@ for (const plugin of PLUGINS) {
     const tgz = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
     const url = RELEASE_BASE + "/" + tgz;
     console.log(`\n[install-local] add ${plugin.pkg} <- ${url}`);
-    const tmpTgz = join(tmpdir(), "dsh-tgz", tgz);
-    mkdirSync(dirname(tmpTgz), { recursive: true });
+    const tmpRoot = mkdtempSync(join(tmpdir(), "dsh-tgz-"));
+    const tmpTgz = join(tmpRoot, tgz);
     const buf = await fetchBuf(url);
     writeFileSync(tmpTgz, buf);
     const sumsTxt = (await fetchBuf(RELEASE_BASE+"/SHA256SUMS")).toString('utf8');
@@ -68,7 +69,8 @@ for (const plugin of PLUGINS) {
       process.exit(1);
     }
     console.log(`[install-local] SHA-256 校验通过: ${tgz} ${got.slice(0, 12)}…`);
-    pnpmAddSync(url, plugin.pkg);
+    // 安装已校验的本地文件(而非重新从网络拉取 URL, 避免校验/安装不一致 TOCTOU)
+    pnpmAddSync(`file:${tmpTgz}`, plugin.pkg);
     continue;
   }
   const abs = join(root, "packages", plugin.dir);
@@ -88,6 +90,12 @@ const stale = Object.keys(pkg.dependencies ?? {}).filter((name) =>
 for (const name of stale) delete pkg.dependencies[name];
 
 // 3. reconcile bundles: 声明了 dsh.bundle 的依赖按依赖顺序加入 dsh.profile.bundles
+// 供应链防护: 仅已知受信插件可注入 harness(见 TRUSTED_BUNDLES), 防任意 dsh-* 包静默 RCE。
+const TRUSTED_BUNDLES = new Set([
+  "@3kaiu/dsh-llm-opencode-zen",
+  "@3kaiu/dsh-layout-infer",
+  "@3kaiu/dsh-plugin-kit",
+]);
 const bundles = pkg.dsh?.profile?.bundles ?? [];
 for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
   // file:(本地源码)或 https?:(Release tarball)都算可 reconcile 的 bundle 来源
@@ -98,6 +106,10 @@ for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
   if (!existsSync(join(abs, "package.json"))) continue;
   const manifest = JSON.parse(readFileSync(join(abs, "package.json"), "utf8"));
   if (manifest.dsh?.bundle?.patch === void 0) continue;
+  if (!TRUSTED_BUNDLES.has(name)) {
+    console.warn(`[install-local] 跳过未授权 bundle(不注入 harness): ${name} — 若为新插件请在 TRUSTED_BUNDLES 显式登记`);
+    continue;
+  }
   if (!bundles.includes(name)) bundles.push(name);
 }
 pkg.dsh = { ...pkg.dsh, profile: { ...pkg.dsh?.profile, bundles } };

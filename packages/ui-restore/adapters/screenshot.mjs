@@ -40,9 +40,25 @@ export function findSystemChrome() {
   return null;
 }
 
-export function toUrl(target) {
-  if (/^https?:\/\//i.test(target)) return target;
+export function toUrl(target, opts = {}) {
+  if (/^https?:\/\//i.test(target)) {
+    // SSRF 防护: 拒绝内网/元数据地址(设计稿预览 URL 不应指向本地服务或云元数据端点)
+    let host = '';
+    try { host = new URL(target).hostname.toLowerCase(); } catch { throw new Error(`非法 URL: ${target}`); }
+    const blocked = ['localhost', '0.0.0.0', '[::1]', '::1', 'metadata.google.internal', 'metadata.internal']
+      .some((h) => host === h || host.endsWith('.localhost') || host.endsWith('.internal'));
+    if (blocked || /^169\.254\./.test(host) || /^127\./.test(host) || host === '::1') {
+      throw new Error(`拒绝访问内网/元数据地址: ${host}`);
+    }
+    return target;
+  }
+  // file:// —— 拒绝读取敏感系统文件(LFI 防护); 普通渲染产物路径不受影响
   const abs = path.resolve(target);
+  const SENSITIVE = ['/etc/', '/proc/', '/sys/', '/root/', '/private/etc/', '/windows/system32/'];
+  const lower = abs.toLowerCase();
+  if (SENSITIVE.some((p) => lower.startsWith(p)) || lower.includes('/.ssh/') || lower.includes('\\.ssh\\')) {
+    throw new Error(`拒绝访问敏感系统路径: ${target}`);
+  }
   if (!fs.existsSync(abs)) throw new Error(`目标不存在: ${abs}`);
   return `file://${abs}`;
 }

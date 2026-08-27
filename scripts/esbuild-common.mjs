@@ -7,7 +7,9 @@ export const BASE = {
   platform: "node",
   target: "node20",
   minify: true,
-  legalComments: "none",
+  // 保留第三方依赖的许可证注释(legalComments:none 会剥离 MIT/BSD 头,违反许可证要求)
+  legalComments: "linked",
+  sourcemap: true,
   // CJS 依赖(如 pngjs)在 ESM 输出里运行时 require node 内置模块:
   // 注入 createRequire 使 typeof require === 'function', 由 Node 解析内置模块
   banner: {

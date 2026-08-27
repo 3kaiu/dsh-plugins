@@ -95,6 +95,11 @@ export function planGeneration(bp, profile, opts = {}) {
       paint = 'svg'
       asset = { kind: 'svg', key: n.svgKey }
       unresolvedAssets.push({ nodeId: n.id, kind: 'svg', key: n.svgKey }) // 由 asset-resolver 消化, 未消化则保留
+    } else if ((n as any).mergedVector) {
+      // 合并矢量: 无 svgKey, 必须按节点 id 从设计侧导出后渲染, 禁止留空或形状近似替代
+      paint = 'svg'
+      asset = { kind: 'svg', key: n.id }
+      unresolvedAssets.push({ nodeId: n.id, kind: 'svg', key: n.id })
     }
     // typography
     const typography = n.textRuns?.length

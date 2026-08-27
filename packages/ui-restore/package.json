@@ -9,16 +9,16 @@
     "test": "node test/layout-core.test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "opentype.js": "^2.0.0",
     "pixelmatch": "^7.0.0",
     "pngjs": "^7.0.0",
-    "yoga-layout": "^3.2.1"
+    "ws": "^8.18.0",
+    "yoga-layout": "^3.2.1",
+    "zod": "^4.4.0"
   },
   "bin": {
     "ui-restore": "./cli.mjs"
   },
-  "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^4.4.0"
-  }
+  "devDependencies": {}
 }

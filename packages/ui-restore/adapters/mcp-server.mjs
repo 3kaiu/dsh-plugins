@@ -29,6 +29,16 @@ import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, resto
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
 
+// 路径越界防护: 任何相对/绝对路径解析后必须落在 rootDir 内, 否则拒绝(防 ../ 逃逸 / 任意文件读写)
+const confineUnder = (rootDir, rel) => {
+  const abs = path.resolve(rootDir, rel);
+  const rel2 = path.relative(rootDir, abs);
+  if (rel2.startsWith('..') || path.isAbsolute(rel2)) throw new Error(`拒绝越界路径: ${rel}`);
+  return abs;
+};
+// 读取路径必须在 rootDir 内(默认 cwd), 防任意文件读取
+const safeRead = (rootDir, p) => confineUnder(rootDir || process.cwd(), p);
+
 const server = new McpServer({ name: 'ui-restore', version: '1.0.0' });
 
 // 主入口 workflow tool(d2c: 普通情况下 Agent 只需要这一个)。确定性 pipeline, 非第二层 LLM。
@@ -275,7 +285,7 @@ server.tool(
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
-      const p = path.join(outDir, f.path);
+      const p = confineUnder(outDir, f.path); // 产物路径必须落在 outDir 内
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, f.content);
     }
@@ -330,8 +340,8 @@ server.tool(
     const srcDir = from_dir ? path.resolve(from_dir) : path.join(project_dir, 'restore');
     if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);
     const check = canMerge(project_dir);
-    const files:any[] = [];
-    const walk = (dir:string, base='')=>{
+    const files = [];
+    const walk = (dir, base = '') => {
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name);
         const abs = path.join(dir, e.name);

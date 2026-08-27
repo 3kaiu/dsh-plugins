@@ -14,31 +14,83 @@ const pascal = (s:string) => {
 const dartString = (s:string) => `'${String(s).replace(/'/g,"\\'")}'`
 
 function colorToDart(hex:string): string {
-  const m = String(hex).trim().match(/^#([0-9a-fA-F]{6,8})$/)
-  if(!m) return 'Colors.transparent'
-  let h=m[1]
-  if(h.length===6) h='FF'+h
-  if(h.length===3) h=[...h].map(c=>c+c).join('') // not used but handle
-  return `Color(0x${h.toUpperCase()})`
+  const s = String(hex).trim()
+  let m = s.match(/^#([0-9a-fA-F]{3,8})$/)
+  if (m) {
+    let h = m[1]
+    if (h.length === 3) h = [...h].map((c) => c + c).join('')
+    if (h.length === 6) h = 'FF' + h
+    return `Color(0x${h.toUpperCase()})`
+  }
+  m = s.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*(?:,\s*([0-9.]+)\s*)?\)$/)
+  if (m) {
+    const a = m[4] != null ? m[4] : '1'
+    return `Color.fromRGBO(${m[1]}, ${m[2]}, ${m[3]}, ${a})`
+  }
+  return 'Colors.transparent'
+}
+
+/** font-weight → Flutter FontWeight（数值归到 100 倍数；bold/lighter 等命名映射） */
+function fontWeightToDart(fw:any): string {
+  if (typeof fw === 'number') {
+    const n = Math.min(900, Math.max(100, Math.round(fw / 100) * 100))
+    return `FontWeight.w${n}`
+  }
+  if (typeof fw === 'string') {
+    const map: Record<string, string> = { normal: 'w400', regular: 'w400', bold: 'w700', bolder: 'w700', lighter: 'w300', medium: 'w500' }
+    if (map[fw]) return `FontWeight.${map[fw]}`
+    const n = parseInt(fw, 10)
+    if (!isNaN(n)) {
+      const c = Math.min(900, Math.max(100, Math.round(n / 100) * 100))
+      return `FontWeight.w${c}`
+    }
+  }
+  return 'FontWeight.w400'
 }
 
 function radiusToDart(v:any): string {
-  if(v==null) return ''
-  if(typeof v==='number') return `BorderRadius.circular(${v})`
-  if(typeof v==='string' && v.includes('px')){
-    const n=parseFloat(v)
-    if(!isNaN(n)) return `BorderRadius.circular(${n})`
+  if (v == null) return ''
+  if (typeof v === 'number') return `BorderRadius.circular(${v})`
+  if (typeof v === 'string') {
+    const parts = String(v).split(/\s+/).map((p) => parseFloat(p)).filter((n) => !isNaN(n))
+    if (parts.length === 1) return `BorderRadius.circular(${parts[0]})`
+    if (parts.length >= 2) {
+      const [tl, tr, br, bl] = parts.length >= 4 ? [parts[0], parts[1], parts[2], parts[3]] : [parts[0], parts[1], parts[0], parts[1]]
+      return `BorderRadius.only(topLeft: Radius.circular(${tl}), topRight: Radius.circular(${tr}), bottomRight: Radius.circular(${br}), bottomLeft: Radius.circular(${bl}))`
+    }
+    const n = parseFloat(v)
+    if (!isNaN(n)) return `BorderRadius.circular(${n})`
   }
-  // 4值：取首值近似
   return `BorderRadius.circular(8)`
 }
 
 function shadowToDart(shadow:string): string {
   // boxShadow: "0px 4px 12px 0px rgba(0,0,0,0.1)" → BoxShadow
-  const m=String(shadow).match(/([0-9.]+)px\s+([0-9.]+)px\s+([0-9.]+)px\s+([0-9.]+)px\s+(.+)/)
-  if(!m) return `BoxShadow(color: Colors.black26, blurRadius: 8)`
+  const m = String(shadow).match(/([0-9.]+)px\s+([0-9.]+)px\s+([0-9.]+)px\s+([0-9.]+)px\s+(.+)/)
+  if (!m) return `BoxShadow(color: Colors.black26, blurRadius: 8)`
   const [_, ox, oy, blur, spread, col] = m
   return `BoxShadow(color: ${colorToDart(col.trim())}, offset: Offset(${ox}, ${oy}), blurRadius: ${blur}, spreadRadius: ${spread})`
+}
+
+/** 解析 linear-gradient CSS → Flutter LinearGradient 参数(角度→Alignment 近似) */
+function parseGradient(css:string): string | null {
+  const m = String(css).match(/linear-gradient\(\s*([0-9.]+)deg\s*,([\s\S]+)\)/)
+  if (!m) return null
+  const angle = parseFloat(m[1])
+  const stops = m[2].split(',').map((s) => s.trim()).filter(Boolean)
+    .map((part) => {
+      const mm = part.match(/^(.*?)\s+([0-9.]+)%$/)
+      if (mm) return { color: mm[1].trim(), pos: parseFloat(mm[2]) / 100 }
+      return { color: part, pos: null }
+    }).filter((s) => s.color && (s.pos != null))
+  if (!stops.length) return null
+  const a = (angle % 360) * Math.PI / 180
+  const dx = Math.sin(a), dy = -Math.cos(a)
+  const begin = `Alignment(${(-dx).toFixed(3)}, ${(-dy).toFixed(3)})`
+  const end = `Alignment(${dx.toFixed(3)}, ${dy.toFixed(3)})`
+  const colors = stops.map((s) => colorToDart(s.color)).join(', ')
+  const pos = stops.map((s) => s.pos).join(', ')
+  return `LinearGradient(begin: ${begin}, end: ${end}, stops: [${pos}], colors: [${colors}])`
 }
 
 /**
@@ -69,27 +121,46 @@ export function emitFlutter(bp:any, plan:any, assets:any, profile:any, opts:any 
     const hasRuns = Array.isArray(el.textRuns) && el.textRuns.length
     const hasSvg = !!el.rawSvg
 
-    // 文本
+    // 文本（含富文本 run 颜色/字号/字重）
     if(hasText || hasRuns){
-      const txt = hasRuns ? el.textRuns.map((r:any)=> r.text).join('') : el.text
       const fs = b.fontSize ?? 14
-      const fw = b.fontWeight ?? 400
       const col = b.color ? colorToDart(b.color) : 'Color(0xFF111111)'
+      const fw = fontWeightToDart(b.fontWeight ?? 400)
       const lh = b.lineHeight ? `height: ${Number(b.lineHeight)/Number(fs)},` : ''
-      return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: Text(${dartString(txt)}, style: TextStyle(fontSize: ${fs}, fontWeight: FontWeight.w${fw}, color: ${col}, ${lh} overflow: TextOverflow.ellipsis))))`
+      const letter = b.letterSpacing != null ? `letterSpacing: ${Number(b.letterSpacing)},` : ''
+      const maxLines = b.WebkitLineClamp != null ? `maxLines: ${b.WebkitLineClamp},` : ''
+      const softWrap = b.whiteSpace === 'nowrap' ? `softWrap: false,` : ''
+      const txtWidget = hasRuns
+        ? `Text.rich(TextSpan(children: [${el.textRuns.map((r:any) => {
+            const rstyle = r.style || {}
+            const rc = rstyle.color ? colorToDart(rstyle.color) : col
+            const rfs = rstyle.fontSize ?? fs
+            const rfw = fontWeightToDart(rstyle.fontWeight ?? 400)
+            const rls = rstyle.letterSpacing != null ? `letterSpacing: ${Number(rstyle.letterSpacing)},` : ''
+            return `TextSpan(text: ${dartString(r.text)}, style: TextStyle(fontSize: ${rfs}, fontWeight: ${rfw}, color: ${rc}, ${rls})`
+          }).join(',\n')}], style: TextStyle(fontSize: ${fs}, fontWeight: ${fw}, color: ${col}, ${lh} ${letter} ${maxLines} ${softWrap} overflow: TextOverflow.ellipsis)))`
+        : `Text(${dartString(hasRuns ? '' : el.text)}, style: TextStyle(fontSize: ${fs}, fontWeight: ${fw}, color: ${col}, ${lh} ${letter} ${maxLines} ${softWrap} overflow: TextOverflow.ellipsis))`
+      return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: ${txtWidget}))`
     }
     if(hasSvg){
       const clean = sanitizeSvg(el.rawSvg)
       return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: SvgPicture.string(${dartString(clean)}, width: ${w}, height: ${h}, fit: BoxFit.contain)))`
     }
-    // 容器：处理背景/圆角/阴影/边框/透明度/旋转
+    // 容器：背景 / 渐变 / 图片 / 圆角 / 阴影 / 边框
     const decoParts:string[] = []
     if(b.background && /^#/.test(String(b.background))){
       decoParts.push(`color: ${colorToDart(String(b.background))}`)
     } else if(b.background && String(b.background).includes('linear-gradient')){
-      // 渐变简化为首色
-      const m=String(b.background).match(/#[0-9a-fA-F]{6,8}/)
-      if(m) decoParts.push(`color: ${colorToDart(m[0])}`)
+      const grad = parseGradient(String(b.background))
+      if(grad) decoParts.push(`gradient: ${grad}`)
+    }
+    if(b.backgroundImage){
+      const fm = String(b.backgroundImage).match(/url\((['"]?)([^'")]+)\1\)/)
+      const imgSrc = fm ? fm[2] : ''
+      if(imgSrc){
+        const imgExpr = /^https?:\/\//.test(imgSrc) ? `NetworkImage(${dartString(imgSrc)})` : `FileImage(File(${dartString(imgSrc)}))`
+        decoParts.push(`image: DecorationImage(image: ${imgExpr}, fit: BoxFit.cover)`)
+      }
     }
     if(b.borderRadius) decoParts.push(`borderRadius: ${radiusToDart(b.borderRadius)}`)
     if(b.boxShadow) decoParts.push(`boxShadow: [${shadowToDart(String(b.boxShadow))}]`)
@@ -99,15 +170,24 @@ export function emitFlutter(bp:any, plan:any, assets:any, profile:any, opts:any 
       if(m) decoParts.push(`border: Border.all(color: ${colM?colorToDart(colM[0]):'Colors.black'}, width: ${m[1]})`)
     }
     const decoration = decoParts.length ? `decoration: BoxDecoration(${decoParts.join(', ')}),` : ''
-    const opacity = b.opacity!=null && b.opacity!==1 ? `opacity: ${b.opacity},` : ''
-    const transform = b.transform ? `transform: Matrix4.rotationZ(${parseFloat(String(b.transform).match(/-?[0-9.]+/)?.[0]||'0')*Math.PI/180}),` : ''
-
+    let inner: string
     if(el.children && el.children.length){
       const childrenStr = el.children.map((c:any)=> renderNode(c)).join(',\n')
-      // 内部子节点仍用 Stack 绝对定位，保证与 React 同构
-      return `Positioned(left: ${left}, top: ${top}, child: Container(width: ${w}, height: ${h}, ${decoration} ${opacity} ${transform} child: Stack(children: [${childrenStr}])))`
+      inner = `Container(width: ${w}, height: ${h}, ${decoration} child: Stack(children: [${childrenStr}]))`
+    } else {
+      inner = `Container(width: ${w}, height: ${h}, ${decoration})`
     }
-    return `Positioned(left: ${left}, top: ${top}, child: Container(width: ${w}, height: ${h}, ${decoration} ${opacity} ${transform}))`
+    // 透明度用 Opacity 包裹（仅作用于本容器背景，不污染子代位置）
+    let wrapped = inner
+    if(b.opacity != null && b.opacity !== 1){
+      wrapped = `Opacity(opacity: ${Number(b.opacity)}, child: ${wrapped})`
+    }
+    // 旋转绕中心(避免默认绕左上角偏移)
+    if(b.transform){
+      const deg = parseFloat(String(b.transform).match(/-?[0-9.]+/)?.[0] || '0')
+      wrapped = `Transform(alignment: Alignment.center, transform: Matrix4.rotationZ(${deg} * 3.141592653589793 / 180), child: ${wrapped})`
+    }
+    return `Positioned(left: ${left}, top: ${top}, child: ${wrapped})`
   }
 
   const childrenDart = roots.map(r=> renderNode(r, true)).join(',\n')

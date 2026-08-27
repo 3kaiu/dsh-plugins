@@ -11,6 +11,7 @@
 //   - dedup: 同 svgKey 多实例只落一份文件(轮播三卡 28→去重后一份 key 一文件)。
 import fs from 'node:fs'
 import path from 'node:path'
+import { sanitizeSvg } from './svg-sanitize'
 
 /**
  * 回填 assets.json(B0): 把 mcp_extractSvg / 设计侧位图导出的结果合并进产物包 assets 表。
@@ -79,7 +80,7 @@ export function resolveAssets(bp, plan, opts = {}) {
 
   for (const node of imageNodes) {
     const hit = idx.image.get(node.id) || (node.fill.src ? { src: node.fill.src } : null)
-    const ext = hit?.src && /^data:/.test(hit.src) ? (/.png/.test(hit.src.slice(0, 40)) ? 'png' : 'jpeg') : (hit?.src || '').split('.').pop()?.split('?')[0] || 'png'
+    const ext = hit?.src && /^data:/.test(hit.src) ? (/.png/.test(hit.src.slice(0, 40)) ? 'png' : 'jpeg') : safeExt((hit?.src || '').split('.').pop()?.split('?')[0] || 'png')
     const file = `${assetDir}/${sanitize(node.id)}.${ext}`
     const crop = node.fill.crop ? { mode: 'cover', visibleRect: node.fill.crop.visibleRect } : null
     assets.push({
@@ -119,14 +120,18 @@ export function resolveAssets(bp, plan, opts = {}) {
 
   // 落盘(显式传 projectDir 才写; 否则只返回计划供调用方审查)
   if (opts.projectDir) {
+    const root = path.resolve(opts.projectDir)
     for (const s of storage) {
-      const abs = path.join(opts.projectDir, s.file)
+      const abs = confine(root, s.file)
+      if (!abs) continue // 路径越界（含 .. / 绝对路径）→ 拒绝落盘
+      // copyFrom 同样必须落在 projectDir 内，禁止任意文件读取
+      const copyFrom = s.copyFrom ? confine(root, s.copyFrom) : null
       fs.mkdirSync(path.dirname(abs), { recursive: true })
-      if (s.write?.kind === 'content') fs.writeFileSync(abs, s.write.value)
+      if (s.write?.kind === 'content') fs.writeFileSync(abs, sanitizeSvg(s.write.value))
       else if (s.write?.kind === 'data' && /^data:/.test(s.write.value)) {
         const b64 = s.write.value.split(',')[1] || ''
         fs.writeFileSync(abs, Buffer.from(b64, 'base64'))
-      } else if (s.copyFrom && fs.existsSync(s.copyFrom)) fs.copyFileSync(s.copyFrom, abs)
+      } else if (copyFrom && fs.existsSync(copyFrom)) fs.copyFileSync(copyFrom, abs)
     }
   }
 
@@ -163,3 +168,20 @@ export function imageBackgroundStyle(fill, bounds) {
 const sanitize = (s) => String(s || 'asset').replace(/[^a-zA-Z0-9_-]+/g, '_')
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
 const round2 = (n) => Math.round(n * 100) / 100
+
+/**
+ * 路径收敛：将 file 解析到 root 之下，若含 `..`/绝对路径导致越界则返回 null（拒绝落盘/读取）。
+ * 用于防止 assetDir/copyFrom/ext 中注入 `..` 造成的任意文件读写。
+ */
+function confine(root: string, file: string): string | null {
+  const abs = path.resolve(root, file)
+  const rel = path.relative(root, abs)
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null
+  return abs
+}
+
+/** 仅允许已知安全扩展名，避免 ext 注入造成的非预期落盘类型 */
+function safeExt(ext: string): string {
+  const e = String(ext || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(e) ? e : 'png'
+}

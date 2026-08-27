@@ -12,6 +12,8 @@ const pascal = (s:string) => {
 }
 const esc = (s:string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const escAttr = (s:string) => String(s).replace(/"/g, '&quot;')
+/** 生成安全的 Vue v-html 绑定字面量: 外层单引号属性, 内层 JSON 双引号字符串, 单引号转义(防反斜杠/换行/引号击穿属性) */
+const vueSvgLiteral = (svg:string) => `'${JSON.stringify(sanitizeSvg(svg)).replace(/'/g, "\\'")}'`
 
 const UNITLESS = new Set(['opacity','zIndex','fontWeight','lineHeight','flexGrow','flexShrink','order','WebkitLineClamp'])
 function styleObjectToVueBinding(style: Record<string, any>): string {
@@ -93,8 +95,7 @@ export function emitVue(bp:any, plan:any, assets:any, profile:any, opts:any = {}
     tmpLines.push(open)
     mapEntries.push(entry(el, tmpLines.length))
     if(el.rawSvg){
-      const clean = sanitizeSvg(el.rawSvg)
-      tmpLines.push(`${pad}  <div style="width:100%;height:100%" v-html="'${escAttr(clean).replace(/'/g,"\\'")}'"></div>`)
+      tmpLines.push(`${pad}  <div style="width:100%;height:100%" v-html=${vueSvgLiteral(el.rawSvg)}></div>`)
     }
     if(el.textRuns?.length){
       for(const r of el.textRuns){

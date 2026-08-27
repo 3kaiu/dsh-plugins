@@ -16,6 +16,38 @@ const round1 = (n) => Math.round((n || 0) * 100) / 100
 /** 长度字段缩放器(绑定因子; 非数值如 "auto" 原样透传) */
 const dimBy = (f) => (v) => (typeof v === 'number' && isFinite(v) ? round1(v * f) : v)
 
+/** 长度/数组长度缩放(radius 等单值或四角数组) */
+function scaleLength(v, dim) {
+  if (Array.isArray(v)) return v.map((x) => dim(x))
+  return dim(v)
+}
+/** padding/margin 对象(数字或 {top,right,bottom,left})缩放 */
+function scaleBox(p, dim) {
+  if (typeof p === 'number') return dim(p)
+  if (p && typeof p === 'object') {
+    const o = {}
+    for (const k of ['top', 'right', 'bottom', 'left', 'horizontal', 'vertical', 'all']) {
+      if (p[k] != null) o[k] = dim(p[k])
+    }
+    return o
+  }
+  return p
+}
+/** 描边缩放(宽度/虚线) */
+function scaleStroke(s, dim) {
+  if (!s || typeof s !== 'object') return s
+  const o = { ...s }
+  for (const k of ['width', 'dashWidth', 'dashGap']) if (o[k] != null) o[k] = dim(o[k])
+  return o
+}
+/** 阴影/模糊效果缩放(offsetX/Y/blur/spread/radius) */
+function scaleEffect(e, dim) {
+  if (!e || typeof e !== 'object') return e
+  const o = { ...e }
+  for (const k of ['offsetX', 'offsetY', 'blur', 'spread', 'radius']) if (o[k] != null) o[k] = dim(o[k])
+  return o
+}
+
 /** 常见设备逻辑宽(@1x); 用于比值证据（覆盖 2023-2026 主流 iPhone/Android/平板/桌面断点） */
 const LOGICAL_WIDTHS = [320, 360, 375, 384, 390, 393, 402, 412, 414, 428, 430, 440, 744, 768, 800, 810, 820, 834, 1024, 1080, 1194, 1280, 1366, 1440, 1512, 1728, 1920]
 /** 候选倍率 */
@@ -147,6 +179,11 @@ export function applyDesignScale(nodes = [], styles = {}, factor = 1) {
     if (n.y != null) out.y = dim(n.y)
     if (n.width != null) out.width = dim(n.width)
     if (n.height != null) out.height = dim(n.height)
+    // 缩放其余长度语义字段(防止 @2x 归一后圆角/描边/阴影/内边距仍翻倍)
+    if (n.borderRadius != null) out.borderRadius = scaleLength(n.borderRadius, dim)
+    if (n.padding != null) out.padding = scaleBox(n.padding, dim)
+    if (n.stroke && typeof n.stroke === 'object') out.stroke = scaleStroke(n.stroke, dim)
+    if (Array.isArray(n.effects)) out.effects = n.effects.map((e) => scaleEffect(e, dim))
     if (Array.isArray(n.textStyle)) {
       out.textStyle = n.textStyle.map((t) => scaleTextStyle(t, factor))
     } else if (n.textStyle) {

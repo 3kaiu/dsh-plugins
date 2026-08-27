@@ -32,8 +32,9 @@ function isButtonLike(n:any): {score:number, reason:string} | null {
   const r = ly.borderRadius ?? n.borderRadius
   const rad = Array.isArray(r) ? r[0] : (typeof r==='number'?r:null)
   if(rad!=null && (rad < BTN_RADIUS[0] || rad > BTN_RADIUS[1])) return null
-  // 有填充或描边（按钮通常有背景或边框）
-  const hasFill = !!n.color || !!n.fill || !!n.stroke
+  // 有背景填充或描边（按钮通常有背景或边框）。注意: 仅 text 文本色(n.color)不算背景,
+  // 否则文字标签会被误判为 Button 组件(启发式铁律: 绝不强行映射)
+  const hasFill = (!!n.fill && (n.fill.type === 'solid' || n.fill.type === 'image' || n.fill.type === 'gradient')) || !!n.stroke
   if(!hasFill) return null
   return { score: 0.82, reason: `按钮启发式: ${w}x${h} 文本"${String(n.text||n.children?.[0]?.text||'').slice(0,8)}" 圆角${rad??'缺省'}` }
 }

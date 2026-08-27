@@ -158,23 +158,34 @@ export function validatePatch(patch: Patch, request: PatchRequest, opts: Validat
   // 白名单外的新 external 视为违约(相对路径 ./ ../ 不计)
   for (const dep of newImports) {
     if (dep.startsWith('.') || dep.startsWith('/')) continue
-    if (!allowedDeps.has(dep)) fail('dependency', `新增依赖越界: "${dep}" 不在白名单(禁止引入新依赖)`)
+    const base = String(dep).replace(/^node:/, '').split('/')[0]
+    if (!allowedDeps.has(dep) && !DANGEROUS_MODULES.has(base)) {
+      fail('dependency', `新增依赖越界: "${dep}" 不在白名单(禁止引入新依赖)`)
+    }
+    // 无论是否在白名单, 危险模块一律拒收(防 RCE: child_process / vm / worker_threads ...)
+    if (DANGEROUS_MODULES.has(base)) fail('dangerous-dependency', `禁止引入危险模块: "${dep}"(可能造成代码执行逃逸)`)
+  }
+  // 3b. 危险代码模式(独立于依赖): eval / new Function / 字符串型 setTimeout / 间接 require
+  if (hasDangerousCode(patchText)) {
+    fail('dangerous-code', '检测到 eval / new Function / 字符串定时器 / 动态 require 等危险代码模式(禁止)')
   }
   // 4. 修改量异常
   let totalAdded = 0, totalOriginal = 0, totalChanged = 0
+  const maxAdded = opts.maxAddedLines ?? 400
   for (const f of patch.files) {
     if (f.original == null) continue
     const aLines = f.content.split('\n')
     const oLines = f.original.split('\n')
     const changed = diffLineCount(oLines, aLines)
     totalChanged += changed
-    totalAdded += Math.max(0, aLines.length - oLines.length)
+    const added = Math.max(0, aLines.length - oLines.length)
+    totalAdded += added
     totalOriginal += oLines.length
     const ratio = oLines.length > 0 ? changed / oLines.length : 1
     const maxRatio = opts.maxFileChangeRatio ?? 0.6
     if (ratio > maxRatio) fail('change-ratio', `${f.path} 改动比 ${(ratio * 100).toFixed(1)}% > ${(maxRatio * 100)}%(疑似大范围重写)`)
-    const maxAdded = opts.maxAddedLines ?? 400
-    if (totalAdded > maxAdded) fail('change-volume', `新增行 ${totalAdded} > ${maxAdded}`)
+    // 单文件新增行阈值(非全局累计): 防单个文件被整页重写
+    if (added > maxAdded) fail('change-volume', `${f.path} 单文件新增 ${added} 行 > ${maxAdded}(疑似大范围重写)`)
   }
 
   // 5. 禁止近似资产替代：检测 patch 中是否新增 CSS 手绘图形替代 svgKey(如用 ::before 画图标且 allowedNodes 含资产节点)
@@ -203,23 +214,36 @@ function extractTouchedNodes(text: string): string[] {
 
 function extractNewImports(patch: Patch): string[] {
   const deps = new Set<string>()
-  const importRe = /(?:import\s+[^'"]*\s+from\s+|require\s*\(\s*)["']([^"']+)["']/g
+  // 同时覆盖 静态 import ... from 'x' / require('x') / 动态 import('x')
+  const importRe = /(?:import\s+[^'"]*\s+from\s+|import\s*\(\s*|require\s*\(\s*)["']([^"']+)["']/g
   for (const f of patch.files) {
     const txt = f.content
     let m: RegExpExecArray | null
     while ((m = importRe.exec(txt))) deps.add(m[1])
-    // 也匹配 addedDependencies 声明
-    for (const d of f.content.matchAll(/from\s+["']([^"']+)["']/g)) deps.add(d[1])
   }
   // 只返回不在 original 里的新增(需 original 才可比)
   const originalDeps = new Set<string>()
   for (const f of patch.files) {
     if (!f.original) continue
     let m: RegExpExecArray | null
-    const re = /(?:import\s+[^'"]*\s+from\s+|require\s*\(\s*)["']([^"']+)["']/g
+    const re = /(?:import\s+[^'"]*\s+from\s+|import\s*\(\s*|require\s*\(\s*)["']([^"']+)["']/g
     while ((m = re.exec(f.original))) originalDeps.add(m[1])
   }
   return [...deps].filter((d) => !originalDeps.has(d))
+}
+
+/** 危险模块黑名单: 一旦被新引入即视为 RCE 逃逸尝试, 一律拒收 */
+const DANGEROUS_MODULES = new Set([
+  'child_process', 'cluster', 'worker_threads', 'vm', 'module', 'repl',
+  'dgram', 'tls', 'net', 'http', 'https', 'crypto', 'os', 'fs', 'path',
+  'dns', 'zlib', 'readline', 'stream', 'inspector', 'v8',
+])
+
+/** 危险代码模式: 与依赖无关, 任何出现即拒收(防 LLM 在 allowed 文件里塞入 eval/动态执行) */
+function hasDangerousCode(text: string): boolean {
+  // new Function / eval( / 字符串型 setTimeout/setInterval / 间接 require 变量
+  const re = /\bnew\s+Function\s*\(|\b(?:eval)\s*\(|(?:setTimeout|setInterval)\s*\(\s*['"`]|\brequire\s*\(/g
+  return re.test(text)
 }
 
 function diffLineCount(a: string[], b: string[]): number {

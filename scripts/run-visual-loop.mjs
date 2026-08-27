@@ -92,8 +92,10 @@ function renderSpec(mode) {
     },
     timeout: 300000,
   });
-  if (r.status !== 0 && r.status !== null) {
-    console.error(`flutter test (${mode}) failed:\n${r.stdout?.slice(-2000)}\n${r.stderr?.slice(-2000)}`);
+  // status===null 表示 spawnSync 超时/信号终止 —— 必须显性失败, 不得静默当作成功
+  if (r.status !== 0 || r.status === null) {
+    const sig = r.signal ? ` (signal ${r.signal})` : (r.error ? ` (${r.error.message})` : '');
+    console.error(`flutter test (${mode}) failed${sig}:\n${r.stdout?.slice(-2000)}\n${r.stderr?.slice(-2000)}`);
     process.exit(1);
   }
 }

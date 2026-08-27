@@ -179,8 +179,8 @@ export function diffRegions(bufA, bufB, opts = {}) {
 
 /** Sørensen-Dice 系数(字符 bigram): D2C 的文本相似度定义 */
 export function textSimilarity(s1, s2) {
-  s1 = String(s1 ?? "").replace(/\s+/g, "")
-  s2 = String(s2 ?? "").replace(/\s+/g, "")
+  s1 = String(s1 ?? "").toLowerCase().replace(/\s+/g, "")
+  s2 = String(s2 ?? "").toLowerCase().replace(/\s+/g, "")
   if (!s1 && !s2) return 1
   if (!s1 || !s2) return 0
   if (s1 === s2) return 1
@@ -263,7 +263,8 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
   const matchedRenderArea = matched.reduce((s, m) => s + areaOf(m._r), 0)
   const recallP = designArea > 0 ? matchedDesignArea / designArea : 1
   const precisionP = renderArea > 0 ? matchedRenderArea / renderArea : 1
-  const blockMatchRate = round1(recallP + precisionP > 0 ? (2 * recallP * precisionP) / (recallP + precisionP) : 1)
+  // 无配对 → 块匹配率为 0(设计有文本块但渲染什么都没匹配上时, 不得判为满分)
+  const blockMatchRate = matched.length === 0 ? 0 : round1((2 * recallP * precisionP) / (recallP + precisionP))
 
   const positionSimilarity = matched.length ? round1(matched.reduce((s, m) => s + m.posSim, 0) / matched.length) : null
 
