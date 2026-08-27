@@ -38,6 +38,8 @@ Phase 5 Correction Loop 按修正指令修码 → 重截图 → 再 compare; max
 | 分析 | `ui_restore_run`(mode=analyze) 或 CLI `node adapters/restore.mjs analyze <design.json> --session s.json` |
 | 下钻 | `ui_restore_region`(rect/ids → 完整精确子树), 大页面禁止整页蓝图进上下文 |
 | 对比 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json` |
+| 截图/块清单 | `adapters/screenshot.mjs`(仅图) / `adapters/dom-blocks.mjs`(文本块清单 + 同源截图, Web 渲染体; 块清单成对传入 verify 即得 blockMatchRate) |
+| 回归 | `node scripts/run-benchmarks.mjs` 全量 benchmark(改算法前后各跑一次) |
 
 ## 修正优先级(diff 多于 3 处时按序处理, 不乱修)
 
@@ -57,4 +59,5 @@ Phase 5 Correction Loop 按修正指令修码 → 重截图 → 再 compare; max
 
 ## 完成条件(V1)
 
-合同 100% 落地 + 四闸全 PASS + blockMatchRate=1 且像素残差仅噪声级(<2%)。
+合同 100% 落地 + 四闸全 PASS + 差异区域归零且像素残差仅噪声级(diffRatio<2%)。
+块级 BMR=1 仅对「文本均为真文本节点」的渲染体强制 —— 文本以矢量字形(svgKey)呈现的稿件天然 BMR<1, 以区域归零与像素残差作准。

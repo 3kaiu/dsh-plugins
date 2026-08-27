@@ -20,7 +20,8 @@ const flag = (name, dflt = null) => {
 };
 const has = (name) => args.includes(`--${name}`);
 
-const CHROME_CANDIDATES = [
+// 共享给 adapters/dom-blocks.mjs(CDP 引擎同一套浏览器发现逻辑)
+export const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
   '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
@@ -29,12 +30,12 @@ const CHROME_CANDIDATES = [
   '/usr/bin/chromium-browser',
 ];
 
-function findSystemChrome() {
+export function findSystemChrome() {
   for (const p of CHROME_CANDIDATES) if (fs.existsSync(p)) return p;
   return null;
 }
 
-function toUrl(target) {
+export function toUrl(target) {
   if (/^https?:\/\//i.test(target)) return target;
   const abs = path.resolve(target);
   if (!fs.existsSync(abs)) throw new Error(`目标不存在: ${abs}`);

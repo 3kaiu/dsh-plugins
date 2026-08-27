@@ -1,0 +1,38 @@
+name: benchmark
+# UI 还原 benchmark 全量回归(收敛 + 反假阴性双向门禁)。
+# 固定 macos: blockMetrics/几何度量对字体渲染敏感(macos 自带 PingFang SC),
+# 跨平台重生成 render 会与库内基准 truth.png 失配 —— 字形覆盖是排版级问题, 属 V2 专项。
+on:
+  pull_request:
+    paths: ["packages/ui-restore/**", "benchmarks/**", "scripts/run-benchmarks.mjs"]
+  push:
+    branches: [main]
+    paths: ["packages/ui-restore/**", "benchmarks/**", "scripts/run-benchmarks.mjs"]
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: pnpm
+        run: npm install -g pnpm@9.15.0
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build @ui-restore/core
+        run: (cd packages/ui-restore && node build.mjs)
+      - name: run benchmarks(good 收敛 + bad 注入必检出)
+        run: node scripts/run-benchmarks.mjs
+      - name: 上传运行产物(diff/session, 便于事后诊断)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: .dsh/bench/
+          retention-days: 14

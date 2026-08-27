@@ -8,7 +8,8 @@
 //   analyze  设计稿 → UI Truth 产物包(四闸门禁)
 //     node adapters/restore.mjs analyze <design.json> [--dir out] [--scale 2|auto] [--expect-sections N] [--session s.json]
 //   verify   参考图 vs 渲染截图 → 指标 + 差异区域 + 修正指令
-//     node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--session s.json]
+//     node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--blocks-truth mT.json] [--blocks-render mR.json] [--session s.json]
+//     (成对提供文本块清单即启用块级层 blockMatchRate —— Web 渲染体用 adapters/dom-blocks.mjs 导出)
 //   status   查看/推进会话状态(iteration 记账, maxIterations=5 由调用方遵守)
 //     node adapters/restore.mjs status --session <s.json>
 //   snapshot 蓝图 → 几何参考快照(truth 来源之一: geometry 级, 无需正确实现)
@@ -73,7 +74,9 @@ async function main() {
     const [truthPng, renderPng] = [args[1], args[2]];
     const bpPath = flag('bp');
     if (!truthPng || !renderPng || !bpPath) { console.error('用法: restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--grid N] [--top N] [--session s.json]'); process.exit(1); }
-    const r = verifyScreenshots({ truthPng, renderPng, bpPath, grid: Number(flag('grid')) || undefined, top: Number(flag('top')) || undefined });
+    const r = verifyScreenshots({ truthPng, renderPng, bpPath,
+      grid: Number(flag('grid')) || undefined, top: Number(flag('top')) || undefined,
+      blocksTruth: flag('blocks-truth') || undefined, blocksRender: flag('blocks-render') || undefined });
     console.log(JSON.stringify(r.pixel));
     if (r.blocks) console.log('块级层:', JSON.stringify(r.blocks));
     if (r.corrections) {
@@ -86,8 +89,16 @@ async function main() {
     if (sp) {
       const s = loadSession(sp) || { phases: {} };
       const iteration = (s.iteration || 0) + 1;
-      // 验收达成判据: 有块级指标时看 blockMatchRate, 否则退回"像素零差/区域归零"
-      const reached = r.blocks?.blockMatchRate != null ? r.blocks.blockMatchRate >= 1 : (r.pixel.diffRatio === 0 || (r.regions && r.regions.clusterCount === 0));
+      // 验收达成判据: 有块级指标时看 blockMatchRate, 否则退回"像素零差/区域归零"。
+      // 矢量字形豁免(SKILL §⑤ 语义修订): 设计稿文本呈 svgKey 字形时 DOM 无对应文本节点,
+      // BMR 天然<1 —— 此时若区域归零且像素残差噪声级、无待修指令, 不判失败(否则此类稿
+      // 会永远 correcting 烧完迭代预算)。
+      const cleanGeometry = r.regions
+        ? r.regions.clusterCount === 0 && r.pixel.diffRatio < 0.02
+        : r.pixel.diffRatio === 0;
+      const reached = r.blocks?.blockMatchRate != null
+        ? (r.blocks.blockMatchRate >= 1 || (cleanGeometry && !r.corrections?.corrections?.length))
+        : cleanGeometry;
       // 状态语义三分(审计修订): completed=验收通过 / exhausted=迭代预算耗尽但未达标 /
       // correcting=待继续修码。旧实现把"打满 5 轮"也记 completed, 失败与穷尽混同。
       const status = reached ? 'completed' : iteration >= MAX_ITERATIONS ? 'exhausted' : 'correcting';

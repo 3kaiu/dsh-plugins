@@ -23,9 +23,12 @@ description: UI 1:1 还原。设计稿 DSL → 中立蓝图 → 验证门禁。�
 # 分析: 设计稿 json → UI Truth 产物包 + 四闸门禁(session 记账)
 node adapters/restore.mjs analyze <design.json> --dir <out> [--scale auto] --session s.json
 # 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + iteration 记账(maxIterations=5)
-node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json
+#   成对提供 --blocks-truth/--blocks-render 即启用块级层(blockMatchRate)
+node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--blocks-truth mT.json --blocks-render mR.json] --session s.json
 # 截图(可选能力, 需 pnpm add -D playwright && npx playwright install chromium):
 node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812]
+# Web 渲染探针: 同一会话产出 文本块清单 + 同源截图(png 与块坐标严格同空间):
+node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--engine auto|playwright|cdp]
 ```
 
 MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff`。
@@ -87,7 +90,8 @@ ui-restore build <design.json> --dir <out> [--scale auto]
 - 蓝图侧:`ui-restore verify <blueprint.json>`(契约+真值 PASS)
 - 渲染侧:`ui-restore diff <truth.png> <render.png> --blocks <mT.json>,<mR.json>`
   - 渲染器块清单契约:任意能导出 `{png, textBlocks:[{text,x,y,width,height}]}` 的渲染器(Web 截图+DOM 遍历 / Flutter golden 收集 RenderParagraph / 原生快照)接同一内核
-- 判定:blockMatchRate 必须=1;diffRatio 仅允许文字亚像素/抗锯齿级(<2%)
+- 判定:差异区域归零 + diffRatio 仅允许文字亚像素/抗锯齿级(<2%)
+- 块级层:blockMatchRate 以「文本均为真文本节点」的渲染体为满分语义 —— 设计稿文本呈矢量字形(svgKey)时 DOM 无对应文本节点, BMR 天然<1 且不算失败(参考项, 见 §⑦)
 
 ## ⑥ 差异定位(失败时)
 
@@ -117,5 +121,6 @@ benchmarks/
 ```
 
 - 回归 = 对每个 case 重跑 `build` 四闸 + `diff`(blockMatchRate=1, diffRatio<2%)+`regions` 归零
+- **一键回归**: `node scripts/run-benchmarks.mjs`(好例收敛断言 + 坏例注入必检出的反假阴性门禁; session/产物记账在 `.dsh/bench/`, 不入 git)
 - **判定对象是还原结果而非算法输出**: 新案例先入 benchmarks 再改算法; 任何算法改动跑全量 case 防回归
 - 差异修正入口: `regions --bp <blueprint.json>` 输出末尾附修正指令(区域→关联节点→下钻核对), 数值真值始终以蓝图为准

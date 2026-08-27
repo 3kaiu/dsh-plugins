@@ -136,6 +136,8 @@ export function verifyScreenshots(opts) {
     });
     out.blocks = { blockMatchRate: b.blockMatchRate, matchedPairs: b.matchedPairs, positionSimilarity: b.positionSimilarity, colorSimilarity: b.colorSimilarity, avgTextSimilarity: b.avgTextSimilarity };
     out.unmatchedRender = b.unmatchedRender.slice(0, 8);
+    // 设计侧未命中同样需要暴露(runner 诊断双侧粒度差): 此前只出 render 侧导致好例 BMR 偏低时无法归因
+    out.unmatchedDesign = b.unmatchedDesign.slice(0, 8);
   }
 
   if (opts.bpPath) {
