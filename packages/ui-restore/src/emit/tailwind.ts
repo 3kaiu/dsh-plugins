@@ -153,6 +153,19 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
     fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f:string) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
+  // ⑱ library 标注
+  const annotateLibrary = (el:any)=>{
+    const c = ctx.contractById.get(el.nodeId)
+    if(c?.component?.strategy==='library' && c.component.name){
+      el.library = { component: c.component.name, props: (c as any)._library?.props || {}, importFrom: (c as any)._library?.importFrom || profile.componentLibraries?.[0] || 'antd' }
+    }
+    for(const ch of el.children||[]) annotateLibrary(ch)
+  }
+  roots.forEach(annotateLibrary)
+  const libraryImports = new Map<string, any>()
+  const collectLib = (el:any)=>{ if(el.library){ const k=`${el.library.importFrom}:${el.library.component}`; if(!libraryImports.has(k)) libraryImports.set(k, el.library)} for(const ch of el.children||[]) collectLib(ch) }
+  roots.forEach(collectLib)
+
   // 转换每个节点的 style 为 Tailwind
   const convert = (el:any)=>{
     const { className, inline } = styleToTailwind(el.style || {})
@@ -187,12 +200,15 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
     const styleVar = Object.keys(el.style||{}).length ? safeIdent(el.nodeId,'s') : null
     const attrs = [`data-restore-node="${el.nodeId}"`]
     if (el.assetMissing) attrs.push(`data-asset-missing="${esc(el.assetMissing)}"`)
+    const tag = el.library ? el.library.component : 'div'
+    const extraProps = el.library && el.library.props ? Object.entries(el.library.props).map(([k,v])=> ` ${k}={${JSON.stringify(v)}}`).join('') : ''
     const clsAttr = clsVar ? ` className={${clsVar}}` : ''
     const styleAttr = styleVar ? ` style={${styleVar}}` : ''
-    const open = `${pad}<div ${attrs.join(' ')}${clsAttr}${styleAttr}>`
+    const open = `${pad}<${tag} ${attrs.join(' ')}${extraProps}${clsAttr}${styleAttr}>`
+    const closeTag = `</${tag}>`
     const selfText = el.text != null && !el.textRuns?.length ? `{${JSON.stringify(el.text)}}` : ''
     if (selfText) {
-      jsx.push(`${open}${selfText}</div>`)
+      jsx.push(`${open}${selfText}${closeTag}`)
       mapEntries.push(entry(el, jsx.length, clsVar, styleVar))
       return
     }
@@ -209,7 +225,7 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
       }
     }
     for (const c of el.children) render(c, indent + 2)
-    jsx.push(`${pad}</div>`)
+    jsx.push(`${pad}${closeTag}`)
   }
   const entry = (el:any, line:number, clsVar:string|null, styleVar:string|null) => ({
     nodeId: el.nodeId,
@@ -229,9 +245,11 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
     background: '#FFFFFF',
   })
   const canvasInline = { fontFamily: ctx.fontStack }
+  const importLines = [...libraryImports.values()].map((li:any)=> `import { ${li.component} } from '${li.importFrom}';`)
   const content = [
     `// 由 @ui-restore/core emit 生成(Tailwind) — 受 Generation Contract 约束`,
-    `// 画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×)` : ''} | contract ${plan.items.length} 项 | 资产 ${assets?.summary?.resolved ?? 0}/${assets?.summary?.total ?? 0} | Tailwind 任意值保真`,
+    `// 画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×)` : ''} | contract ${plan.items.length} 项 | 资产 ${assets?.summary?.resolved ?? 0}/${assets?.summary?.total ?? 0} | Tailwind 任意值保真${libraryImports.size?` | 库组件 ${[...libraryImports.values()].map((l:any)=>l.component).join(',')}`:''}`,
+    ...importLines,
     `export default function ${componentName}() {`,
     `  const pageCls = ${JSON.stringify(canvasTw.className)};`,
     `  const pageStyle = ${jsxStyleObject(canvasInline)};`,

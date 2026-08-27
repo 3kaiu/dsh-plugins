@@ -10,8 +10,9 @@
 //           grid/flow 预留 V1 不产生。
 //   paint:  fill.image → 'asset'; svgKey → 'svg'; 其余 → 'css'
 //   typography: textRuns → 'rich-text'; 普通 text → 'native'
-//   component: V1 一律 'native'(Component Library Mapping 是 ⑱, 暂缓)
+//   component: ⑱ Library Mapping：profile.componentLibraries 命中且启发式高置信时 → 'library'，否则 'native'
 import type { TargetProfile } from './types.ts'
+import { mapToLibrary } from './component-map.ts'
 
 /** 蓝图节点的结构子集(只声明本模块消费的字段) */
 export interface ContractNode {
@@ -99,15 +100,21 @@ export function planGeneration(bp, profile, opts = {}) {
     const typography = n.textRuns?.length
       ? { strategy: 'rich-text' }
       : { strategy: 'native', softWrap: n.softWrap, maxLines: n.maxLines }
+    // ⑱ component library 映射（保守，仅高置信）
+    let component: GenerationContractItem['component'] = { strategy: 'native' }
+    const libHit = mapToLibrary(n, profile as any)
+    if(libHit) component = { strategy: 'library', name: libHit.component }
     const item = {
       nodeId: n.id,
       layout: { strategy },
       paint: { strategy: paint },
       typography,
-      component: { strategy: 'native' },
+      component,
       container: { clip: ly.clip?.enabled ? 'overflow-hidden' : 'none' },
       ...(asset ? { asset } : {}),
-    }
+    } as GenerationContractItem
+    // 记录映射原因供 emit 侧取 props
+    if(libHit) (item as any)._library = libHit
     items.push(item)
     // TYPO(P0): 字体观察 —— 设计稿声明字体 → 解析栈; 不在 profile 栈 = 环境风险
     if (typeof n.text === 'string' && n.text) {

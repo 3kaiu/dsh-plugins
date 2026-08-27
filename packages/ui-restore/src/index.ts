@@ -25,13 +25,14 @@ export * from "./ir/ingest.ts";
 export * from "./ir/checklist.ts";
 // 还原决策分类(kind/sizing/position/spacing): 自 layout-infer 壳包归位 core(壳只留工具注册面)
 export * from "./classify.ts";
-// Target 层(v4): 项目理解 → Target Profile → 生成契约 → 资产解析 → 受限 Patch
+// Target 层(v4): 项目理解 → Target Profile → 生成契约 → 资产解析 → 受限 Patch + 库映射
 export * from "./target/types.ts";
 export * from "./target/detect.ts";
 export * from "./target/resolve.ts";
 export * from "./target/profile.ts";
 export * from "./target/contract.ts";
 export * from "./target/asset-resolver.ts";
+export * from "./target/component-map.ts";
 // verify 扩展(v4 Phase 3): 组合验收 / 错误分类 / 收敛评分 / Vision 兜底
 export * from "./verify/errors.ts";
 export * from "./verify/gate.ts";

@@ -34,6 +34,25 @@ export function emitReact(bp, plan, assets, profile, opts = {}) {
     fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
+  // ⑱ library 标注：按 contract 回填库组件标签
+  const annotateLibrary = (el)=>{
+    const c = ctx.contractById.get(el.nodeId)
+    if(c?.component?.strategy==='library' && c.component.name){
+      el.library = { component: c.component.name, props: (c as any)._library?.props || {}, importFrom: (c as any)._library?.importFrom || profile.componentLibraries?.[0] || 'antd' }
+    }
+    for(const ch of el.children||[]) annotateLibrary(ch)
+  }
+  roots.forEach(annotateLibrary)
+  const libraryImports = new Map()
+  const collectImports = (el)=>{
+    if(el.library) {
+      const key = `${el.library.importFrom}:${el.library.component}`
+      if(!libraryImports.has(key)) libraryImports.set(key, el.library)
+    }
+    for(const ch of el.children||[]) collectImports(ch)
+  }
+  roots.forEach(collectImports)
+
   const mapEntries = []
   const decls = []
   const jsx = []
@@ -51,10 +70,13 @@ export function emitReact(bp, plan, assets, profile, opts = {}) {
     const styleVar = safeIdent(el.nodeId, 's')
     const attrs = [`data-restore-node="${el.nodeId}"`]
     if (el.assetMissing) attrs.push(`data-asset-missing="${esc(el.assetMissing)}"`)
-    const open = `${pad}<div ${attrs.join(' ')} style={${styleVar}}>`
+    const tag = el.library ? el.library.component : 'div'
+    const extraProps = el.library && el.library.props ? Object.entries(el.library.props).map(([k,v])=> ` ${k}={${JSON.stringify(v)}}`).join('') : ''
+    const open = `${pad}<${tag} ${attrs.join(' ')}${extraProps} style={${styleVar}}>`
+    const closeTag = `</${tag}>`
     const selfText = el.text != null && !el.textRuns?.length ? `{${JSON.stringify(el.text)}}` : ''
     if (selfText) {
-      jsx.push(`${open}${selfText}</div>`)
+      jsx.push(`${open}${selfText}${closeTag}`)
       mapEntries.push(entry(el, jsx.length, styleVar))
       return
     }
@@ -67,7 +89,7 @@ export function emitReact(bp, plan, assets, profile, opts = {}) {
       for (const r of el.textRuns) jsx.push(`${pad}  <span style={${jsxStyleObject(r.style)}}>${esc(r.text)}</span>`)
     }
     for (const c of el.children) render(c, indent + 2)
-    jsx.push(`${pad}</div>`)
+    jsx.push(`${pad}${closeTag}`)
   }
   const entry = (el, line, styleVar) => ({
     nodeId: el.nodeId,
@@ -87,9 +109,11 @@ export function emitReact(bp, plan, assets, profile, opts = {}) {
     background: '#FFFFFF',
     fontFamily: ctx.fontStack,
   }
+  const importLines = [...libraryImports.values()].map(li=> `import { ${li.component} } from '${li.importFrom}';`)
   const content = [
     `// 由 @ui-restore/core emit 生成(确定性) — 直接手改会被 generate 覆盖, 修复走 Patch Contract(allowedNodes 限定)`,
-    `// 画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×)` : ''} | contract ${plan.items.length} 项 | 资产 ${assets?.summary?.resolved ?? 0}/${assets?.summary?.total ?? 0}`,
+    `// 画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×)` : ''} | contract ${plan.items.length} 项 | 资产 ${assets?.summary?.resolved ?? 0}/${assets?.summary?.total ?? 0}${libraryImports.size?` | 库组件 ${[...libraryImports.values()].map(l=>l.component).join(',')}`:''}`,
+    ...importLines,
     `export default function ${componentName}() {`,
     `  const page = ${jsxStyleObject(canvasStyle)};`,
     ...decls.map((l) => l),
