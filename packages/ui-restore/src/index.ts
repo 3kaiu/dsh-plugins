@@ -43,5 +43,7 @@ export * from "./emit/style-ir.ts";
 export * from "./emit/react.ts";
 export * from "./emit/html.ts";
 export * from "./emit/tailwind.ts";
+// Enhancement Semantic ⑲
+export * from "./ir/semantic.ts";
 // target 受限 Patch 契约与校验(⑨⑪)
 export * from "./target/patch.ts";

@@ -14,6 +14,7 @@ import {
   extractDesignTokens, ingestDesignExport, lintDesignExport,
   generateCodeBlueprint,
   comparePng, blockMetrics, decodePng, diffRegions, diffToCorrections,
+  enrichSemanticSync,
 } from '../dist/index.js';
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -27,6 +28,8 @@ export async function buildBlueprint(designPath, opts = {}) {
   const lint = lintDesignExport(raw, { expectSections: expect != null && expect !== '' ? Number(expect) : undefined });
   const { canvas, styles, nodes } = ingestDesignExport(raw);
   const bp = generateCodeBlueprint({ canvas, nodes, styles, scale: opts.scale ?? declaredScale ?? null });
+  // Enhancement ⑲: 语义增强(非必需，启发式低成本，失败不阻断)
+  try{ enrichSemanticSync(bp) }catch{}
   return { bp, v: validateBlueprint(bp), raw, lint };
 }
 
