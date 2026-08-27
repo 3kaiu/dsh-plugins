@@ -5,6 +5,7 @@
 // data-restore-node 属性一致。验证循环(screenshot/dom-blocks/verify)渲染本文件,
 // 避免为 V1 引入 React 构建链; 修复循环的 Patch 同时作用于两份(同源所以等价)。
 import { buildElementTree, styleToCssDeclarations } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -36,8 +37,9 @@ export function emitPreviewHtml(bp, plan, assets, profile, opts = {}) {
     body.push(`${pad}<div ${attrs.join(' ')}${style}>`)
     mapEntries.push({ nodeId: el.nodeId, file: 'preview.html', selector: `[data-restore-node="${el.nodeId}"]`, line: body.length })
     if (el.rawSvg) {
-      // 内联矢量: 外层容器定尺寸, svg 100% 填充
-      body.push(`${pad}  <div style="width:100%;height:100%">${el.rawSvg}</div>`)
+      // 内联矢量: 外层容器定尺寸, svg 100% 填充（经白名单消毒）
+      const clean = sanitizeSvg(el.rawSvg)
+      body.push(`${pad}  <div style="width:100%;height:100%">${clean}</div>`)
     }
     if (el.textRuns?.length) {
       for (const r of el.textRuns) {

@@ -44,9 +44,11 @@ function mapOne(k: string, v: string|number): string[] | null {
     case 'backgroundRepeat': return v==='no-repeat' ? ['bg-no-repeat'] : null
     case 'borderRadius': {
       const s=String(v).trim()
-      // 10px / 10px 20px ... → rounded-[...]
-      if(/px/.test(s)) return [`rounded-[${escArbitrary(s)}]`]
-      // number 已在 style-ir 转为 px 字符串? 但此处 v 可能是数字
+      // 单值 10px → rounded-[10px]; 多值 10px 20px ... 回落 inline 保真（Tailwind arbitrary 多值语法不可靠）
+      if(/px/.test(s)){
+        if(s.includes(' ')) return null
+        return [`rounded-[${escArbitrary(s)}]`]
+      }
       if(num(v)!=null) return [`rounded-[${px(v)}]`]
       return null
     }
@@ -127,6 +129,7 @@ export function styleToTailwind(style: Record<string, string|number>): { classNa
 
 /** Tailwind 序列化：与 style-ir.buildElementTree 同源，仅样式表达不同 */
 import { buildElementTree } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const safeIdent = (s:string, prefix:string) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
 const pascal = (s:string) => {
@@ -189,7 +192,10 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
   const collect = (el:any) => {
     if(el.className) decls.push(`  const ${safeIdent(el.nodeId,'cls')} = ${JSON.stringify(el.className)};`)
     if(Object.keys(el.style||{}).length) decls.push(`  const ${safeIdent(el.nodeId,'s')} = ${jsxStyleObject(el.style)};`)
-    if (el.rawSvg) decls.push(`  const ${safeIdent(el.nodeId, 'svg')} = ${JSON.stringify(el.rawSvg)};`)
+    if (el.rawSvg) {
+      const clean = sanitizeSvg(el.rawSvg)
+      decls.push(`  const ${safeIdent(el.nodeId, 'svg')} = ${JSON.stringify(clean)};`)
+    }
     for (const c of el.children) collect(c)
   }
   for (const el of roots) collect(el)

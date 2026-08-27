@@ -103,7 +103,7 @@ export function resolveAssets(bp, plan, opts = {}) {
     if (ua.key && fileByKey.has(`svg:${ua.key}`)) {
       deduped++
       const prev = assets.find((a) => a.kind === 'svg' && a.key === ua.key)
-      if (prev) assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file: prev.file, dedupOf: prev.id, reference: prev.reference })
+      if (prev) assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file: prev.file, dedupOf: prev.id, reference: prev.reference, rawSvg: (prev as any).rawSvg || (prev as any).svg, svg: (prev as any).svg || (prev as any).rawSvg })
       continue
     }
     if (!hit) {
@@ -111,9 +111,10 @@ export function resolveAssets(bp, plan, opts = {}) {
       continue
     }
     const file = `${assetDir}/${sanitize(ua.key)}.svg`
-    assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file, source: 'mcp_extractSvg', format: 'svg', reference: 'inline' })
+    const svgContent = hit.svg || (hit as any).rawSvg || ''
+    assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file, source: 'mcp_extractSvg', format: 'svg', reference: 'inline', rawSvg: svgContent, svg: svgContent })
     fileByKey.set(`svg:${ua.key}`, true)
-    storage.push({ file, kind: 'svg', write: { kind: 'content', value: hit.svg || '' }, copyFrom: hit.path })
+    storage.push({ file, kind: 'svg', write: { kind: 'content', value: svgContent }, copyFrom: hit.path })
   }
 
   // 落盘(显式传 projectDir 才写; 否则只返回计划供调用方审查)

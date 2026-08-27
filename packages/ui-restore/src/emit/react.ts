@@ -4,6 +4,7 @@
 // 按 contract.layout.strategy 输出 —— 绝对/flex 跟随 contract, 不跟随裸 layout.role。
 // 结构分两遍: 先遍历 IR 产出样式常量声明, 再遍历产出 JSX(行号据此回填 restore-map)。
 import { buildElementTree } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const safeIdent = (s, prefix) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
 const pascal = (s) => {
@@ -60,7 +61,10 @@ export function emitReact(bp, plan, assets, profile, opts = {}) {
   const collect = (el) => {
     const styleVar = safeIdent(el.nodeId, 's')
     decls.push(`  const ${styleVar} = ${jsxStyleObject(el.style)};`)
-    if (el.rawSvg) decls.push(`  const ${safeIdent(el.nodeId, 'svg')} = ${JSON.stringify(el.rawSvg)};`)
+    if (el.rawSvg) {
+      const clean = sanitizeSvg(el.rawSvg)
+      decls.push(`  const ${safeIdent(el.nodeId, 'svg')} = ${JSON.stringify(clean)};`)
+    }
     for (const c of el.children) collect(c)
   }
   for (const el of roots) collect(el)

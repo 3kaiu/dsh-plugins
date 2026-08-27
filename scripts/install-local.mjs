@@ -15,8 +15,9 @@
 //   Release 模式(推荐,免构建):`node scripts/install-local.mjs --release`
 //     从 GitHub Release 下载 tarball 安装(下载后先做 SHA-256 校验,通过才
 //     交给 pnpm;Release 需为重建后的产物,含 SHA256SUMS 资产)
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,40 +40,44 @@ if (!existsSync(join(profileDir, "package.json"))) {
 }
 
 // 1. 安装依赖
+const pnpmAddSync = (spec, label) => {
+  console.log(`[install-local] add ${label} <- ${spec}`);
+  const r = spawnSync("pnpm", ["add", "-w", spec], { cwd: profileDir, stdio: "inherit" });
+  if(r.status!==0) throw new Error(`pnpm add 失败: ${label}`);
+};
+const fetchBuf = async (url) => {
+  const res = await fetch(url, { headers: { "User-Agent": "dsh-install-local" } });
+  if(!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+  return Buffer.from(await res.arrayBuffer());
+};
 for (const plugin of PLUGINS) {
   if (FROM_RELEASE) {
     const manifest = JSON.parse(readFileSync(join(root, "packages", plugin.dir, "package.json"), "utf8"));
     const tgz = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
     const url = RELEASE_BASE + "/" + tgz;
     console.log(`\n[install-local] add ${plugin.pkg} <- ${url}`);
-    // 供应链校验:先下载到临时目录,比对 GitHub Release 发布的 SHA256SUMS,
-    // 通过后才交给 pnpm——校验和与产物同源,防传输损坏/资产错配,
-    // 不防御 Release 本身被篡改(后者需签名或钉死已知摘要)。
     const tmpTgz = join(tmpdir(), "dsh-tgz", tgz);
     mkdirSync(dirname(tmpTgz), { recursive: true });
-    execSync(`curl -fsSL -o "${tmpTgz}" "${url}"`, { stdio: "inherit" });
-    const sumsTxt = execSync(`curl -fsSL "${RELEASE_BASE}/SHA256SUMS"`, { encoding: "utf8" });
+    const buf = await fetchBuf(url);
+    writeFileSync(tmpTgz, buf);
+    const sumsTxt = (await fetchBuf(RELEASE_BASE+"/SHA256SUMS")).toString('utf8');
     const want = sumsTxt.split("\n").map((l) => l.trim()).find((l) => l.endsWith("  " + tgz))?.split(/\s+/)[0];
-    const got = execSync(`shasum -a 256 "${tmpTgz}"`).toString().trim().split(/\s+/)[0];
+    const got = createHash("sha256").update(readFileSync(tmpTgz)).digest("hex");
     if (!want || want !== got) {
       console.error(`[install-local] SHA-256 校验失败: ${tgz}(期望 ${want ?? "无条目"},实得 ${got});中止安装——请确认 Release 已重建(含 SHA256SUMS 资产)`);
       process.exit(1);
     }
     console.log(`[install-local] SHA-256 校验通过: ${tgz} ${got.slice(0, 12)}…`);
-    execSync(`cd "${profileDir}" && pnpm add -w "${url}"`, { stdio: "inherit" });
+    pnpmAddSync(url, plugin.pkg);
     continue;
   }
   const abs = join(root, "packages", plugin.dir);
-  // dist 必须已构建:esbuild 包看 index.js,console 是前端产物(index.html/assets),
-  // 统一检查"目录非空"。
   if (!existsSync(abs) || !existsSync(join(abs, "dist")) || readdirSync(join(abs, "dist")).length === 0) {
     console.error(`dist missing for ${plugin.pkg}; run pnpm build first`);
     process.exit(1);
   }
   console.log(`\n[install-local] add ${plugin.pkg} (${abs})`);
-  // profile 自身就是 pnpm workspace 根(dsh 生成),add 需要 -w 显式确认;
-  // 必须 cd 进 profile: pnpm 的 workspace 检测跟随 shell cwd。
-  execSync(`cd "${profileDir}" && pnpm add -w "file:${abs}"`, { stdio: "inherit" });
+  pnpmAddSync(`file:${abs}`, plugin.pkg);
 }
 
 // 2. 清理旧 install.mjs 写入的无 scope 依赖条目(dsh-llm-opencode-zen 等)

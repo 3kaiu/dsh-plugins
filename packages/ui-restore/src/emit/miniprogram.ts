@@ -3,6 +3,7 @@
 // rpx: 750rpx = 375px (iPhone6 基准)，所有 px ×2 转 rpx 保证视觉等比
 
 import { buildElementTree, styleToCssDeclarations } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
@@ -57,7 +58,9 @@ export function emitMiniProgram(bp:any, plan:any, assets:any, profile:any, opts:
     wxmlLines.push(`${pad}<view ${attrs.join(' ')}>`)
     mapEntries.push({ nodeId: el.nodeId, file: `pages/${componentName.toLowerCase()}/${componentName.toLowerCase()}.wxml`, selector: `[data-restore-node="${el.nodeId}"]`, line: wxmlLines.length })
     if(el.rawSvg){
-      // 小程序不支持内联 SVG，转为 image 占位
+      // 小程序不支持内联 SVG，转为 image 占位（仍需消毒校验，防恶意 svgKey 注入）
+      const _clean = sanitizeSvg(el.rawSvg)
+      void _clean
       wxmlLines.push(`${pad}  <image style="width:100%;height:100%" src="" />`)
     }
     if(el.textRuns?.length){

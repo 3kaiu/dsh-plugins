@@ -19,6 +19,17 @@ export interface EmitterAdapter {
 
 const _registry = new Map<string, EmitterAdapter>()
 
+// 内置适配器按需懒加载：核心不静态依赖任何适配器，首次 resolve 时才动态 import
+// 保证 Flutter 项目不加载 React/Vue 代码，符合“按需热插拔”与“无用耦合最小化”
+const BUILTINS: Record<string, () => Promise<EmitterAdapter>> = {
+  react: async () => { const { emitReact } = await import('./react.ts'); return { id:'react', framework:'react', description:'React inline 样式（默认）', emit: emitReact } },
+  vue: async () => { const { emitVue } = await import('./vue.ts'); return { id:'vue', framework:'vue', description:'Vue 3 SFC', emit: emitVue } },
+  flutter: async () => { const { emitFlutter } = await import('./flutter.ts'); return { id:'flutter', framework:'flutter', description:'Flutter Widget', emit: emitFlutter } },
+  miniprogram: async () => { const { emitMiniProgram } = await import('./miniprogram.ts'); return { id:'miniprogram', framework:'miniprogram', description:'小程序 WXML/WXSS', emit: emitMiniProgram } },
+  tailwind: async () => { const { emitTailwindReact } = await import('./tailwind.ts'); return { id:'tailwind', styling:'tailwind', description:'React + Tailwind 任意值', emit: emitTailwindReact } },
+}
+// html 预览不参与 framework 选择，单独由调用方直接 import emitPreviewHtml
+
 export function registerAdapter(adapter: EmitterAdapter){
   if(!adapter || !adapter.id || typeof adapter.emit!=='function') throw new Error('registerAdapter: 非法适配器')
   _registry.set(adapter.id, adapter)
@@ -31,13 +42,18 @@ export function getAdapter(id:string): EmitterAdapter | undefined {
 export function listAdapters(): EmitterAdapter[] {
   return [..._registry.values()]
 }
+export function listAvailableAdapterIds(): string[] {
+  // 已注册 + 内置未加载的 id 合并，保 CLI/MCP 帮助信息完整（热插拔未加载时亦可见）
+  return [...new Set([..._registry.keys(), ...Object.keys(BUILTINS), 'html'])]
+}
+export function getAvailableAdapterIds(): string[] { return listAvailableAdapterIds() }
 
 export function unregisterAdapter(id:string){
   _registry.delete(id)
 }
 
 /**
- * 按 profile + 显式 serializer 解析适配器
+ * 按 profile + 显式 serializer 解析适配器（同步，仅查已注册）
  * 优先级：显式 serializer > framework 精确匹配 > styling 匹配 > 默认 react
  */
 export function resolveAdapter(profile:any, explicit?: string): EmitterAdapter {
@@ -45,8 +61,6 @@ export function resolveAdapter(profile:any, explicit?: string): EmitterAdapter {
   if(explicit) throw new Error(`未知 serializer: ${explicit}，可用: ${[..._registry.keys()].join(', ')}`)
   const fw = profile?.framework
   const styling = profile?.styling
-  // 优先级：styling 精确匹配 > framework 精确匹配 > 默认 react
-  // 保证 React+Tailwind 项目优先走 tailwind 适配器，而非 react
   if(styling){
     const hit = [..._registry.values()].find(a=> a.styling===styling)
     if(hit) return hit
@@ -55,24 +69,62 @@ export function resolveAdapter(profile:any, explicit?: string): EmitterAdapter {
     const hit = [..._registry.values()].find(a=> a.framework===fw)
     if(hit) return hit
   }
-  // 默认 react
   return _registry.get('react') || [..._registry.values()][0]
 }
 
-import { emitReact } from './react.ts'
-import { emitVue } from './vue.ts'
-import { emitFlutter } from './flutter.ts'
-import { emitMiniProgram } from './miniprogram.ts'
-import { emitTailwindReact } from './tailwind.ts'
+/**
+ * 异步解析（热插拔按需加载）：未注册时动态 import 对应适配器模块
+ * 核心仅在需要时才加载对应适配器代码，Flutter 项目不加载 React/Vue
+ */
+export async function resolveAdapterAsync(profile:any, explicit?: string): Promise<EmitterAdapter> {
+  if(explicit){
+    if(_registry.has(explicit)) return _registry.get(explicit)!
+    // 按需加载显式指定的适配器
+    if(BUILTINS[explicit]){
+      const a = await BUILTINS[explicit]()
+      registerAdapter(a)
+      return a
+    }
+    throw new Error(`未知 serializer: ${explicit}，可用: ${[..._registry.keys()].join(', ')}, 内置: ${Object.keys(BUILTINS).join(', ')}`)
+  }
+  const fw = profile?.framework
+  const styling = profile?.styling
+  // styling 优先
+  if(styling && BUILTINS[styling] && !_registry.has(styling)){
+    const a = await BUILTINS[styling]()
+    registerAdapter(a)
+  }
+  if(styling){
+    const hit = [..._registry.values()].find(a=> a.styling===styling)
+    if(hit) return hit
+  }
+  if(fw && BUILTINS[fw] && !_registry.has(fw)){
+    const a = await BUILTINS[fw]()
+    registerAdapter(a)
+  }
+  if(fw){
+    const hit = [..._registry.values()].find(a=> a.framework===fw)
+    if(hit) return hit
+  }
+  if(!_registry.has('react')){
+    const a = await BUILTINS.react()
+    registerAdapter(a)
+  }
+  return _registry.get('react')!
+}
 
-// 内置适配器即时注册（核心内聚，适配器热插拔：外部可后续 registerAdapter 覆盖或新增）
-registerAdapter({ id:'react', framework:'react', description:'React inline 样式（默认）', emit: emitReact })
-registerAdapter({ id:'vue', framework:'vue', description:'Vue 3 SFC', emit: emitVue })
-registerAdapter({ id:'flutter', framework:'flutter', description:'Flutter Widget', emit: emitFlutter })
-registerAdapter({ id:'miniprogram', framework:'miniprogram', description:'小程序 WXML/WXSS', emit: emitMiniProgram })
-registerAdapter({ id:'tailwind', styling:'tailwind', description:'React + Tailwind 任意值', emit: emitTailwindReact })
-// html 预览不参与 framework 选择，单独由调用方直接 import emitPreviewHtml
-
-// 兼容旧调用：ensureBuiltins 已改为 no-op（内置已即时注册）
-let _initialized = true
-export async function ensureBuiltins(){ return }
+let _initialized = false
+export async function ensureBuiltins(){
+  if(_initialized) return
+  const react = await BUILTINS.react()
+  registerAdapter(react)
+  _initialized = true
+}
+export async function ensureAdapter(id:string){
+  if(_registry.has(id)) return _registry.get(id)!
+  const loader = BUILTINS[id]
+  if(!loader) throw new Error(`未知适配器: ${id}`)
+  const adapter = await loader()
+  registerAdapter(adapter)
+  return adapter
+}

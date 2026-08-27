@@ -4,6 +4,7 @@
 // 复杂样式回落 Container decoration，文本用 Text，矢量用 SvgPicture
 
 import { buildElementTree } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
@@ -78,7 +79,8 @@ export function emitFlutter(bp:any, plan:any, assets:any, profile:any, opts:any 
       return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: Text(${dartString(txt)}, style: TextStyle(fontSize: ${fs}, fontWeight: FontWeight.w${fw}, color: ${col}, ${lh} overflow: TextOverflow.ellipsis))))`
     }
     if(hasSvg){
-      return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: SvgPicture.string(${dartString(el.rawSvg)}, width: ${w}, height: ${h}, fit: BoxFit.contain)))`
+      const clean = sanitizeSvg(el.rawSvg)
+      return `Positioned(left: ${left}, top: ${top}, child: SizedBox(width: ${w}, height: ${h}, child: SvgPicture.string(${dartString(clean)}, width: ${w}, height: ${h}, fit: BoxFit.contain)))`
     }
     // 容器：处理背景/圆角/阴影/边框/透明度/旋转
     const decoParts:string[] = []

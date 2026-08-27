@@ -34,7 +34,7 @@ import {
   analyzeProject, resolveProfile, saveProfile, loadProfile,
   planGeneration, resolveAssets, emitPreviewHtml,
   mergeIntoProject, canMerge,
-  ensureBuiltins, resolveAdapter, listAdapters,
+  ensureBuiltins, resolveAdapterAsync, listAdapters,
 } from '../dist/index.js';
 
 const args = process.argv.slice(2);
@@ -188,8 +188,8 @@ async function main() {
     const outDir = path.join(projectDir, flag('out') || 'restore');
     const baseName = flag('base-name') || 'Restore';
     await ensureBuiltins()
-    // 热插拔：显式 serializer 优先，否则按 profile 自动解析；可通过 registerAdapter 扩展新栈而无需改此处
-    const adapter = resolveAdapter(profile, flag('serializer') || undefined)
+    // 热插拔按需加载：仅加载所需适配器，Flutter 不加载 React/Vue
+    const adapter = await resolveAdapterAsync(profile, flag('serializer') || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName });
     const serializer = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});

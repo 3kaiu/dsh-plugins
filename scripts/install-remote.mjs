@@ -14,8 +14,9 @@
 //
 // 环境变量: DSH_HOME(默认 ~/.dsh)、DSH_PROFILE(默认 web)、
 //          DSH_PLUGIN_REPO(默认 3kaiu/dsh-plugins)
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -39,7 +40,8 @@ const jsonFetch = async (url) => {
 
 const pnpmAdd = (spec, label) => {
   console.log(`[install-remote] add ${label} <- ${spec}`);
-  execSync(`cd "${profileDir}" && pnpm add -w "${spec}"`, { stdio: "inherit" });
+  const r = spawnSync("pnpm", ["add", "-w", spec], { cwd: profileDir, stdio: "inherit" });
+  if(r.status!==0) throw new Error(`pnpm add 失败: ${label}`);
 };
 
 // 1. 解析来源:latest 走 GitHub API,取资产清单;--tag/--base 直连
@@ -88,7 +90,7 @@ for (const name of tgzNames) {
   const tmp = join(tmpdir(), "dsh-tgz", name);
   await downloadTo(url, tmp);
   const want = sums.get(name);
-  const got = execSync(`shasum -a 256 "${tmp}"`).toString().trim().split(/\s+/)[0];
+  const got = createHash("sha256").update(readFileSync(tmp)).digest("hex");
   if (!want || want !== got) {
     console.error(`[install-remote] SHA-256 校验失败: ${name}(期望 ${want ?? "无条目"},实得 ${got});中止安装`);
     process.exit(1);

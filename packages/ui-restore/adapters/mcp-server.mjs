@@ -259,17 +259,17 @@ server.tool(
     assets_path: z.string().optional().describe('回填后的 assets.json 路径'),
     out_subdir: z.string().optional().describe('相对 project_dir 的子目录，缺省 restore'),
     base_name: z.string().optional().describe('组件名，缺省 Restore'),
-    serializer: z.string().optional().describe('强制 serializer id，缺省按 profile 自动解析；可用值由注册表决定（react/vue/flutter/miniprogram/tailwind 等），热插拔扩展无需改核心'),
+    serializer: z.enum(['react','vue','flutter','miniprogram','tailwind','html']).optional().describe('强制 serializer id，缺省按 profile 自动解析；热插拔新增 id 需同步扩展本枚举'),
   },
   async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapter } = await import('../dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../dist/index.js');
     const bp = readJson(blueprint_path);
     const profile = profile_path ? (await import('../dist/index.js')).loadProfile(profile_path) : (await import('../dist/index.js')).analyzeProject(project_dir).profile;
     const plan = planGeneration(bp, profile);
     const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: project_dir });
     const outDir = path.join(project_dir, out_subdir || 'restore');
     await ensureBuiltins()
-    const adapter = resolveAdapter(profile, serializer || undefined)
+    const adapter = await resolveAdapterAsync(profile, serializer || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
     const ser = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});

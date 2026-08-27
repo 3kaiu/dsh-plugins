@@ -21,6 +21,7 @@ import { evaluateGate } from '../dist/index.js'
 import { computeScore, updateConvergence, isBetter } from '../dist/index.js'
 import { createPatchRequest, validatePatch, PATCH_POLICY } from '../dist/index.js'
 import { classifyRegions, shouldTriggerVision, diagnoseWithVision } from '../dist/index.js'
+import { collectLeaves } from './pipeline.mjs'
 
 // ---------- ⑧ Region → Node → Source 定位 ----------
 
@@ -274,17 +275,6 @@ export function verifyOnce(opts) {
   const score = computeScore({ pixel, regions, blueprint: bp, contract, assets: opts.assets || null, blocks, changed: opts.changed || null })
   const corrections = bp && regions ? diffToCorrections(bp, regions) : null
   return { pixel, regions, blocks, gate, score, corrections, blueprint: bp }
-}
-
-function collectLeaves(bp) {
-  const leaves = []
-  const walk = (n) => {
-    if (!n || typeof n !== 'object') return
-    if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n)
-    else for (const c of n.children) walk(c)
-  }
-  for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) walk(r)
-  return leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds }))
 }
 
 /**

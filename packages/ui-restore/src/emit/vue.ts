@@ -3,6 +3,7 @@
 // 与 React 同源（buildElementTree），仅语法层差异：:style 绑定、data-restore-node 保留、DOM Map 同构
 
 import { buildElementTree, styleToCssDeclarations } from './style-ir.ts'
+import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
@@ -92,7 +93,8 @@ export function emitVue(bp:any, plan:any, assets:any, profile:any, opts:any = {}
     tmpLines.push(open)
     mapEntries.push(entry(el, tmpLines.length))
     if(el.rawSvg){
-      tmpLines.push(`${pad}  <div style="width:100%;height:100%" v-html="'${escAttr(el.rawSvg).replace(/'/g,"\\'")}'"></div>`)
+      const clean = sanitizeSvg(el.rawSvg)
+      tmpLines.push(`${pad}  <div style="width:100%;height:100%" v-html="'${escAttr(clean).replace(/'/g,"\\'")}'"></div>`)
     }
     if(el.textRuns?.length){
       for(const r of el.textRuns){

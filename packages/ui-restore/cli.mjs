@@ -20,12 +20,13 @@ import {
 import { buildBlueprint, writeArtifactBundle, collectLeaves } from './adapters/pipeline.mjs';
 
 const [, , cmd, ...args] = process.argv;
+// 纯函数：不改动 args 数组，仅读取，避免 --help 等场景误改参数表导致目录误建或位置参数错位
 const flag = (name) => {
   const i = args.indexOf(name);
   if (i < 0) return null;
   const v = args[i + 1];
-  args.splice(i, 2);
-  return v || true;
+  // 缺值时返回 true（布尔开关语义），否则返回字符串值；不做 splice，保持 args 纯净
+  return v == null || String(v).startsWith('--') ? true : v;
 };
 
 function printGateSummary(bp, v) {
@@ -179,7 +180,7 @@ async function main() {
     const bpPath = args[0];
     const projectDir = flag('--project');
     if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapter } = await import('./dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('./dist/index.js');
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
     const profile = flag('--profile') ? loadProfile(flag('--profile')) : (await import('./dist/index.js')).analyzeProject(projectDir).profile;
     const plan = planGeneration(bp, profile);
@@ -188,7 +189,7 @@ async function main() {
     const outDir = path.join(projectDir, flag('--out') || 'restore');
     const baseName = flag('--base-name') || 'Restore';
     await ensureBuiltins()
-    const adapter = resolveAdapter(profile, flag('--serializer') || undefined)
+    const adapter = await resolveAdapterAsync(profile, flag('--serializer') || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName })
     const serializer = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});

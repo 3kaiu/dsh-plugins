@@ -53,3 +53,4 @@ export * from "./ir/semantic.ts";
 export * from "./target/merge.ts";
 // target 受限 Patch 契约与校验(⑨⑪)
 export * from "./target/patch.ts";
+export * from "./target/svg-sanitize.ts";
