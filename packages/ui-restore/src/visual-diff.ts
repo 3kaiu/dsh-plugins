@@ -17,9 +17,11 @@ const round1 = (n) => Math.round((n || 0) * 100) / 100
 // 位置相似度封顶尺度(px): 偏移达此值记 0 分。与画布尺寸解耦 —— 旧式"除以画布宽高"
 // 在长页上会稀释绝对偏差(500px 错位仍≈0.97), 跨稿不可比(审计修订)。
 const POS_SIM_CAP_PX = 64
-/** 解码 PNG buffer -> {width, height, data(RGBA)} */
+/** 解码 PNG buffer -> {width, height, data(RGBA)}（带明确错误信息，防上游截屏/IO 损坏静默透传） */
 export function decodePng(buf) {
-  return PNG.sync.read(buf)
+  try { return PNG.sync.read(buf) } catch(e){
+    throw new Error(`decodePng: PNG 解码失败（文件损坏或非 PNG）: ${String((e as Error).message).slice(0,120)}`)
+  }
 }
 
 /**

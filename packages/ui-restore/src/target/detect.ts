@@ -67,9 +67,13 @@ export function detectProjectFacts(projectDir) {
     if (!deps.typescript && !has(/^tsconfig/)) push(facts.language, 'javascript', 0.8, '无 tsconfig/typescript 依赖')
 
     // styling: 逐证据累加, 互不排斥(可共存, 由 Resolver 裁决)
-    if (deps.tailwindcss || has(/^tailwind\.config\.(js|ts|cjs|mjs)$/)) push(facts.styling, 'tailwind', deps.tailwindcss ? 0.96 : 0.85, deps.tailwindcss ? 'package.json:tailwindcss' : 'tailwind.config.*')
+    if (deps.tailwindcss || deps.unocss || has(/^tailwind\.config\.(js|ts|cjs|mjs)$/) || has(/^uno\.config\.(js|ts|cjs|mjs)$/) || has(/^unocss\.config\.(js|ts|cjs|mjs)$/)) {
+      if (deps.unocss || has(/^uno\.config/ ) || has(/^unocss\.config/)) push(facts.styling, 'unocss', deps.unocss ? 0.92 : 0.85, deps.unocss ? 'package.json:unocss' : 'uno.config.*')
+      else push(facts.styling, 'tailwind', deps.tailwindcss ? 0.96 : 0.85, deps.tailwindcss ? 'package.json:tailwindcss' : 'tailwind.config.*')
+    }
     if (deps['styled-components']) push(facts.styling, 'styled-components', 0.9, 'package.json:styled-components')
     if (deps['@emotion/react'] || deps['@emotion/styled']) push(facts.styling, 'emotion', 0.88, 'package.json:@emotion/*')
+    if (deps['@vanilla-extract/css'] || deps['@vanilla-extract/webpack-plugin']) push(facts.styling, 'vanilla-extract', 0.9, 'package.json:@vanilla-extract/css')
     if (deps.sass || deps['node-sass'] || has(/\.scss$/)) push(facts.styling, 'scss', deps.sass ? 0.85 : 0.6, deps.sass ? 'package.json:sass' : '*.scss')
     if (deps.less || has(/\.less$/)) push(facts.styling, 'less', deps.less ? 0.8 : 0.55, 'less')
     const moduleCss = files.filter((f) => /\.module\.css$/.test(f))
@@ -77,6 +81,12 @@ export function detectProjectFacts(projectDir) {
     const plainCss = files.filter((f) => /^[^/]*\.css$/.test(f) && !/tailwind/.test(f))
     if (plainCss.length) push(facts.styling, 'plain-css', 0.6, '根级 *.css(非 module)')
     if (deps['css-modules'] || deps['typings-for-css-modules-loader']) push(facts.styling, 'css-modules', 0.8, 'package.json')
+    // shadcn/ui 仅通过 components.json 声明，属 styling 约定而非 framework，需单独探测
+    if (exists(path.join(projectDir, 'components.json'))) {
+      const compJson = readJson(path.join(projectDir, 'components.json'))
+      if (compJson && (compJson.style || compJson.tailwind)) push(facts.styling, 'tailwind', 0.88, 'components.json:shadcn')
+      facts.notes.push('components.json 存在，疑似 shadcn/ui')
+    }
 
     // build
     if (has(/^vite\.config\.(ts|js|mjs|cjs)$/)) push(facts.build, 'vite', 0.97, 'vite.config.*')

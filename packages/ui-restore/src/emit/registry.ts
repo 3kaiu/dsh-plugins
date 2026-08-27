@@ -27,6 +27,7 @@ const BUILTINS: Record<string, () => Promise<EmitterAdapter>> = {
   flutter: async () => { const { emitFlutter } = await import('./flutter.ts'); return { id:'flutter', framework:'flutter', description:'Flutter Widget', emit: emitFlutter } },
   miniprogram: async () => { const { emitMiniProgram } = await import('./miniprogram.ts'); return { id:'miniprogram', framework:'miniprogram', description:'小程序 WXML/WXSS', emit: emitMiniProgram } },
   tailwind: async () => { const { emitTailwindReact } = await import('./tailwind.ts'); return { id:'tailwind', styling:'tailwind', description:'React + Tailwind 任意值', emit: emitTailwindReact } },
+  unocss: async () => { const { emitTailwindReact } = await import('./tailwind.ts'); return { id:'unocss', styling:'unocss', description:'UnoCSS (Tailwind 兼容)', emit: emitTailwindReact } },
 }
 // html 预览不参与 framework 选择，单独由调用方直接 import emitPreviewHtml
 

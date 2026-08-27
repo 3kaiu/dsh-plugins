@@ -15,12 +15,16 @@ let _font = null
 let _fontSource = null
 let _loadAttempted = false
 
-// 常见单文件 CJK 兼容字体探测列表(按优先级)
+// 常见单文件 CJK 兼容字体探测列表(按优先级；覆盖 macOS/主流 Linux 发行版)
 const FONT_CANDIDATES = [
   process.env.DSH_TEXT_FONT_PATH,
   "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+  "/System/Library/Fonts/PingFang.ttc",
+  "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.otf",
+  "/usr/share/fonts/opentype/noto/NotoSansSC-Regular.otf",
+  "/usr/share/fonts/truetype/noto/NotoSansSC-Regular.ttf",
   "/usr/share/fonts/truetype/arphic/uming.ttc",
+  "/usr/share/fonts/opentype/source-han-sans/SourceHanSansSC-Regular.otf",
 ].filter(Boolean)
 
 /**

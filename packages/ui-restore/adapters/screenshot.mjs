@@ -20,14 +20,19 @@ const flag = (name, dflt = null) => {
 };
 const has = (name) => args.includes(`--${name}`);
 
-// 共享给 adapters/dom-blocks.mjs(CDP 引擎同一套浏览器发现逻辑)
+// 共享给 adapters/dom-blocks.mjs(CDP 引擎同一套浏览器发现逻辑) — 覆盖 macOS/主流 Linux 发行版
 export const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
   '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
   '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
   '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+  '/snap/bin/chromium',
+  '/opt/google/chrome/chrome',
+  '/opt/google/chrome/google-chrome',
 ];
 
 export function findSystemChrome() {
