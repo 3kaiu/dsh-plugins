@@ -21,6 +21,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import {
   validateBlueprint, blueprintRegion, verifyLayoutTruth, blueprintToOutline, extractDesignTokens,
+  evaluateGate, computeScore, comparePng, blockMetrics, decodePng, diffRegions, diffToCorrections,
 } from '../dist/index.js';
 // 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
 import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.mjs';
@@ -227,6 +228,88 @@ server.tool(
     // 别名表按需全量输出(蓝图内嵌的 designTokens 不含 aliases 防膨胀)
     const dt = extractDesignTokens(bp, { includeAliases: true });
     return text(dt);
+  }
+);
+
+server.tool(
+  'ui_restore_profile',
+  '项目 → Target Profile：扫描 package.json/pubspec/app.json/tsconfig，输出置信度排序的框架/样式决策（未知=unknown，绝不默认 css-modules）',
+  {
+    project_dir: z.string().describe('项目根目录'),
+    out_path: z.string().optional().describe('落盘路径，缺省 <project>/restore.profile.json'),
+    styling: z.string().optional().describe('显式覆盖样式方案'),
+    framework: z.string().optional().describe('显式覆盖框架'),
+  },
+  async ({ project_dir, out_path, styling, framework }) => {
+    const { analyzeProject, saveProfile } = await import('../dist/index.js');
+    const r = analyzeProject(project_dir, { overrides: { styling: styling || undefined, framework: framework || undefined } });
+    const out = out_path || path.join(project_dir, 'restore.profile.json');
+    saveProfile(r.profile, out);
+    return text({ profile: out, ...r.profile });
+  }
+);
+
+server.tool(
+  'ui_restore_generate',
+  '蓝图+画像 → 代码：Strategy IR 单源双 serializer 生成 React.tsx + preview.html + .restore-map.json（受 Generation Contract 约束）',
+  {
+    blueprint_path: z.string(),
+    project_dir: z.string().describe('目标项目根（落盘根）'),
+    profile_path: z.string().optional().describe('restore.profile.json 路径，缺省自动以 unknown 兜底'),
+    assets_path: z.string().optional().describe('回填后的 assets.json 路径'),
+    out_subdir: z.string().optional().describe('相对 project_dir 的子目录，缺省 restore'),
+    base_name: z.string().optional().describe('组件名，缺省 Restore'),
+  },
+  async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name }) => {
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml } = await import('../dist/index.js');
+    const bp = readJson(blueprint_path);
+    const profile = profile_path ? (await import('../dist/index.js')).loadProfile(profile_path) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
+    const plan = planGeneration(bp, profile);
+    const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: project_dir });
+    const outDir = path.join(project_dir, out_subdir || 'restore');
+    const reactOut = emitReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' });
+    const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
+    fs.mkdirSync(outDir, { recursive: true });
+    for (const f of [...reactOut.files, ...htmlOut.files]) {
+      const p = path.join(outDir, f.path);
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, f.content);
+    }
+    const mapPath = path.join(outDir, '.restore-map.json');
+    fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
+    return text({ outDir, component: reactOut.componentName, contract: plan.items.length, assets: assets.summary, map: mapPath, warnings: plan.warnings.slice(0, 3) });
+  }
+);
+
+server.tool(
+  'ui_restore_gate',
+  '组合验收：global diff + critical regions + geometry(契约/样式)三闸合一，任一 FAIL 即整体 FAIL（truth 软门禁）',
+  {
+    truth_png: z.string(),
+    render_png: z.string(),
+    blueprint_path: z.string().optional(),
+    assets_path: z.string().optional(),
+  },
+  async ({ truth_png, render_png, blueprint_path, assets_path }) => {
+    const pT = fs.readFileSync(truth_png), pR = fs.readFileSync(render_png);
+    const pixel = comparePng(pT, pR);
+    let regions = null, blueprint = null, contract = null, assets = null;
+    if (blueprint_path) {
+      blueprint = readJson(blueprint_path);
+      const leaves = [];
+      const walk = (n) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
+      for (const r of [...(blueprint.tree || []), ...(blueprint.floatings || [])]) walk(r);
+      regions = diffRegions(pT, pR, { nodes: leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds })) });
+      contract = validateBlueprint(blueprint);
+    }
+    if (assets_path && fs.existsSync(assets_path)) {
+      const raw = readJson(assets_path);
+      const list = raw.vectors || raw.assets || [];
+      assets = { summary: { missing: list.filter((v) => !v.svg && !v.path && !v.src).length, total: list.length } };
+    }
+    const gate = evaluateGate({ pixel, regions, blueprint, contract, assets });
+    const score = computeScore({ pixel, regions, blueprint, contract, assets });
+    return text({ gate, score, pixel, regions: regions ? { clusterCount: regions.clusterCount, markedRatio: regions.markedRatio } : null });
   }
 );
 
