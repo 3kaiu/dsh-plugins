@@ -19,12 +19,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import {
-  generateCodeBlueprint, initTextMetrics, validateBlueprint,
-  blueprintToOutline, blueprintRegion, verifyLayoutTruth, comparePng, blockMetrics, decodePng,
-  diffRegions, diffToCorrections,
-  ingestDesignExport, extractDesignTokens,
+  validateBlueprint, blueprintRegion, verifyLayoutTruth, blueprintToOutline, extractDesignTokens,
 } from '../dist/index.js';
-import { analyzeDesign } from './pipeline.mjs';
+// 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
+import { analyzeDesign, buildBlueprint, verifyScreenshots } from './pipeline.mjs';
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
@@ -34,7 +32,7 @@ const server = new McpServer({ name: 'ui-restore', version: '1.0.0' });
 // 主入口 workflow tool(d2c: 普通情况下 Agent 只需要这一个)。确定性 pipeline, 非第二层 LLM。
 server.tool(
   'ui_restore_run',
-  'UI 还原主入口。mode=analyze(默认): 设计稿导出 json → UI Truth 产物包(blueprint/outline/checklist/tokens/assets) + 四闸门禁, 之后按产物包消费指南实现; mode=verify: 参考图 vs 渲染截图 → 差异区域 + LLM 可读修正指令(数值真值以蓝图为准, 用 ui_restore_region 下钻)。实现与修码由你(LLM)完成。',
+  'UI 还原主入口。mode=analyze(默认): 设计稿导出 json → UI Truth 产物包(blueprint/outline/checklist/tokens/assets + INDEX) + 四闸门禁, 之后按产物包消费指南实现; mode=verify: 参考图 vs 渲染截图 → 像素/块级指标 + 差异区域 + LLM 可读修正指令(数值真值以蓝图为准, 用 ui_restore_region 下钻)。实现与修码由你(LLM)完成。',
   {
     design_path: z.string().optional().describe('设计稿导出 json 路径(mode=analyze 必填)'),
     out_dir: z.string().optional().describe('产物目录(mode=analyze)'),
@@ -43,23 +41,22 @@ server.tool(
     truth_png: z.string().optional().describe('参考图路径(mode=verify 必填)'),
     render_png: z.string().optional().describe('渲染截图路径(mode=verify 必填)'),
     blueprint_path: z.string().optional().describe('蓝图 json 路径(mode=verify 必填)'),
+    truth_blocks: z.string().optional().describe('真值文本块清单 json(可选, 与 render_blocks 成对启用块级 blockMatchRate)'),
+    render_blocks: z.string().optional().describe('渲染文本块清单 json(可选, 与 truth_blocks 成对)'),
   },
-  async ({ design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path }) => {
+  async ({ design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks }) => {
     const mode = truth_png || render_png ? 'verify' : 'analyze';
     if (mode === 'verify') {
       if (!truth_png || !render_png || !blueprint_path) return text('mode=verify 需要 truth_png + render_png + blueprint_path');
-      const bp = readJson(blueprint_path);
-      const pT = fs.readFileSync(truth_png), pR = fs.readFileSync(render_png);
-      const pixel = comparePng(pT, pR);
-      const leaves = [];
-      const walk = (n) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
-      for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
-      const regions = diffRegions(pT, pR, { nodes: leaves });
-      const corrections = diffToCorrections(bp, regions);
+      // 统一走 pipeline.verifyScreenshots(审计收敛: 删除本地 walk/compare 拷贝;
+      // 并补上块级层 —— 主入口此前反而拿不到 blockMatchRate, 而 AGENT 完成条件要求它=1)
+      const r = verifyScreenshots({ truthPng: truth_png, renderPng: render_png, bpPath: blueprint_path, blocksTruth: truth_blocks, blocksRender: render_blocks });
       const lines = [
-        `diffRatio: ${pixel.diffRatio} (差异像素 ${pixel.diffPixels})`,
-        corrections ? `修正指令 — ${corrections.summary}` : '',
-        ...(corrections ? corrections.corrections.map((c) => ' - ' + c) : []),
+        `diffRatio: ${r.pixel.diffRatio} (差异像素 ${r.pixel.diffPixels})`,
+        r.blocks ? `块级层: ${JSON.stringify(r.blocks)}` : '',
+        r.regions ? `差异区域: ${JSON.stringify(r.regions.regions?.slice(0, 5))}` : '',
+        r.corrections ? `修正指令 — ${r.corrections.summary}` : '',
+        ...(r.corrections ? r.corrections.corrections.map((c) => ' - ' + c) : []),
         '数值真值以 blueprint 为准; 用 ui_restore_region 下钻关联节点后修码, 修完重新截图再 verify。',
       ];
       return text(lines.filter(Boolean).join('\n'));
@@ -86,12 +83,8 @@ server.tool(
     scale: z.string().optional().describe('画布倍率归一: 正数(如 2 = @2x 画板)或 auto(启发式检测); 缺省取导出 meta 声明, 否则原样'),
   },
   async ({ design_path, out_dir, scale }) => {
-    await initTextMetrics();
-    const raw = readJson(design_path);
-    const declaredScale = raw?.meta?.scale ?? raw?.meta?.canvas?.scale;
-    const { canvas, styles, nodes } = ingestDesignExport(raw);
-    const bp = generateCodeBlueprint({ canvas, nodes, styles, scale: scale ?? declaredScale ?? null });
-    const v = validateBlueprint(bp);
+    // 单一实现(审计收敛): 蓝图构建统一走 pipeline.buildBlueprint
+    const { bp, v } = await buildBlueprint(design_path, { scale: scale ?? undefined });
     const dir = out_dir || path.dirname(design_path);
     const base = path.basename(design_path).replace(/\.json$/, '');
     fs.mkdirSync(dir, { recursive: true });

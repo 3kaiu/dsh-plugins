@@ -6,7 +6,8 @@
 //
 // 用法:
 //   node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812] [--full] [--wait ms] [--engine auto|chrome|playwright]
-//   (url 支持 http(s) 与本地文件路径; 本地路径自动转 file://)
+//   (url 支持 http(s) 与本地文件路径; 本地路径自动转 file://
+//    两引擎参数语义见 captureScreenshot 头注释: --full 需 playwright/auto; --wait 于 chrome 记虚拟时间预算)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +45,13 @@ function toUrl(target) {
 function captureWithChrome(bin, target, outPng, opts) {
   const width = opts.width ?? Number(flag('width')) ?? 375;
   const height = opts.height ?? Number(flag('height')) ?? 812;
+  // 等待近似(审计修复): chrome 引擎无 waitForTimeout, 以虚拟时间预算承载 --wait,
+  // 默认仍为 4000ms; 再小也至少给 4s 保底动态页面稳定
+  const waitMs = opts.waitMs ?? Number(flag('wait'));
+  const virtualBudget = Math.max(4000, waitMs ?? 0);
+  if (opts.fullPage ?? has('full')) {
+    throw new Error('chrome-headless 引擎不支持整页截图(--full): 改用 --engine auto(会自动切 playwright)或显式 --engine playwright');
+  }
   const url = toUrl(target);
   fs.mkdirSync(path.dirname(path.resolve(outPng)), { recursive: true });
   execFileSync(bin, [
@@ -54,7 +62,7 @@ function captureWithChrome(bin, target, outPng, opts) {
     '--no-default-browser-check',
     `--window-size=${width},${height}`,
     `--screenshot=${path.resolve(outPng)}`,
-    '--virtual-time-budget=4000',
+    `--virtual-time-budget=${virtualBudget}`,
     url,
   ], { stdio: 'pipe', timeout: opts.timeoutMs ?? 45000 });
   if (!fs.existsSync(outPng)) throw new Error('截图失败: Chrome 未产出文件');
@@ -86,14 +94,24 @@ async function captureWithPlaywright(target, outPng, opts) {
 
 /**
  * 截图能力(d2c Phase 4): 目标 URL/本地文件 → PNG。
- * 引擎选择(--engine): auto=系统Chrome优先,缺则Playwright; 也可显式指定。
+ * 参数语义两引擎对齐(审计修复: 此前 --wait/--full 在默认 chrome 引擎下被静默忽略):
+ *   --wait ms → chrome=虚拟时间预算(max 4000), playwright=渲染后等待;
+ *   --full    → 仅 playwright 支持; chrome 显式拒绝、auto 自动切 playwright。
+ * 引擎选择(--engine): auto=系统Chrome优先(无 --full 时),缺则/需整页则 Playwright。
  */
 export async function captureScreenshot(target, outPng, opts = {}) {
   const engine = opts.engine ?? flag('engine') ?? 'auto';
-  if (engine === 'chrome' || engine === 'auto') {
+  const wantsFullPage = !!(opts.fullPage ?? has('full'));
+  if (engine === 'chrome') {
     const bin = findSystemChrome();
-    if (bin) return captureWithChrome(bin, target, outPng, opts);
-    if (engine === 'chrome') throw new Error('未找到系统 Chrome/Edge(候选: ' + CHROME_CANDIDATES.slice(0, 3).join(', ') + ')');
+    if (!bin) throw new Error('未找到系统 Chrome/Edge(候选: ' + CHROME_CANDIDATES.slice(0, 3).join(', ') + ')');
+    if (wantsFullPage) throw new Error('chrome-headless 不支持 --full 整页截图 —— 用 --engine auto(自动切 playwright)或去掉 --full 只截视口');
+    return captureWithChrome(bin, target, outPng, opts);
+  }
+  if (engine === 'auto') {
+    const bin = findSystemChrome();
+    if (bin && !wantsFullPage) return captureWithChrome(bin, target, outPng, opts);
+    // 无系统 Chrome, 或需要整页截图 → playwright(auto 语义下自动降级/升级)
   }
   return captureWithPlaywright(target, outPng, opts);
 }

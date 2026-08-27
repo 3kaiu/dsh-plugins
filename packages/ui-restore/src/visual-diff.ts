@@ -14,6 +14,9 @@ import pixelmatch from "pixelmatch"
 
 const round1 = (n) => Math.round((n || 0) * 100) / 100
 
+// 位置相似度封顶尺度(px): 偏移达此值记 0 分。与画布尺寸解耦 —— 旧式"除以画布宽高"
+// 在长页上会稀释绝对偏差(500px 错位仍≈0.97), 跨稿不可比(审计修订)。
+const POS_SIM_CAP_PX = 64
 /** 解码 PNG buffer -> {width, height, data(RGBA)} */
 export function decodePng(buf) {
   return PNG.sync.read(buf)
@@ -27,6 +30,12 @@ export function comparePng(bufA, bufB, opts = {}) {
   const threshold = opts.threshold != null ? opts.threshold : 0.1
   const a = decodePng(bufA)
   const b = decodePng(bufB)
+  // 尺寸守卫(审计 P0 修复): 尺寸不一致 = 采样环境失配(不同 viewport/scale/页高),
+  // 静默裁剪到公共区会把"渲染多出/缺失一整屏"洗成 diffRatio=0(已有运行时实证)。
+  // 归一职责在调用方(同一 viewport 截图); 确需裁剪公共区的旧行为请显式传 allowCrop:true。
+  if ((a.width !== b.width || a.height !== b.height) && !opts.allowCrop) {
+    throw new Error(`comparePng: 两图尺寸不一致 A=${a.width}x${a.height} B=${b.width}x${b.height} — 先统一截图环境再对比; 如确要只比公共区传 opts.allowCrop=true`)
+  }
   const width = Math.min(a.width, b.width)
   const height = Math.min(a.height, b.height)
   const diff = new PNG({ width, height })
@@ -64,7 +73,8 @@ function cropTo(png, width, height) {
  * @param {Buffer} bufB 渲染图
  * @param {object} [opts] threshold: 通道差阈值(默认24); grid: 聚类网格px(默认24);
  *   minPixels: 区域最小像素(默认48); top: 最多区域数(默认5);
- *   nodes: 蓝图叶子数组 [{id,name,text,bounds}] 用于候选映射(可选)
+ *   nodes: 蓝图叶子数组 [{id,name,text,bounds}] 用于候选映射(可选);
+ *   allowCrop: 尺寸不一致时允许裁剪到公共区(默认 false, 硬失败防止静默漏检)
  * @returns {{width,height,markedPixels,markedRatio,clusterCount,regions:Array}}
  */
 export function diffRegions(bufA, bufB, opts = {}) {
@@ -76,6 +86,10 @@ export function diffRegions(bufA, bufB, opts = {}) {
 
   const a = decodePng(bufA)
   const b = decodePng(bufB)
+  // 同 comparePng 的尺寸守卫: 区域聚类建立在逐像素对齐之上, 尺寸失配时结果无意义
+  if ((a.width !== b.width || a.height !== b.height) && !opts.allowCrop) {
+    throw new Error(`diffRegions: 两图尺寸不一致 A=${a.width}x${a.height} B=${b.width}x${b.height} — 先统一截图环境再定位; 如确要只比公共区传 opts.allowCrop=true`)
+  }
   const width = Math.min(a.width, b.width)
   const height = Math.min(a.height, b.height)
 
@@ -210,13 +224,11 @@ function colorSim(c1, c2) {
  *
  * @param {Array<{text,x,y,width,height}>} designBlocks 设计侧块清单(蓝图导出)
  * @param {Array<{text,x,y,width,height}>} renderBlocks 渲染侧块清单(渲染器导出)
- * @param {object} [ctx] {designPng, renderPng} 解码后的像素图(可选, 启用颜色相似度)
+ * @param {object} [ctx] {designImg, renderImg} 解码后的像素图(可选, 启用颜色相似度);
+ *   canvasWidth/canvasHeight 已废弃(位置相似度改为尺寸无关的 px 制, 入参仅为兼容保留)
  * @returns {{blockMatchRate, matchedPairs, positionSimilarity, colorSimilarity, unmatchedDesign, unmatchedRender}}
  */
 export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
-  const W = ctx.canvasWidth || Math.max(...designBlocks.map((b) => b.x + b.width), 1)
-  const H = ctx.canvasHeight || Math.max(...designBlocks.map((b) => b.y + b.height), 1)
-
   // 贪心全局配对: 按 文本相似度 desc -> 中心距 asc
   const pairs = []
   for (const d of designBlocks) {
@@ -233,7 +245,10 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
   for (const p of pairs) {
     if (usedD.has(p.d) || usedR.has(p.r)) continue
     usedD.add(p.d); usedR.add(p.r)
-    const posSim = round1(Math.max(0, 1 - Math.max(Math.abs(p.d.x - p.r.x) / W, Math.abs(p.d.y - p.r.y) / H)))
+    // 位置相似度: 绝对 px 偏移相对 POS_SIM_CAP_PX 线性衰减, 与画布尺寸彻底解耦 ——
+    // 长页不再把大错位稀释成高分, 小卡片与整页同一把尺(POS_SIM_CAP_PX 定义见文件头)
+    const offPx = Math.max(Math.abs(p.d.x - p.r.x), Math.abs(p.d.y - p.r.y))
+    const posSim = round1(Math.max(0, 1 - offPx / POS_SIM_CAP_PX))
     matched.push({ design: p.d.text, render: p.r.text, textSim: round1(p.ts), posSim, _d: p.d, _r: p.r })
   }
 
@@ -292,7 +307,14 @@ export function diffToCorrections(bp, diff) {
   const corrections = diff.regions.map((r, i) => {
     const cands = r.candidates || []
     const nodes = cands.map((c) => byId.get(c.id)).filter(Boolean)
-    const severity = r.pixels > 800 ? 'major' : r.pixels > 200 ? 'minor' : 'noise'
+    // severity 定级(审计修订): 有画布信息时主判据为"标记像素/画布面积"占比 ——
+    // 与画布尺寸解耦: 长页上万级噪声像素不再误升 major, 大区域错乱也不因画布大而漏报;
+    // 阈值按 375x812 手机稿标定(major≈914px/minor≈244px), 与旧绝对阈值在该基准下等价;
+    // 缺画布信息(极端调用方)回退旧绝对像素规则。
+    const cw = bp?.canvas?.width, chh = bp?.canvas?.height
+    const frac = cw > 0 && chh > 0 ? r.pixels / (cw * chh) : null
+    const severity = frac == null ? (r.pixels > 800 ? 'major' : r.pixels > 200 ? 'minor' : 'noise')
+      : frac >= 0.003 ? 'major' : frac >= 0.0008 ? 'minor' : 'noise'
     const head = `#${i + 1} [${severity}] 区域(${r.x},${r.y} ${r.width}x${r.height}) 标记像素 ${r.pixels}`
     if (nodes.length) {
       const desc = nodes
@@ -315,6 +337,7 @@ export function diffToCorrections(bp, diff) {
  *  - 能检出: 位置/尺寸/层级/颜色块级差异(geometry+color 级)
  *  - 不能检出: 字形/抗锯齿/阴影羽化等渲染细节级差异
  *  - 文本画为"墨迹条"(宽=measured.singleLineWidth, 高≈fontSize), 非真实字形
+ *  - backgrounds 仅绘制纯色 hex 底; 渐变/位图背景跳过(留默认底色)
  * z 序 = 数组序自下而上(与蓝图消费约定一致)。
  *
  * @param {object} bp generateCodeBlueprint 输出
@@ -351,6 +374,16 @@ export function renderGeometrySnapshot(bp, opts = {}) {
         png.data[i + 3] = 255
       }
     }
+  }
+  // 背景层底色(审计修复): backgrounds 在蓝图中单独输出、不在 tree 里,
+  // 不绘制它们会让深色底稿的 truth 快照恒白, 对照浏览器截图产生整页伪差。
+  // 仅支持纯色 hex; 渐变/位图背景无法用单色表达, 跳过(维持下方诚实边界声明)。
+  for (const bg of Array.isArray(bp?.backgrounds) ? bp.backgrounds : []) {
+    const rgb = hex2rgb(bg.fill) ?? hex2rgb(bg.color)
+    if (!rgb || !bg.bounds) continue
+    const bx = bg.bounds.x ?? 0
+    const by = bg.bounds.y ?? 0
+    fillRect(bx, by, bg.bounds.width ?? (W - bx), bg.bounds.height ?? (H - by), rgb)
   }
   const walk = (n) => {
     if (!n || typeof n !== 'object' || !n.bounds) return

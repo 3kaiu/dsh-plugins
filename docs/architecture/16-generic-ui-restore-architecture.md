@@ -17,24 +17,24 @@
 ## 1. 耦合审计(实证)
 
 ```text
-packages/shared/src/
-  layout-core.ts    → 仅 import 内部模块(design-tokens/text-metrics/yoga-truth)  [纯]
-  repeat.ts         → 零 import                                                   [纯]
-  design-tokens.ts  → 零 import                                                   [纯]
-  yoga-truth.ts     → yoga-layout                                                 [纯]
-  text-metrics.ts   → node:fs + opentype.js(懒加载)                                [纯]
-  visual-diff.ts    → pngjs + pixelmatch                                          [纯]
-  system-chrome.ts  → 零 import                                                   [纯]
-  dsl-clean.ts      → 内部模块                                                     [纯]
-  quota-tracker.ts  → node:crypto/fs(宿主配额设施,与 UI 无关)                       [宿主]
-  semaphore.ts      → (宿主并发设施,与 UI 无关)                                     [宿主]
-packages/layout-infer/src/
-  index.ts/clean.ts → @deepseek-ai/dsh-tools defineTool(工具注册壳)                [壳]
+# 现状(2026-08 审计后, 壳核拆分已落地)
+packages/ui-restore/src/          # = @ui-restore/core(零宿主依赖, 仅 4 个通用 npm 包)
+  layout-core/repeat/yoga-truth/text-metrics/visual-diff/scale/system-chrome    [纯]
+  dsl-clean/design-tokens                                                       [纯]
+  classify                    ← 自 layout-infer 壳包归位(kind/sizing/position/spacing 决策属算法)
+  ir/schema|ingest|outline|checklist                                            [契约层]
+packages/shared/src/              # = @3kaiu/dsh-plugin-kit
+  quota-tracker/semaphore/test-utils → 宿主设施(UI 核心已全部迁出)              [宿主]
+packages/layout-infer/src/        # = @3kaiu/dsh-layout-infer
+  index.ts/clean.ts/annotate.ts → @deepseek-ai/dsh-tools defineTool 注册壳        [壳]
 ```
 
-**结论:UI 还原核心(算法+验证+描述产物)已经零宿主耦合。**
-dsh 耦合只剩两类:①工具注册壳(薄适配层,本就该薄);②与 UI 无关的宿主设施
-(quota/semaphore,应留在宿主侧,不随核心走)。通用化不是"重写解耦",是**打包切分**。
+**结论:UI 还原核心(算法+验证+分类+描述产物)已零宿主耦合且单包自洽。**
+宿主耦合只剩工具注册壳(本就该薄)。另据同一轮审计, 编排逻辑已按「单一实现」收敛:
+蓝图构建(buildBlueprint)/产物包(writeArtifactBundle, 含 INDEX)/视觉验证(verifyScreenshots)
+只存在于 adapters/pipeline.mjs 一份, cli.mjs 与 mcp-server.mjs 一律薄转发 —— 此前三处拷贝
+曾出现行为分叉(workflow 主入口缺 INDEX、MCP verify 缺块级指标)。
+通用化不是"重写解耦", 是**打包切分 + 单一实现多暴露面**。
 
 ## 2. 目标分包(热插拔的物理形态)
 

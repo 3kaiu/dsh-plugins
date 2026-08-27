@@ -14,13 +14,15 @@
 
 ## 复现
 
+> design.json 已入库本目录(源稿在 gitignore 的 output/, 复制一份保证回归可复现)。
+
 ```bash
 cd /Users/edy/dev/dsh-plugins/packages/ui-restore
-node packages/ui-restore/adapters/restore.mjs analyze /Users/edy/dev/dsh-plugins/output/study-live-phone-raw.json --dir /tmp/bm-live
+node packages/ui-restore/adapters/restore.mjs analyze benchmarks/case-live-course-card/design.json --dir /tmp/bm-live
 node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore.html     benchmarks/case-live-course-card/truth.png --width 375 --height 812
 node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore-bad.html benchmarks/case-live-course-card/render.png --width 375 --height 812
 node packages/ui-restore/adapters/restore.mjs verify benchmarks/case-live-course-card/truth.png benchmarks/case-live-course-card/render.png \
-  --bp /tmp/bm-live/study-live-phone-raw.blueprint.json --session benchmarks/case-live-course-card/session.json
+  --bp /tmp/bm-live/design.blueprint.json --session benchmarks/case-live-course-card/session.json
 ```
 
 ## 已验证结论(2026-08)

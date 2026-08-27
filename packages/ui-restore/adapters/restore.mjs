@@ -86,15 +86,18 @@ async function main() {
     if (sp) {
       const s = loadSession(sp) || { phases: {} };
       const iteration = (s.iteration || 0) + 1;
-      const zeroDiff = r.pixel.diffRatio === 0 || (r.regions && r.regions.clusterCount === 0);
-      const done = iteration >= MAX_ITERATIONS || (r.blocks?.blockMatchRate != null ? r.blocks.blockMatchRate >= 1 : zeroDiff);
+      // 验收达成判据: 有块级指标时看 blockMatchRate, 否则退回"像素零差/区域归零"
+      const reached = r.blocks?.blockMatchRate != null ? r.blocks.blockMatchRate >= 1 : (r.pixel.diffRatio === 0 || (r.regions && r.regions.clusterCount === 0));
+      // 状态语义三分(审计修订): completed=验收通过 / exhausted=迭代预算耗尽但未达标 /
+      // correcting=待继续修码。旧实现把"打满 5 轮"也记 completed, 失败与穷尽混同。
+      const status = reached ? 'completed' : iteration >= MAX_ITERATIONS ? 'exhausted' : 'correcting';
       saveSession(sp, {
-        status: done ? 'completed' : 'correcting',
+        status,
         iteration,
         verification: { screenshot: renderPng, diffRatio: r.pixel.diffRatio, blockMatchRate: r.blocks?.blockMatchRate ?? null },
         phases: { ...(s.phases || {}), [`verify-${iteration}`]: { pixel: r.pixel, blocks: r.blocks, corrections: r.corrections?.corrections } },
       });
-      console.log(`\nsession: iteration=${iteration}/${MAX_ITERATIONS} status=${done ? 'completed' : 'correcting'} (${sp})`);
+      console.log(`\nsession: iteration=${iteration}/${MAX_ITERATIONS} status=${status} (${sp})`);
     }
     return;
   }

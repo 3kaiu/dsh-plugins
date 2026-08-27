@@ -20,7 +20,7 @@
  * 纯函数, 无副作用。
  */
 
-import { inferLayout, round1, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata } from './layout-core.ts'
+import { inferLayout, round1, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata, CONTAINER_ABSORB_RATIO } from './layout-core.ts'
 import { detectRepeatGroups } from './repeat.ts'
 import { systemChromeOf } from './system-chrome.ts'
 
@@ -445,7 +445,9 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
       if (n === c || assigned.has(n.id) || absorbedContainers.has(n.id) || standaloneContainers.has(n.id)) return false
       const inside = n._x >= c._x - 2 && n._y >= c._y - 2 && n._x + n._width <= c._x + c._width + 2 && n._y + n._height <= c._y + c._height + 2
       if (!inside) return false
-      return n._width * n._height < c._width * c._height * 0.9
+      // 吸收比统一引用 CONTAINER_ABSORB_RATIO(=0.95, 与蓝图代 reverseInferSemanticLayout 单一来源)。
+      // 历史: 本模块曾为 0.9(更保守), 两代管线同输入会产出不同容器树, 已归一。
+      return n._width * n._height < c._width * c._height * CONTAINER_ABSORB_RATIO
     })
     if (kids.length > 0) {
       absorbed.set(c.id, kids)

@@ -21,3 +21,5 @@ export * from "./ir/schema.ts";
 export * from "./ir/outline.ts";
 export * from "./ir/ingest.ts";
 export * from "./ir/checklist.ts";
+// 还原决策分类(kind/sizing/position/spacing): 自 layout-infer 壳包归位 core(壳只留工具注册面)
+export * from "./classify.ts";

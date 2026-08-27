@@ -12,10 +12,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  generateCodeBlueprint, initTextMetrics, validateBlueprint, blueprintRegion,
-  blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng,
-  ingestDesignExport, lintDesignExport, restorationChecklist, checklistToText, extractDesignTokens, diffRegions,
+  validateBlueprint, blueprintRegion,
+  blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng, diffRegions,
 } from './dist/index.js';
+// 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.mjs
+import { buildBlueprint, writeArtifactBundle, collectLeaves } from './adapters/pipeline.mjs';
 
 const [, , cmd, ...args] = process.argv;
 const flag = (name) => {
@@ -34,34 +35,20 @@ function printGateSummary(bp, v) {
   console.log('真值:', bp.truthReport?.verdict, '| pageShell:', bp.pageShell?.archetype || '无');
 }
 
-/** 蓝图管线公共段: 读稿 → 输入体检 → 归一 → 蓝图 → 契约校验 */
+/** 蓝图管线公共段已上移 adapters/pipeline.buildBlueprint —— 本文件只做 CLI 参数搬运 */
 async function runBlueprint(designPath) {
   const scaleArg = flag('--scale');
-  await initTextMetrics();
-  const raw = JSON.parse(fs.readFileSync(designPath, 'utf8'));
-  // scale 优先级: CLI 显式参数 > 导出 meta 声明 > 不归一
-  const declaredScale = raw?.meta?.scale ?? raw?.meta?.canvas?.scale;
   const expectSections = flag('--expect-sections');
-  const lint = lintDesignExport(raw, { expectSections: expectSections ? Number(expectSections) : undefined });
-  const { canvas, styles, nodes } = ingestDesignExport(raw);
-  const bp = generateCodeBlueprint({ canvas, nodes, styles, scale: scaleArg ?? declaredScale ?? null });
-  return { bp, v: validateBlueprint(bp), raw, lint };
+  // scale/expectSections 优先级与原实现一致: CLI 显式参数 > 导出 meta 声明 > 不归一
+  const { bp, v, lint } = await buildBlueprint(designPath, {
+    scale: scaleArg ?? undefined,
+    expectSections: typeof expectSections === 'string' && expectSections !== '' ? Number(expectSections) : undefined,
+  });
+  return { bp, v, lint };
 }
 
 function printLint(lint) {
   for (const c of lint.checks) console.log(`输入体检[${c.level}] ${c.check}: ${c.detail}`);
-}
-
-/** 收集蓝图全部叶子节点(diffRegions 的候选映射输入) */
-function leafNodesOf(bp) {
-  const leaves = [];
-  const walk = (n) => {
-    if (!n || typeof n !== 'object') return;
-    if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n);
-    else for (const c of n.children) walk(c);
-  };
-  for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
-  return leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds }));
 }
 
 async function main() {
@@ -73,52 +60,17 @@ async function main() {
     printLint(lint);
     fs.mkdirSync(outDir, { recursive: true });
     const base = path.basename(designPath).replace(/\.json$/, '');
-    const files = {};
-    files.blueprint = path.join(outDir, `${base}.blueprint.json`);
-    files.outline = path.join(outDir, `${base}.outline.txt`);
-    fs.writeFileSync(files.blueprint, JSON.stringify(bp));
-    fs.writeFileSync(files.outline, blueprintToOutline(bp));
     printGateSummary(bp, v);
 
     if (cmd === 'build') {
-      // 一键产物包: 分层产物 + 资源骨架 + 索引 —— LLM 按序消费, 不必自行编排多次调用
-      const cl = restorationChecklist(bp);
-      cl.gates.contract = v.ok ? 'PASS' : 'FAIL';
-      files.checklistJson = path.join(outDir, `${base}.checklist.json`);
-      files.checklist = path.join(outDir, `${base}.checklist.txt`);
-      files.tokens = path.join(outDir, `${base}.tokens.json`);
-      files.assets = path.join(outDir, `${base}.assets.json`);
-      files.index = path.join(outDir, `INDEX.txt`);
-      fs.writeFileSync(files.checklistJson, JSON.stringify(cl, null, 1));
-      fs.writeFileSync(files.checklist, checklistToText(cl, { contractOk: v.ok }));
-      fs.writeFileSync(files.tokens, JSON.stringify(extractDesignTokens(bp, { includeAliases: true }), null, 1));
-      fs.writeFileSync(files.assets, JSON.stringify({
-        _comment: '资源导出表: vectors 由 MasterGo mcp_extractSvg 按 svgKey 回填 svg 字符串或落盘路径; images.src 为空时按 nodeId 从设计侧导出位图',
-        vectors: cl.vectors,
-        images: cl.images,
-      }, null, 1));
+      // 一键产物包与 workflow/MCP 主入口完全同源(writeArtifactBundle, 含 INDEX.txt 阅读地图)
+      const { files } = writeArtifactBundle(bp, v, lint, outDir, base);
       const kb = (n) => `${Math.round(n / 102.4) / 10}KB`;
-      const indexLines = [
-        `# UI 还原产物包 — ${base}`,
-        `画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×已归一)` : ''}`,
-        `门禁: ${v.ok ? '契约 PASS' : '契约 FAIL'} | ${bp.diffReport.verdict} | ${bp.styleDiffReport?.verdict || '-'} | ${bp.truthReport?.verdict || '-'}`,
-        `输入体检: ${lint.ok ? 'PASS' : 'FAIL(见下方 WARN/FAIL 项, 先修复输入再消费)'}`,
-        ...lint.checks.filter((c) => c.level === 'WARN' || c.level === 'FAIL').map((c) => `  ! [${c.level}] ${c.check}: ${c.detail}`),
-        '',
-        '消费顺序(渐进披露):',
-        `1. 本文件 — 门禁基线与阅读地图`,
-        `2. ${path.basename(files.checklist)} (${kb(fs.statSync(files.checklist).size)}) — 还原合同: 实现前必读/实现后自检`,
-        `3. ${path.basename(files.outline)} (${kb(fs.statSync(files.outline).size)}) — 空间结构心智模型`,
-        `4. ${path.basename(files.blueprint)} (${kb(fs.statSync(files.blueprint).size)}) — 精确数值, 按节点 id 查询`,
-        `5. ${path.basename(files.tokens)} — DTCG token, 样式优先引用`,
-        `6. ${path.basename(files.assets)} — 资源导出表(svgKey/nodeId → 实际资源)`,
-        '',
-        '实现完成后验证:',
-        `  ui-restore verify ${path.basename(files.blueprint)}`,
-        `  渲染侧: ui-restore diff <truth.png> <render.png> --blocks <mT>,<mR>; 失败时用 regions 定位差异区域`,
-      ].join('\n');
-      fs.writeFileSync(files.index, indexLines);
       for (const f of ['checklist', 'tokens', 'assets', 'index']) console.log(`${f}: ${files[f]} (${kb(fs.statSync(files[f]).size)})`);
+    } else {
+      const bpPath = path.join(outDir, `${base}.blueprint.json`);
+      fs.writeFileSync(bpPath, JSON.stringify(bp));
+      fs.writeFileSync(path.join(outDir, `${base}.outline.txt`), blueprintToOutline(bp));
     }
     if (!v.ok) process.exit(1);
     return;
@@ -169,7 +121,7 @@ async function main() {
     if (!truthPng || !renderPng) { console.error('用法: ui-restore regions <truth.png> <render.png> [--bp <blueprint.json>] [--grid 24] [--top 5]'); process.exit(1); }
     const bpFlag = flag('--bp');
     let nodes;
-    if (bpFlag) nodes = leafNodesOf(JSON.parse(fs.readFileSync(bpFlag, 'utf8')));
+    if (bpFlag) nodes = collectLeaves(JSON.parse(fs.readFileSync(bpFlag, 'utf8')));
     const gridN = Number(flag('--grid')) || undefined;
     const topN = Number(flag('--top')) || undefined;
     const r = diffRegions(fs.readFileSync(truthPng), fs.readFileSync(renderPng), { nodes, grid: gridN, top: topN });

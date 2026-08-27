@@ -1024,6 +1024,54 @@ console.log("=== 几何参考快照(renderGeometrySnapshot) ===");
 }
 //#endregion
 
+//#region 审计回归(P0/P1 修复): 尺寸守卫 / 背景判定与坐标 / 快照底色 / posSim 像素制
+console.log("=== 审计回归(audit fixes) ===");
+{
+  const { PNG } = await import("pngjs");
+  // 1) 尺寸不一致必须硬失败(运行时实证过: 渲染多出一整屏红色曾被裁剪成 diffRatio=0)
+  const solid = (w, h, c) => {
+    const img = new PNG({ width: w, height: h });
+    for (let i = 0; i < w * h; i++) { img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2]; img.data[i * 4 + 3] = 255; }
+    return PNG.sync.write(img);
+  };
+  let threw = false;
+  try { comparePng(solid(10, 10, [255, 255, 255]), solid(20, 20, [255, 255, 255])); } catch (e) { threw = String(e.message).includes("尺寸不一致"); }
+  check("守卫: comparePng 尺寸不一致硬失败", threw, true);
+  const cropped = comparePng(solid(10, 10, [255, 255, 255]), solid(20, 20, [255, 255, 255]), { allowCrop: true });
+  check("守卫: allowCrop 显式放行裁剪旧行为", cropped.diffRatio === 0, true);
+
+  // 2) 通栏贴顶内容条(375×64)不再被误吞为背景; 整页背景入选且 bounds 含 x/y 并过契约
+  const bp = generateCodeBlueprint({
+    canvas: { width: 375, height: 812 },
+    nodes: [
+      { id: "hdr_band", type: "FRAME", name: "top-band", layoutStyle: { relativeX: 0, relativeY: 0, width: 375, height: 64 }, _color: "#FF0000" },
+      { id: "t_body", type: "TEXT", name: "t", layoutStyle: { relativeX: 16, relativeY: 200, width: 100, height: 24 }, text: [{ text: "正文" }], fontSize: 14, color: "#111111" },
+      { id: "page_bg", type: "FRAME", name: "page-bg", layoutStyle: { relativeX: 0, relativeY: 0, width: 375, height: 812 }, _color: "#123456" },
+    ],
+  });
+  check("背景: 顶栏留在 tree / 页面背景唯一入列 / 坐标齐全", [
+    JSON.stringify(bp.tree).includes('"hdr_band"'),
+    (bp.backgrounds || []).length === 1 && (bp.backgrounds || [])[0].id === "page_bg",
+    typeof (bp.backgrounds || [])[0]?.bounds?.x === "number" && typeof (bp.backgrounds || [])[0]?.bounds?.y === "number",
+  ], [true, true, true]);
+  const vb = validateBlueprint(bp);
+  check("背景: backgrounds 过契约校验", !vb.errors.some((e) => e.startsWith("backgrounds")), true);
+
+  // 3) 几何快照把纯色背景参与光栅化(此前恒白, 深底稿对照截图产生整页伪差)
+  //    取样点避开顶栏与文本区, 应精确等于页背景 #123456
+  const snapPng = PNG.sync.read(renderGeometrySnapshot(bp).png);
+  const si = (400 * 375 + 350) * 4;
+  check("快照: 纯色背景底被绘制", [snapPng.data[si], snapPng.data[si + 1], snapPng.data[si + 2]], [0x12, 0x34, 0x56]);
+
+  // 4) posSim 已改绝对 px 制(封顶 64px): 大偏移不再被画布尺寸稀释成分数虚高
+  const bmFar = blockMetrics(
+    [{ text: "课程学习", x: 10, y: 5, width: 60, height: 16 }],
+    [{ text: "课程学习", x: 10, y: 365, width: 60, height: 16 }]
+  );
+  check("posSim: 偏移达封顶记 0", bmFar.matchedPairs === 1 && bmFar.positionSimilarity === 0, true);
+}
+//#endregion
+
 if (failures > 0) {
   console.error(`\n${failures} 项失败 ✗`);
   process.exit(1);

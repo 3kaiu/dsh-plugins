@@ -36,7 +36,20 @@ export function blueprintJsonSchema() {
       },
       tree: { type: 'array', items: { $ref: '#/$defs/node' } },
       floatings: { type: 'array', items: { $ref: '#/$defs/node' } },
-      backgrounds: { type: 'array', items: { type: 'object' } },
+      backgrounds: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'bounds'],
+          properties: {
+            id: { type: 'string' },
+            name: { type: 'string' },
+            // 背景 bounds 必须含完整坐标: 缺 x/y 时下游无法定位重建背景层
+            bounds: { type: 'object', required: ['x', 'y', 'width', 'height'], properties: { x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' } } },
+            fill: {},
+          },
+        },
+      },
       pageShell: { type: 'object' },
       componentGroups: {
         type: 'array',
@@ -217,6 +230,15 @@ export function validateBlueprint(bp, opts = {}) {
   }
   for (const r of Array.isArray(bp.tree) ? bp.tree : []) checkNode(r, 'tree/' + (r.id ?? '?'))
   for (const r of Array.isArray(bp.floatings) ? bp.floatings : []) checkNode(r, 'floatings/' + (r.id ?? '?'))
+
+  // backgrounds 单独输出的层也要过契约(id + 完整坐标 bounds; 无坐标则下游无法重建)
+  for (const [i, bg] of (Array.isArray(bp.backgrounds) ? bp.backgrounds : []).entries()) {
+    const p = `backgrounds/${i}`
+    if (!bg || typeof bg !== 'object') { push(p, '必须是对象'); continue }
+    if (typeof bg.id !== 'string' || !bg.id) push(p + '.id', '必须有非空字符串 id')
+    const bb = bg.bounds
+    if (!bb || !isNum(bb.x) || !isNum(bb.y) || !isNum(bb.width) || !isNum(bb.height)) push(p + '.bounds', 'x/y/width/height 必须为有限数值')
+  }
 
   return { ok: errors.length === 0, errors }
 }

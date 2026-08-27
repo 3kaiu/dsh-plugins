@@ -1,5 +1,5 @@
 
-import { extractExactStyles } from '@ui-restore/core';
+import { extractExactStyles } from './layout-core.ts';
 
 // classify.js — 还原决策分类层(Step 1)
 // 输入: MasterGo DSL({styles, nodes, components}) 或纯几何节点树
@@ -12,7 +12,9 @@ import { extractExactStyles } from '@ui-restore/core';
 //   2. 类型直读: TEXT / PATH / image-fill —— 决定 text/icon/image
 //   3. 语义命名: icon/logo/img/avatar 等设计规范约定
 //   4. 几何反推: gap/padding(无原生间距字段时复用 inferLayout)
-import { inferLayout, detectRepeatGroups, systemChromeOf } from '@ui-restore/core'
+import { inferLayout } from './layout-core.ts'
+import { detectRepeatGroups } from './repeat.ts'
+import { systemChromeOf } from './system-chrome.ts'
 
 const round = (n) => Math.round((n || 0) * 100) / 100
 const ICON_NAME = /icon|ic[_-]|logo|glyph/i

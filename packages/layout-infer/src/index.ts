@@ -2,9 +2,8 @@
 // 把设计稿裸坐标(absolute)反推为 flex 语义(flexDirection/gap/padding/alignItems),
 // 辅助 LLM 在做 UI 还原时直接获得布局结构,而不是从坐标猜。
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { inferLayout, reverseInferSemanticLayout, generateCodeBlueprint } from "@ui-restore/core";
+import { inferLayout, reverseInferSemanticLayout, generateCodeBlueprint, classifyDsl } from "@ui-restore/core";
 import { annotate } from "./annotate.ts";
-import { classifyDsl } from "./classify.ts";
 import { applyCleanTool } from "./clean.ts";
 
 const name = "dsh-layout-infer";
@@ -188,6 +187,7 @@ function apply(ctx) {
 export { name, apply };
 // 供测试与外部工具直接消费的核心逻辑(构建产物同步导出)
 export { annotate, annotateNode, suggestName } from "./annotate.ts";
-export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "./classify.ts";
+// 分类逻辑已下沉 core(@ui-restore/core), 本包仅保留同名再导出维持公开 API 兼容
+export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "@ui-restore/core";
 export { detectRepeatGroups, detectSharedComponents, structureFingerprint, systemChromeOf } from "@ui-restore/core";
 export { applyCleanTool } from "./clean.ts";

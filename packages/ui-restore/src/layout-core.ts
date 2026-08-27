@@ -757,6 +757,9 @@ function resolveFontRef(node, styles) {
   return Object.keys(out).length ? out : null;
 }
 
+/** 容器吸收面积比: 子项面积须严格小于父项 × 此值才算可吸收子节点(dsl-clean 与 reverse 推理共用, 单一来源) */
+export const CONTAINER_ABSORB_RATIO = 0.95
+
 /**
  * 通用纯堆叠 DSL 反向推理真实布局架构 (reverseInferSemanticLayout)
  * 纯几何拓扑驱动: 无业务假设，从绝对坐标扁平堆叠图元中推导出生产级组件树与 Flex/Grid 嵌套结构
@@ -794,6 +797,9 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
       text: n.text,
       textStyle: n.textStyle,
       fill: n.fill,
+      // _color 透传(审计连带发现): 蓝图 backgrounds 序列化取 b.fill || b._color,
+      // 此处若丢弃 _color, 纯色底稿的背景 fill 会静默变空(快照/下游重建失去底色)
+      _color: n._color ?? undefined,
       raw: n,
     };
   });
@@ -804,7 +810,12 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
   const contentNodes = [];
 
   for (const item of items) {
-    const isBg = (item.width >= cw * 0.95 && item.height >= ch * 0.95) || (item.width >= cw && item.y <= 0);
+    // 背景判定(审计 P1 修复): 原条件②只看"全宽 + 贴顶(y≤0)", 会把 375×64 的通栏
+    // 顶栏/横幅误吞为背景 —— 从 tree 消失且序列化丢坐标(styleDiff 还对其豁免)。
+    // 现要求全宽之外再满足纵向覆盖 ≥50% 画布高才认作背景; 诚实边界: 半屏以上的
+    // 贴顶大图(hero 图)几何上仍难与背景区分, 需图层命名/切图语义辅助判定。
+    const isBg = (item.width >= cw * 0.95 && item.height >= ch * 0.95) ||
+                 (item.width >= cw && item.height >= ch * 0.5 && item.y <= 0);
     const isFloat = isFloatingCapsule({ _x: item.x, _y: item.y, _width: item.width, _height: item.height }, canvas);
 
     if (isBg) {
@@ -837,7 +848,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
                        child.y >= parent.y - 2 &&
                        (child.x + child.width) <= (parent.x + parent.width + 2) &&
                        (child.y + child.height) <= (parent.y + parent.height + 2);
-      if (isInside && (child.width * child.height) < (parent.width * parent.height * 0.95)) {
+      if (isInside && (child.width * child.height) < (parent.width * parent.height * CONTAINER_ABSORB_RATIO)) {
         children.push(child);
       }
     }
@@ -1363,7 +1374,9 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
     },
     backgrounds: layoutResult.backgrounds.map(b => ({
       id: b.id,
-      bounds: { width: b.width, height: b.height },
+      name: b.name || undefined,
+      // bounds 含 x/y(审计修复): 缺坐标则下游无法定位重建该背景层
+      bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
       fill: b.fill || b._color,
     })),
     componentGroups: detectSiblingComponentGroups([...blueprintTreeOut, ...floatingsBlueprint]),
