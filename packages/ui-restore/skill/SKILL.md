@@ -44,7 +44,7 @@ node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [
 
 MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff` / `ui_restore_profile` / `ui_restore_generate` / `ui_restore_gate`。
 
-Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram}.ts`；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
+Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram,registry}.ts`（`registry.ts:1` 热插拔，`registerAdapter` 零改核心加栈）；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
 
 ## 修正优先级(差异多于 3 处时按序处理)
 

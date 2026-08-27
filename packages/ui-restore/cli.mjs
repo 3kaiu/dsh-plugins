@@ -179,28 +179,18 @@ async function main() {
     const bpPath = args[0];
     const projectDir = flag('--project');
     if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact, emitVue, emitFlutter, emitMiniProgram } = await import('./dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapter } = await import('./dist/index.js');
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
-    const profile = flag('--profile') ? loadProfile(flag('--profile')) : resolveProfile({ framework:[], language:[], styling:[], build:[], componentLibraries:[], entry:{} });
+    const profile = flag('--profile') ? loadProfile(flag('--profile')) : (await import('./dist/index.js')).analyzeProject(projectDir).profile;
     const plan = planGeneration(bp, profile);
     const assetsPath = flag('--assets');
     const assets = resolveAssets(bp, plan, { assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath,'utf8')) : { vectors:[], images:[] }, assetDir: profile.assetDir, projectDir });
     const outDir = path.join(projectDir, flag('--out') || 'restore');
     const baseName = flag('--base-name') || 'Restore';
-    let serializer = flag('--serializer')
-    if(!serializer){
-      if(profile.framework === 'miniprogram') serializer = 'miniprogram'
-      else if(profile.framework === 'flutter') serializer = 'flutter'
-      else if(profile.framework === 'vue') serializer = 'vue'
-      else if(profile.styling === 'tailwind') serializer = 'tailwind'
-      else serializer = 'inline'
-    }
-    let reactOut
-    if(serializer === 'miniprogram') reactOut = emitMiniProgram(bp, plan, assets, profile, { baseName })
-    else if(serializer === 'flutter') reactOut = emitFlutter(bp, plan, assets, profile, { baseName })
-    else if(serializer === 'vue') reactOut = emitVue(bp, plan, assets, profile, { baseName })
-    else if(serializer === 'tailwind') reactOut = emitTailwindReact(bp, plan, assets, profile, { baseName })
-    else reactOut = emitReact(bp, plan, assets, profile, { baseName });
+    await ensureBuiltins()
+    const adapter = resolveAdapter(profile, flag('--serializer') || undefined)
+    const reactOut = adapter.emit(bp, plan, assets, profile, { baseName })
+    const serializer = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {

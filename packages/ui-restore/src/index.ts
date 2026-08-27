@@ -46,6 +46,7 @@ export * from "./emit/tailwind.ts";
 export * from "./emit/vue.ts";
 export * from "./emit/flutter.ts";
 export * from "./emit/miniprogram.ts";
+export * from "./emit/registry.ts";
 // Enhancement Semantic ⑲
 export * from "./ir/semantic.ts";
 // V2 Merge ⑳
