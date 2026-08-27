@@ -251,7 +251,7 @@ server.tool(
 
 server.tool(
   'ui_restore_generate',
-  '蓝图+画像 → 代码：Strategy IR 单源双 serializer 生成 React.tsx + preview.html + .restore-map.json（受 Generation Contract 约束）',
+  '蓝图+画像 → 代码：Strategy IR 单源双 serializer 生成 React.tsx(+Tailwind 可选) + preview.html + .restore-map.json（受 Generation Contract 约束）',
   {
     blueprint_path: z.string(),
     project_dir: z.string().describe('目标项目根（落盘根）'),
@@ -259,15 +259,17 @@ server.tool(
     assets_path: z.string().optional().describe('回填后的 assets.json 路径'),
     out_subdir: z.string().optional().describe('相对 project_dir 的子目录，缺省 restore'),
     base_name: z.string().optional().describe('组件名，缺省 Restore'),
+    serializer: z.enum(['inline','tailwind']).optional().describe('强制 serializer，缺省按 profile.styling 自动（tailwind→Tailwind, 其他→inline）'),
   },
-  async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name }) => {
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml } = await import('../dist/index.js');
+  async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact } = await import('../dist/index.js');
     const bp = readJson(blueprint_path);
     const profile = profile_path ? (await import('../dist/index.js')).loadProfile(profile_path) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
     const plan = planGeneration(bp, profile);
     const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: project_dir });
     const outDir = path.join(project_dir, out_subdir || 'restore');
-    const reactOut = emitReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' });
+    const ser = serializer || (profile.styling === 'tailwind' ? 'tailwind' : 'inline')
+    const reactOut = ser === 'tailwind' ? emitTailwindReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' }) : emitReact(bp, plan, assets, profile, { baseName: base_name || 'Restore' });
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
@@ -277,7 +279,7 @@ server.tool(
     }
     const mapPath = path.join(outDir, '.restore-map.json');
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
-    return text({ outDir, component: reactOut.componentName, contract: plan.items.length, assets: assets.summary, map: mapPath, warnings: plan.warnings.slice(0, 3) });
+    return text({ outDir, component: reactOut.componentName, serializer: ser, contract: plan.items.length, assets: assets.summary, map: mapPath, warnings: plan.warnings.slice(0, 3) });
   }
 );
 

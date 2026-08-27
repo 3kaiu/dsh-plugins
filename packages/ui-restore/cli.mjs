@@ -178,8 +178,8 @@ async function main() {
   if (cmd === 'generate') {
     const bpPath = args[0];
     const projectDir = flag('--project');
-    if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X]'); process.exit(1); }
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml } = await import('./dist/index.js');
+    if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X] [--serializer inline|tailwind]'); process.exit(1); }
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact } = await import('./dist/index.js');
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
     const profile = flag('--profile') ? loadProfile(flag('--profile')) : resolveProfile({ framework:[], language:[], styling:[], build:[], componentLibraries:[], entry:{} });
     const plan = planGeneration(bp, profile);
@@ -187,7 +187,8 @@ async function main() {
     const assets = resolveAssets(bp, plan, { assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath,'utf8')) : { vectors:[], images:[] }, assetDir: profile.assetDir, projectDir });
     const outDir = path.join(projectDir, flag('--out') || 'restore');
     const baseName = flag('--base-name') || 'Restore';
-    const reactOut = emitReact(bp, plan, assets, profile, { baseName });
+    const serializer = flag('--serializer') || (profile.styling === 'tailwind' ? 'tailwind' : 'inline');
+    const reactOut = serializer === 'tailwind' ? emitTailwindReact(bp, plan, assets, profile, { baseName }) : emitReact(bp, plan, assets, profile, { baseName });
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
@@ -197,7 +198,7 @@ async function main() {
     const mapPath = path.join(outDir, '.restore-map.json');
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
     const miss = (assets.assets||[]).filter((a)=>a.status==='missing');
-    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
+    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
     if (miss.length) console.log(`! 资产违约 ${miss.length} 处: `+ miss.slice(0,5).map((a)=>`${a.id}:${a.key}`).join(', '));
     if (plan.warnings.length) console.log(`! warnings: ${plan.warnings[0]}`);
     return;

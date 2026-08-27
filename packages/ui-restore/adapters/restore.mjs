@@ -30,7 +30,7 @@ import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verif
 import {
   renderGeometrySnapshot,
   analyzeProject, resolveProfile, saveProfile, loadProfile,
-  planGeneration, resolveAssets, emitReact, emitPreviewHtml,
+  planGeneration, resolveAssets, emitReact, emitPreviewHtml, emitTailwindReact,
 } from '../dist/index.js';
 
 const args = process.argv.slice(2);
@@ -171,7 +171,7 @@ async function main() {
     // v4 Phase 2: blueprint + profile → 契约决策 → 资产解析 → React tsx + preview.html + restore-map
     const bpPath = args[1];
     const projectDir = flag('project');
-    if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X]'); process.exit(1); }
+    if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X] [--serializer inline|tailwind]'); process.exit(1); }
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
     const profile = flag('profile') ? loadProfile(flag('profile')) : resolveProfile({ framework: [], language: [], styling: [], build: [], componentLibraries: [], entry: {} });
     const plan = planGeneration(bp, profile);
@@ -183,7 +183,8 @@ async function main() {
     });
     const outDir = path.join(projectDir, flag('out') || 'restore');
     const baseName = flag('base-name') || 'Restore';
-    const reactOut = emitReact(bp, plan, assets, profile, { baseName });
+    const serializer = flag('serializer') || (profile.styling === 'tailwind' ? 'tailwind' : 'inline')
+    const reactOut = serializer === 'tailwind' ? emitTailwindReact(bp, plan, assets, profile, { baseName }) : emitReact(bp, plan, assets, profile, { baseName });
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
@@ -195,7 +196,7 @@ async function main() {
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
     // 资产违约摘要(missing=占位+违约, 禁止近似替代)
     const miss = (assets.assets || []).filter((a) => a.status === 'missing');
-    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
+    console.log(`generate → ${outDir}: ${reactOut.componentName}.tsx(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
     if (miss.length) console.log(`! 资产违约 ${miss.length} 处(几何占位, 禁止近似替代): ` + miss.slice(0, 5).map((a) => `${a.id}:${a.key}`).join(', ') + (miss.length > 5 ? ' ...' : ''));
     if (plan.warnings.length) console.log(`! contract 警告 ${plan.warnings.length} 条(首条: ${plan.warnings[0]})`);
     return;

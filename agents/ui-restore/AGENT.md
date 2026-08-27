@@ -36,7 +36,7 @@ Phase 3.5 Vision          仅当确定性说不清时：region 成对裁图 → 
 | 取数 | MasterGo MCP 的 section 枚举 + 逐 section DSL(分页取全, 不可跳过) |
 | 分析 | `ui_restore_run`(mode=analyze) 或 CLI `node adapters/restore.mjs analyze <design.json> --session s.json` |
 | 画像 | `restore.mjs profile <projectDir> [--out p.json]` / `ui-restore profile <dir>` → Target Profile(置信度排序，未知=unknown；绝不默认 css-modules) |
-| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json]` / `ui-restore generate <bp> --project <dir>` → React.tsx + preview.html + .restore-map.json(Strategy IR 单源双 serializer) |
+| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json] [--serializer inline|tailwind]` / `ui-restore generate <bp> --project <dir>` → React.tsx(+Tailwind ⑰) + preview.html + .restore-map.json(Strategy IR 单源三 serializer) |
 | 下钻 | `ui_restore_region`(rect/ids → 完整精确子树), 大页面禁止整页蓝图进上下文 |
 | 对比/门禁 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json`；`ui-restore gate <truth.png> <render.png> --bp <bp>` 组合验收(global+region+geometry+assets) |
 | 定位 | `adapters/loop.mjs` 的 `locateRegions`：Pixel Region → DOM([data-restore-node]) → Blueprint node → restore-map → 源文件 |

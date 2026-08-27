@@ -37,9 +37,10 @@ export * from "./verify/errors.ts";
 export * from "./verify/gate.ts";
 export * from "./verify/score.ts";
 export * from "./verify/vision.ts";
-// emit(v4 Phase 2): Strategy IR → React/preview 序列化
+// emit(v4 Phase 2): Strategy IR → React/preview 序列化(双 serializer + Tailwind ⑰)
 export * from "./emit/style-ir.ts";
 export * from "./emit/react.ts";
 export * from "./emit/html.ts";
+export * from "./emit/tailwind.ts";
 // target 受限 Patch 契约与校验(⑨⑪)
 export * from "./target/patch.ts";
