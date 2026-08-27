@@ -27,6 +27,9 @@ jobs:
     env:
       OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
     steps:
+      # 安全提示: 第三方 action 应经 dependabot 钉死到提交 SHA(此处暂用主版本标签);
+      # 同时本工作流持有 secrets.OPENCODE_ZEN_API_KEY 与 contents/pull-requests 写权限,
+      # 故镜像第三方 action 到内部 org 并 SHA 钉死可进一步降低投毒面。
       - uses: actions/checkout@v4
 
       - name: 注入 DSH_HOME(RUNNER_TEMP,隔离于 ~/.dsh)
@@ -39,10 +42,9 @@ jobs:
       - name: 安装官方 dsh 与 pnpm(dsh 跟随 next 最新预发布)
         run: npm i -g @deepseek-ai/dsh@next pnpm@9.15.0
 
-      - name: 构建插件(未发布 npm,从仓库构建;dsh 依赖刷新到最新)
+      - name: 构建插件(未发布 npm,从仓库构建;依赖锁定,确定性安装)
         run: |
-          pnpm install --no-frozen-lockfile
-          pnpm update "@deepseek-ai/*"
+          pnpm install --frozen-lockfile
           (cd packages/shared && node build.mjs)
           (cd packages/layout-infer && node build.mjs)
           (cd packages/llm-opencode-zen && node build.mjs)

@@ -206,7 +206,15 @@ export function buildElementTree(bp, ctx) {
         if (!style.background && n.fill?.type !== 'solid' && n.fill?.type !== 'gradient') style.background = 'rgba(255,255,255,0.5)'
       }
     }
-    if (n.stroke?.color && num(n.stroke.width) > 0) style.border = `${num(n.stroke.width)}px ${n.stroke.style || 'solid'} ${n.stroke.color}`
+    if (n.stroke?.color && num(n.stroke.width) > 0) {
+      const sw = num(n.stroke.width)
+      // outside 描边在 bounds 之外, 需把盒子外扩一个描边宽(否则被 border-box 收进内部导致尺寸偏小)
+      if (n.stroke.align === 'outside' && !n.contentClipped) {
+        style.width = num(b.width) + sw * 2
+        style.height = num(b.height) + sw * 2
+      }
+      style.border = `${sw}px ${n.stroke.style || 'solid'} ${n.stroke.color}`
+    }
     // 透明度：容器(含子元素)必须把 alpha 烘焙进背景，否则整棵子树被淡化（设计规则：frame opacity 仅作用于背景）
     if (n.opacity != null && n.opacity !== 1) {
       const containerWithChildren = Array.isArray(n.children) && n.children.length > 0

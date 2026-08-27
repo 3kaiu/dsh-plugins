@@ -38,6 +38,8 @@ const confineUnder = (rootDir, rel) => {
 };
 // 读取路径必须在 rootDir 内(默认 cwd), 防任意文件读取
 const safeRead = (rootDir, p) => confineUnder(rootDir || process.cwd(), p);
+// 维度钳制: 防止超大 canvas/width/height 触发大内存分配(DoS)
+const clampDim = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(100000, Math.floor(n))) : null; };
 
 const server = new McpServer({ name: 'ui-restore', version: '1.0.0' });
 
@@ -210,8 +212,9 @@ server.tool(
     const out = { pixel: { diffPixels: pixel.diffPixels, diffRatio: pixel.diffRatio } };
     if (truth_blocks && render_blocks) {
       const [W, H] = canvas ? canvas.split('x').map(Number) : [pixel.width, pixel.height];
+      const cw = clampDim(W) ?? pixel.width, ch = clampDim(H) ?? pixel.height;
       const b = blockMetrics(readJson(truth_blocks), readJson(render_blocks), {
-        designImg: decodePng(pT), renderImg: decodePng(pR), canvasWidth: W, canvasHeight: H,
+        designImg: decodePng(pT), renderImg: decodePng(pR), canvasWidth: cw, canvasHeight: ch,
       });
       out.blocks = { blockMatchRate: b.blockMatchRate, matchedPairs: b.matchedPairs, positionSimilarity: b.positionSimilarity, colorSimilarity: b.colorSimilarity, avgTextSimilarity: b.avgTextSimilarity };
       out.unmatchedRender = b.unmatchedRender.slice(0, 8);
