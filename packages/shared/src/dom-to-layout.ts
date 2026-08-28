@@ -49,7 +49,7 @@ function suggestName(node, inferred) {
   return node.tag || node.role || 'layer'
 }
 
-function domNodeToInternal(node, parentRect, tolerance) {
+function domNodeToInternal(node, parentRect, tolerance, counter = { n: 0 }) {
   const rect = node.rect || {}
   const x = (rect.x ?? rect.left ?? 0) - (parentRect ? (parentRect.x ?? 0) : 0)
   const y = (rect.y ?? rect.top ?? 0) - (parentRect ? (parentRect.y ?? 0) : 0)
@@ -57,7 +57,7 @@ function domNodeToInternal(node, parentRect, tolerance) {
   const h = rect.h ?? rect.height ?? 0
   const filteredChildren = (node.children || []).filter(isVisibleNode)
   // 递归
-  const internalChildren = filteredChildren.map(c => domNodeToInternal(c, rect, tolerance))
+  const internalChildren = filteredChildren.map(c => domNodeToInternal(c, rect, tolerance, counter))
   // computed 直读
   const comp = node.computed || {}
   let layout = null
@@ -104,7 +104,8 @@ function domNodeToInternal(node, parentRect, tolerance) {
     }
   }
   return {
-    id: node.id || node.selector || `dom:${Math.random().toString(36).slice(2,8)}`,
+    // 确定性 id：同一 DOM 两次 dump 产出一致（Math.random 会破坏跨 dump 的 id 配对/缓存与回归对比）
+    id: node.id || node.selector || `dom:${(counter.n += 1).toString(36)}`,
     name: node.tag || node.role || node.id || 'layer',
     type: (node.tag || 'DIV').toUpperCase(),
     selector: node.selector || '',

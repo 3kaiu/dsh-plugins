@@ -91,6 +91,7 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
   // 在页面内执行结构化 dump
   try {
     const dump = await raceAbort(pageInstance.evaluate(({ selector, includeComputed }) => {
+      let uid = 0 // 每次 dump 的确定性序号：同 DOM 两次 dump 的 id 一致（Math.random 会破坏配对）
       function getRect(el) {
         const r = el.getBoundingClientRect()
         return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
@@ -124,14 +125,16 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
           if (c) children.push(c)
         }
         return {
-          id: el.id || `${tag}-${Math.random().toString(36).slice(2,6)}`,
+          id: el.id || `${tag}-${(++uid).toString(36)}`,
           tag, selector: tag, role: el.getAttribute('role') || '',
           rect, text, visible: true, children, computed
         }
       }
       const root = selector ? document.querySelector(selector) : document.body
       if (!root) return { viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio }, tree: [], issues: ['selector not found'] }
-      const tree = build(root) ? [build(root)] : []
+      // build 只跑一次：双重调用既浪费一次整树遍历，也让计数器序号漂移
+      const rootTree = build(root)
+      const tree = rootTree ? [rootTree] : []
       const issues=[]
       // 字体加载检查
       if (document.fonts) {

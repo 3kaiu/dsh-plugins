@@ -8,7 +8,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "tsx test/layout-core.test.ts",
+    "test": "tsx build.ts && tsx test/layout-core.test.ts && tsx test/semaphore.test.ts && tsx test/dsl-clean.test.ts && tsx test/dom-to-layout.test.ts",
     "build": "tsx build.ts"
   },
   "keywords": [
