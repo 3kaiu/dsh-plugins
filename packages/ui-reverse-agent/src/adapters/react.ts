@@ -1,5 +1,17 @@
 'use strict'
 // adapter-react — neutral-tree → React JSX（与 Vue 适配器同源，验证中立性）
+//
+// 生成代码注入防护：neutral 树来自不可信的参考稿解析/外部 JSON，其中任何
+// 文本与样式值都不得裸插值进 JSX——字符串一律以 JSON.stringify 产出 JS
+// 字符串字面量，几何值一律经 Number 钳制为有限数（非数值直接丢弃），
+// 原始 SVG 不内联（与 Vue 适配器同策略，仅留注释占位）。
+
+const num = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+const str = (v, fallback) => JSON.stringify(typeof v === 'string' && v ? v : (fallback ?? ''))
 
 export function neutralToReact(neutral) {
   const root = neutral.root || neutral
@@ -8,7 +20,7 @@ export function neutralToReact(neutral) {
   return [
     `export default function Page() {`,
     `  return (`,
-    `    <div style={{width:${canvas.width},height:${canvas.height},background:'${canvas.background || '#fff'}'}}>`,
+    `    <div style={{width:${JSON.stringify(num(canvas.width))},height:${JSON.stringify(num(canvas.height))},background:${str(canvas.background, '#fff')}}}>`,
     children.split('\n').map(l => '      ' + l).join('\n'),
     `    </div>`,
     `  )`,
@@ -20,7 +32,7 @@ function reactNode(n) {
   const style = reactStyle(n)
   const tag = reactTag(n)
   const children = (n.children || []).map(reactNode).join('')
-  const content = n.text ? n.text : children
+  const content = n.text ? `{${JSON.stringify(String(n.text))}}` : children
   const extra = n.svg ? `{/* svg */}` : ''
   return `<${tag} style={${style}}>${content}${extra}</${tag}>`
 }
@@ -34,11 +46,15 @@ function reactTag(n) {
 
 function reactStyle(n) {
   const parts = []
-  if (n.x != null) parts.push(`left:${n.x}`)
-  if (n.y != null) parts.push(`top:${n.y}`)
-  if (n.width != null) parts.push(`width:${n.width}`)
-  if (n.height != null) parts.push(`height:${n.height}`)
-  if (n.bg) parts.push(`background:'${typeof n.bg === 'string' ? n.bg : '#fff'}'`)
-  if (n.color) parts.push(`color:'${n.color}'`)
+  const px = (prop, v) => {
+    const k = num(v)
+    if (k != null) parts.push(`${prop}:${k}`)
+  }
+  px('left', n.x)
+  px('top', n.y)
+  px('width', n.width)
+  px('height', n.height)
+  if (typeof n.bg === 'string' && n.bg) parts.push(`background:${JSON.stringify(n.bg)}`)
+  if (typeof n.color === 'string' && n.color) parts.push(`color:${JSON.stringify(n.color)}`)
   return `{${parts.join(',')}}`
 }

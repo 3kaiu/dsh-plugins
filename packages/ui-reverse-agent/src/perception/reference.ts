@@ -12,6 +12,10 @@ import { buildBlueprint } from '@3kaiu/dsh-plugin-kit'
 
 export async function referenceIngest({ dsl, screenshotPaths, url, viewport, outPath } = {}, deps = {}) {
   const { classifyDsl, annotate, cleanToStandardDsl } = deps
+  // fail-loud：无任何可用参考输入时直接报错，不静默产空蓝图
+  if (!dsl && !url && !(Array.isArray(screenshotPaths) && screenshotPaths.length)) {
+    throw new Error('reference_ingest: 缺少参考输入 — dsl / screenshotPaths / url 至少提供一项')
+  }
   // 兼容多种 dsl 形态
   let tree = null, canvas = null, styles = null, meta = null
 
@@ -53,7 +57,7 @@ export async function referenceIngest({ dsl, screenshotPaths, url, viewport, out
 
   if (url && deps.browserDomDump) {
     // URL 参考：复用实现侧相同管线
-    const dump = await deps.browserDomDump({ selector: 'body', includeComputed: true })
+    const dump = await deps.browserDomDump({ selector: 'body', includeComputed: true, signal: deps.signal })
     // 需 page_layout_tree 转换（由调用方在 deps.domToLayout 提供）
     if (deps.domToLayout) {
       const laid = deps.domToLayout(dump)
@@ -67,6 +71,16 @@ export async function referenceIngest({ dsl, screenshotPaths, url, viewport, out
 
   if (!tree) tree = []
   if (!canvas) canvas = viewport || { width: 1440, height: 900 }
+
+  // fail-loud：提供了 dsl 却解析不出树，说明形态不被支持或 deps 缺失
+  // （如拍平稿未注入 cleanToStandardDsl）——绝不静默落盘空蓝图
+  if (dsl && (!Array.isArray(tree) || !tree.length)) {
+    throw new Error(
+      'reference_ingest: dsl 未能解析出布局树（tree 为空）。' +
+      '支持形态：标准 DSL {root,meta}、拍平稿 sections 数组、MasterGo 原始 DSL {nodes:[...]}；' +
+      '拍平稿需要调用方注入 cleanToStandardDsl'
+    )
+  }
 
   const blueprint = buildBlueprint({ canvas, tree, styles, dsl: dsl && { styles, nodes: tree }, screenshotPaths, viewport: canvas })
 

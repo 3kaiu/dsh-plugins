@@ -24,12 +24,17 @@ console.log('agent.cordis.yml isolate ✓');
 const presetYml = fs.readFileSync(path.join(presetDir, 'preset.yml'), 'utf8');
 if (!presetYml.includes('ui-reverse')) throw new Error('preset.yml 缺少 id');
 console.log('preset.yml ok ✓');
-// 5. prompt.md 需含 Preset 特有章节（事实来源/反 Hack/完成条件）
+// 5. prompt.md 需含 Preset 特有章节（事实来源/不可信输入隔离/反 Hack/完成条件）
 const prompt = fs.readFileSync(path.join(presetDir, 'prompt.md'), 'utf8');
-for (const key of ['事实来源', '反 Hack 禁令', '完成条件']) {
+for (const key of ['事实来源', '不可信输入隔离', '反 Hack 禁令', '完成条件']) {
   if (!prompt.includes(key)) throw new Error(`prompt.md 缺少章节: ${key}`);
 }
 console.log('prompt.md sections ✓');
+// 5b. persona 单一来源：dist 的 PROMPT_TEMPLATE 必须与 prompt.md 逐字节一致（防打包/路径回归）
+const { PROMPT_TEMPLATE } = await import('../dist/index.js');
+if (PROMPT_TEMPLATE !== prompt) throw new Error('PROMPT_TEMPLATE 与 preset/ui-reverse/prompt.md 不一致 — persona 单一来源被破坏');
+if (!PROMPT_TEMPLATE.includes('{{PROJECT_PATH}}')) throw new Error('persona 缺少占位符');
+console.log('persona single-source ✓');
 // 6. skills/ui-restore/SKILL.md 存在且含信号分级
 const skillPath = path.join(root, 'skills', 'ui-restore', 'SKILL.md');
 if (!fs.existsSync(skillPath)) throw new Error(`skill missing: ${skillPath}`);
