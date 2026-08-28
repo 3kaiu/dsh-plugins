@@ -513,7 +513,15 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
 
   const styles = {}
   for (const n of nodes) {
-    if (n._dsl && n._dsl.styles) Object.assign(styles, n._dsl.styles)
+    // 不可信 JSON 的 "__proto__"/"constructor"/"prototype" 自有键不得进入合并：
+    // JSON.parse 会把 "__proto__" 生成为自有属性，Object.assign 走 [[Set]]
+    // 语义会实际改写 styles 的原型，使后续任意键查询落入攻击者对象
+    if (n._dsl && n._dsl.styles) {
+      for (const [k, v] of Object.entries(n._dsl.styles)) {
+        if (k === "__proto__" || k === "constructor" || k === "prototype") continue
+        styles[k] = v
+      }
+    }
   }
 
   return {
