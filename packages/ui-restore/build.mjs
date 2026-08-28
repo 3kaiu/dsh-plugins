@@ -15,14 +15,29 @@ const RUNTIME_EXTERNALS = [
   "ws",
   "@modelcontextprotocol/sdk",
   "zod",
+  // playwright 为可选运行时依赖（screenshot/dom-blocks 探针），不进 bundle
+  "playwright",
+  "playwright-core",
 ];
+// 多入口：index=核心库；adapters 全部经同一压缩管线出产物（dist/*.js），
+// 不再有裸 .mjs 直跑源码的使用方式（2026-08 起，统一按压缩构建产物使用）
 await build({
   ...BASE,
-  entryPoints: [path.join(__dirname, "src/index.ts")],
+  // {in,out} 对：产物统一拍平到 dist/（dist/cli.js 而非 dist/adapters/cli.js）
+  entryPoints: [
+    { in: "src/index.ts", out: "index" },
+    { in: "src/adapters/cli.ts", out: "cli" },
+    { in: "src/adapters/mcp-server.ts", out: "mcp-server" },
+    { in: "src/adapters/pipeline.ts", out: "pipeline" },
+    { in: "src/adapters/restore.ts", out: "restore" },
+    { in: "src/adapters/loop.ts", out: "loop" },
+    { in: "src/adapters/screenshot.ts", out: "screenshot" },
+    { in: "src/adapters/dom-blocks.ts", out: "dom-blocks" },
+  ].map((e) => ({ in: path.join(__dirname, e.in), out: e.out })),
   outdir: path.join(__dirname, "dist"),
   splitting: true,
   format: "esm",
   external: RUNTIME_EXTERNALS,
   chunkNames: "chunks/[name]-[hash]",
 });
-console.log("built dist/index.js (+ chunks)");
+console.log("built dist/index.js + dist/{cli,mcp-server,pipeline,restore,loop,screenshot,dom-blocks}.js (+ chunks)");

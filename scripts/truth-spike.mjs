@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildBlueprint, collectLeaves } from '../packages/ui-restore/adapters/pipeline.mjs';
+import { buildBlueprint, collectLeaves } from '../packages/ui-restore/dist/pipeline.js';
 import { renderGeometrySnapshot, comparePng, diffRegions } from '../packages/ui-restore/dist/index.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));

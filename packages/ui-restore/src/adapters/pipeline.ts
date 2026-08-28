@@ -15,7 +15,7 @@ import {
   generateCodeBlueprint,
   comparePng, blockMetrics, decodePng, diffRegions, diffToCorrections,
   enrichSemanticSync,
-} from '../dist/index.js';
+} from '../index.ts';
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 

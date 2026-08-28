@@ -6,7 +6,7 @@
 // 每个案例(case-*/)的完整回归闭环:
 //   1. analyze   design.json → UI Truth 产物包 + 四闸门禁(契约/几何守恒/样式守恒/Yoga真值)
 //   2. 真值块清单 ← 蓝图 TEXT 叶子派生(visual-diff 契约: "设计侧清单来自蓝图 bounds")
-//   3. 探针      restore.html → 同会话 {render.png + render.blocks.json}(adapters/dom-blocks.mjs)
+//   3. 探针      restore.html → 同会话 {render.png + render.blocks.json}(ui-restore dist/dom-blocks.js)
 //   4. 好例断言  truth.png vs 渲染图 → 收敛语义
 //        HARD: 区域归零(clusterCount===0) + diffRatio<0.02(亚像素/AA 噪声级)
 //        WARN: blockMatchRate<0.95(清单粒度尚未对齐蓝图的富文本切分 —— V2 typography 校准项)
@@ -18,9 +18,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyzeDesign, verifyScreenshots } from '../packages/ui-restore/adapters/pipeline.mjs';
+import { analyzeDesign, verifyScreenshots } from '../packages/ui-restore/dist/pipeline.js';
 import { decodePng } from '../packages/ui-restore/dist/index.js';
-import { probe } from '../packages/ui-restore/adapters/dom-blocks.mjs';
+import { probe } from '../packages/ui-restore/dist/dom-blocks.js';
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const benchDir = path.join(rootDir, 'benchmarks');

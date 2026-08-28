@@ -15,9 +15,9 @@ import {
   validateBlueprint, blueprintRegion,
   blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng, diffRegions,
   evaluateGate, computeScore,
-} from './dist/index.js';
-// 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.mjs
-import { buildBlueprint, writeArtifactBundle, collectLeaves } from './adapters/pipeline.mjs';
+} from '../index.ts';
+// 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.ts
+import { buildBlueprint, writeArtifactBundle, collectLeaves } from './pipeline.ts';
 
 const [, , cmd, ...args] = process.argv;
 // 纯函数：不改动 args 数组，仅读取，避免 --help 等场景误改参数表导致目录误建或位置参数错位
@@ -129,7 +129,7 @@ async function main() {
     const r = diffRegions(fs.readFileSync(truthPng), fs.readFileSync(renderPng), { nodes, grid: gridN, top: topN });
     console.log(JSON.stringify(r, null, 1));
     if (bpFlag) {
-      const { diffToCorrections } = await import('./dist/index.js');
+      const { diffToCorrections } = await import('../index.ts');
       const c = diffToCorrections(JSON.parse(fs.readFileSync(bpFlag, 'utf8')), r);
       if (c) {
         console.log('\n# 修正指令(按严重度逐条核对)');
@@ -163,7 +163,7 @@ async function main() {
   if (cmd === 'profile') {
     const projectDir = args[0];
     if (!projectDir) { console.error('用法: ui-restore profile <projectDir> [--out profile.json] [--styling x] [--framework x]'); process.exit(1); }
-    const { analyzeProject, saveProfile } = await import('./dist/index.js');
+    const { analyzeProject, saveProfile } = await import('../index.ts');
     const overrides = { framework: flag('--framework'), language: flag('--language'), styling: flag('--styling'), build: flag('--build'), assetDir: flag('--assetDir') };
     for (const k of Object.keys(overrides)) if (overrides[k] == null) delete overrides[k];
     const r = analyzeProject(projectDir, { overrides });
@@ -180,9 +180,9 @@ async function main() {
     const bpPath = args[0];
     const projectDir = flag('--project');
     if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('./dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../index.ts');
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
-    const profile = flag('--profile') ? loadProfile(flag('--profile')) : (await import('./dist/index.js')).analyzeProject(projectDir).profile;
+    const profile = flag('--profile') ? loadProfile(flag('--profile')) : (await import('../index.ts')).analyzeProject(projectDir).profile;
     const plan = planGeneration(bp, profile);
     const assetsPath = flag('--assets');
     const assets = resolveAssets(bp, plan, { assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath,'utf8')) : { vectors:[], images:[] }, assetDir: profile.assetDir, projectDir });
@@ -211,7 +211,7 @@ async function main() {
     const projectDir = args[0];
     const fromDir = flag('--from') || flag('--src');
     if (!projectDir) { console.error('用法: ui-restore merge <projectDir> [--from <generatedDir>] [--on-conflict rename|skip|overwrite]'); process.exit(1); }
-    const { mergeIntoProject, canMerge } = await import('./dist/index.js');
+    const { mergeIntoProject, canMerge } = await import('../index.ts');
     const srcDir = fromDir ? path.resolve(fromDir) : path.join(projectDir, 'restore');
     if (!fs.existsSync(srcDir)) { console.error(`生成目录不存在: ${srcDir}`); process.exit(1); }
     const check = canMerge(projectDir);

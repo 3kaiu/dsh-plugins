@@ -28,14 +28,14 @@
 // RestoreSession(d2c 第六节): 单个 JSON 文件即全部状态; 无数据库无队列。
 import fs from 'node:fs';
 import path from 'node:path';
-import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verifyQualityKey, MAX_ITERATIONS } from './pipeline.mjs';
+import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verifyQualityKey, MAX_ITERATIONS } from './pipeline.ts';
 import {
   renderGeometrySnapshot,
   analyzeProject, resolveProfile, saveProfile, loadProfile,
   planGeneration, resolveAssets, emitPreviewHtml,
   mergeIntoProject, canMerge,
   ensureBuiltins, resolveAdapterAsync, listAdapters,
-} from '../dist/index.js';
+} from '../index.ts';
 
 const args = process.argv.slice(2);
 const cmd = args[0];

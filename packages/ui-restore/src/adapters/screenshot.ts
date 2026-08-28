@@ -5,7 +5,7 @@
 // 引擎自动选择: 系统 Chrome/Edge headless(零安装, 默认) → Playwright(未装则跳过提示)。
 //
 // 用法:
-//   node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812] [--full] [--wait ms] [--engine auto|chrome|playwright]
+//   node dist/screenshot.js <url-or-file> <out.png> [--width 375] [--height 812] [--full] [--wait ms] [--engine auto|chrome|playwright]
 //   (url 支持 http(s) 与本地文件路径; 本地路径自动转 file://
 //    两引擎参数语义见 captureScreenshot 头注释: --full 需 playwright/auto; --wait 于 chrome 记虚拟时间预算)
 import fs from 'node:fs';
@@ -20,7 +20,7 @@ const flag = (name, dflt = null) => {
 };
 const has = (name) => args.includes(`--${name}`);
 
-// 共享给 adapters/dom-blocks.mjs(CDP 引擎同一套浏览器发现逻辑) — 覆盖 macOS/主流 Linux 发行版
+// 共享给 dom-blocks.js(CDP 引擎同一套浏览器发现逻辑)(CDP 引擎同一套浏览器发现逻辑) — 覆盖 macOS/主流 Linux 发行版
 export const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',

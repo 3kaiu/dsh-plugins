@@ -1,7 +1,7 @@
 {
   "name": "@ui-restore/core",
   "version": "1.0.0",
-  "description": "通用 UI 还原核心:设计稿 DSL → 中立蓝图 → 多重门禁验证。零宿主依赖,技术栈中立。",
+  "description": "\u901a\u7528 UI \u8fd8\u539f\u6838\u5fc3:\u8bbe\u8ba1\u7a3f DSL \u2192 \u4e2d\u7acb\u84dd\u56fe \u2192 \u591a\u91cd\u95e8\u7981\u9a8c\u8bc1\u3002\u96f6\u5bbf\u4e3b\u4f9d\u8d56,\u6280\u672f\u6808\u4e2d\u7acb\u3002",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -18,7 +18,10 @@
     "zod": "^4.4.0"
   },
   "bin": {
-    "ui-restore": "./cli.mjs"
+    "ui-restore": "./dist/cli.js"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "files": [
+    "dist"
+  ]
 }

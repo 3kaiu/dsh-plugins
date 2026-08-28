@@ -21,30 +21,30 @@ description: UI 1:1 还原。设计稿 DSL → 中立蓝图 → 验证门禁。�
 
 ```bash
 # 分析: 设计稿 json → UI Truth 产物包 + 四闸门禁(session 记账)
-node adapters/restore.mjs analyze <design.json> --dir <out> [--scale auto] --session s.json
+node <pkg>/dist/restore.js analyze <design.json> --dir <out> [--scale auto] --session s.json
 # 画像: 项目 → Target Profile(置信度排序，未知=unknown)
-node adapters/restore.mjs profile <projectDir> --out profile.json
+node <pkg>/dist/restore.js profile <projectDir> --out profile.json
 # 生成: 蓝图 + 画像 → Generation Contract + Asset  → 多重 serializer(React/Vue/Flutter/小程序/Tailwind) + DOM Map
-node adapters/restore.mjs generate <blueprint.json> --project <dir> --profile profile.json [--assets assets.json] --out restore [--serializer inline|tailwind|vue|flutter|miniprogram]
+node <pkg>/dist/restore.js generate <blueprint.json> --project <dir> --profile profile.json [--assets assets.json] --out restore [--serializer inline|tailwind|vue|flutter|miniprogram]
 # 对比: 参考图 vs 渲染截图 → 差异区域 + 修正指令 + 组合门禁 + 收敛评分 + iteration 记账
 #   成对提供 --blocks-truth/--blocks-render 即启用块级层(blockMatchRate); 记账含防退化:
 #   质量键[区域数,标记占比,diffRatio]字典序 + Score 单调收敛，劣化轮次拒绝并要求回滚到最佳轮(session.best + best-render-N.png 存证)
-node adapters/restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--blocks-truth mT.json --blocks-render mR.json] --session s.json
+node <pkg>/dist/restore.js verify <truth.png> <render.png> --bp <blueprint.json> [--blocks-truth mT.json --blocks-render mR.json] --session s.json
 # 组合门禁单验(供 CI): global+region+geometry 组合，任一 FAIL 即整体 FAIL
-node packages/ui-restore/cli.mjs gate <truth.png> <render.png> --bp <blueprint.json>
+node packages/ui-restore/dist/cli.js gate <truth.png> <render.png> --bp <blueprint.json>
 # 收敛编排(受限 Repair 循环): Region→Node→Source 定位 → PatchContract → 受限 LLM → Validator → Score
-node adapters/loop.mjs --bp <blueprint.json> --map <restore/.restore-map.json> --truth <truth.png> --render <render.png> --project <dir> [--max 8]
+node <pkg>/dist/loop.js --bp <blueprint.json> --map <restore/.restore-map.json> --truth <truth.png> --render <render.png> --project <dir> [--max 8]
 # 编排推进(V1.5): 确定性状态机 —— 依会话给出 phase 与下一步动作(analyze→implement→correct→done/report), 不内置 LLM
-node adapters/restore.mjs restore [design.json] --session s.json
+node <pkg>/dist/restore.js restore [design.json] --session s.json
 # 截图(可选能力, 需 pnpm add -D playwright && npx playwright install chromium):
-node adapters/screenshot.mjs <url-or-file> <out.png> [--width 375] [--height 812]
+node <pkg>/dist/screenshot.js <url-or-file> <out.png> [--width 375] [--height 812]
 # Web 渲染探针: 同一会话产出 文本块清单 + 同源截图(png 与块坐标严格同空间):
-node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--engine auto|playwright|cdp]
+node <pkg>/dist/dom-blocks.js <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--engine auto|playwright|cdp]
 ```
 
 MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff` / `ui_restore_profile` / `ui_restore_generate` / `ui_restore_gate`。
 
-Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram,registry}.ts`（`registry.ts:1` 热插拔，`registerAdapter` 零改核心加栈）；编排: `adapters/loop.mjs`（含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
+Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram,registry}.ts`（`registry.ts:1` 热插拔，`registerAdapter` 零改核心加栈）；编排: `src/adapters/loop.ts`（构建产物 dist/loop.js，含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
 
 ## 修正优先级(差异多于 3 处时按序处理)
 
@@ -55,7 +55,7 @@ Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-
 
 ## 前置
 
-- 核心库 `@ui-restore/core`(零宿主依赖);CLI `node <pkg>/cli.mjs`;MCP `node <pkg>/adapters/mcp-server.mjs`(stdio)
+- 核心库 `@ui-restore/core`(零宿主依赖);CLI `node <pkg>/dist/cli.js`;MCP `node <pkg>/dist/mcp-server.js`(stdio)
 - 设计稿输入自适应三种形态:`{meta:{canvas},sections:[{x,y,dsl:{nodes,styles}}]}` / MCP 聚合导出 `{sections:[{x,y,nodes,styles}]}` / 裸 section 数组;canvas 缺省自动推断
 
 ## ① 取数(MasterGo MCP)

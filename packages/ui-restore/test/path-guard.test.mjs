@@ -1,5 +1,5 @@
 // path-guard 单测：MCP 工具参数路径的收容语义（../ 逃逸 / 绝对路径越界 / 根内解析）。
-import { confineTo, makeGuard, guardRoot } from "../adapters/path-guard.mjs";
+import { confineTo, makeGuard, guardRoot } from "../dist/index.js";
 import path from 'node:path';
 import os from 'node:os';
 

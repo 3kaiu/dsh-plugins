@@ -19,10 +19,10 @@
 
 ```bash
 cd /Users/edy/dev/dsh-plugins/packages/ui-restore
-node packages/ui-restore/adapters/restore.mjs analyze benchmarks/case-live-course-card/design.json --dir /tmp/bm-live
-node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore.html     benchmarks/case-live-course-card/truth.png --width 375 --height 812
-node packages/ui-restore/adapters/screenshot.mjs benchmarks/case-live-course-card/restore-bad.html benchmarks/case-live-course-card/render.png --width 375 --height 812
-node packages/ui-restore/adapters/restore.mjs verify benchmarks/case-live-course-card/truth.png benchmarks/case-live-course-card/render.png \
+node packages/ui-restore/dist/restore.js analyze benchmarks/case-live-course-card/design.json --dir /tmp/bm-live
+node packages/ui-restore/dist/screenshot.js benchmarks/case-live-course-card/restore.html     benchmarks/case-live-course-card/truth.png --width 375 --height 812
+node packages/ui-restore/dist/screenshot.js benchmarks/case-live-course-card/restore-bad.html benchmarks/case-live-course-card/render.png --width 375 --height 812
+node packages/ui-restore/dist/restore.js verify benchmarks/case-live-course-card/truth.png benchmarks/case-live-course-card/render.png \
   --bp /tmp/bm-live/design.blueprint.json --session benchmarks/case-live-course-card/session.json
 ```
 

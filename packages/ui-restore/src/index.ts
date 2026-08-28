@@ -10,6 +10,7 @@
 //   describe 样式/Token/文本度量/图标引用(design-tokens / text-metrics)
 //   verify   几何守恒 + 像素/块级对比(layout-core.autoHealing / visual-diff)
 //   target   项目理解(Analyzer/Resolver) + 生成契约 + 资产解析 + 受限 Patch(target/)
+export * from "./path-guard.ts";
 export * from "./dsl-clean.ts";
 export * from "./layout-core.ts";
 export * from "./repeat.ts";

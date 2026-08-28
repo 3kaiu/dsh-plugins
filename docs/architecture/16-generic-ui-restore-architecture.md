@@ -38,7 +38,7 @@ shared,layout-infer 走的是 shared 版本 —— 两套实现并存,且 layout
 不得在两侧平行修改同一算法。
 宿主耦合只剩工具注册壳(本就该薄)。另据同一轮审计, 编排逻辑已按「单一实现」收敛:
 蓝图构建(buildBlueprint)/产物包(writeArtifactBundle, 含 INDEX)/视觉验证(verifyScreenshots)
-只存在于 adapters/pipeline.mjs 一份, cli.mjs 与 mcp-server.mjs 一律薄转发 —— 此前三处拷贝
+只存在于 src/adapters/pipeline.ts 一份, cli/mcp-server 为薄入口（构建产物 dist/{cli,mcp-server}.js） —— 此前三处拷贝
 曾出现行为分叉(workflow 主入口缺 INDEX、MCP verify 缺块级指标)。
 通用化不是"重写解耦", 是**打包切分 + 单一实现多暴露面**。
 

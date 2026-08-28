@@ -13,9 +13,9 @@
 //   ui_restore_diff        真值/渲染两图(+文本块清单) → 像素/块级指标(+差异区域聚类+修正指令)
 //   ui_restore_tokens      蓝图 json → DTCG 设计 token
 //
-// 传输: stdio。启动: node adapters/mcp-server.mjs
+// 传输: stdio。启动: node dist/mcp-server.js
 import fs from 'node:fs';
-import { makeGuard } from './path-guard.mjs';
+import { makeGuard } from '../path-guard.ts';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -23,9 +23,9 @@ import { z } from 'zod';
 import {
   validateBlueprint, blueprintRegion, verifyLayoutTruth, blueprintToOutline, extractDesignTokens,
   evaluateGate, computeScore, comparePng, blockMetrics, decodePng, diffRegions, diffToCorrections,
-} from '../dist/index.js';
+} from '../index.ts';
 // 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
-import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.mjs';
+import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.ts';
 
 // 路径越界防护（2026-08 接线）：守卫实现见 ./path-guard.mjs（可单测）。
 // 所有工具参数路径（读/写）解析后必须落在收容根内，防 ../ 逃逸与任意文件读写。
@@ -255,7 +255,7 @@ server.tool(
     framework: z.string().optional().describe('显式覆盖框架'),
   },
   async ({ project_dir, out_path, styling, framework }) => {
-    const { analyzeProject, saveProfile } = await import('../dist/index.js');
+    const { analyzeProject, saveProfile } = await import('../index.ts');
     const projectAbs = confineUnder(project_dir);
     const r = analyzeProject(projectAbs, { overrides: { styling: styling || undefined, framework: framework || undefined } });
     const out = out_path ? confineUnder(out_path) : path.join(projectAbs, 'restore.profile.json');
@@ -277,10 +277,10 @@ server.tool(
     serializer: z.enum(['react','vue','flutter','miniprogram','tailwind','html']).optional().describe('强制 serializer id，缺省按 profile 自动解析；热插拔新增 id 需同步扩展本枚举'),
   },
   async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
-    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../dist/index.js');
+    const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../index.ts');
     const bp = readJson(blueprint_path);
     const projectAbs = confineUnder(project_dir);
-    const profile = profile_path ? (await import('../dist/index.js')).loadProfile(confineUnder(profile_path)) : (await import('../dist/index.js')).analyzeProject(projectAbs).profile;
+    const profile = profile_path ? (await import('../index.ts')).loadProfile(confineUnder(profile_path)) : (await import('../index.ts')).analyzeProject(projectAbs).profile;
     const plan = planGeneration(bp, profile);
     const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: projectAbs });
     // out_subdir 为 LLM 可控相对路径，同样收容（防 .. 逃逸出 project_dir）
@@ -344,7 +344,7 @@ server.tool(
     on_conflict: z.enum(['rename','skip','overwrite']).optional(),
   },
   async ({ project_dir, from_dir, on_conflict }) => {
-    const { mergeIntoProject, canMerge } = await import('../dist/index.js');
+    const { mergeIntoProject, canMerge } = await import('../index.ts');
     const projectAbs = confineUnder(project_dir);
     const srcDir = from_dir ? confineUnder(from_dir) : path.join(projectAbs, 'restore');
     if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);

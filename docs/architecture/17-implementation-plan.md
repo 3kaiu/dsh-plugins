@@ -201,7 +201,7 @@ MasterGo DSL ──► Blueprint(UI IR)
 - **停止条件**：单调收敛（每轮 score 不劣化即通过 best/regress）；指标建议 `P50≤3, P90≤5, P95≤8` 或「验证能单调收敛」优先于「5 次必收敛」。
 
 ### 文件
-- `adapters/loop.mjs`（编排）、`src/verify/{gate,vision,contract}.ts`、`src/target/patch.ts`（Patch Request/Validator）。
+- `src/adapters/loop.ts`（编排）、`src/verify/{gate,vision,contract}.ts`、`src/target/patch.ts`（Patch Request/Validator）。
 
 ---
 
@@ -262,9 +262,9 @@ MasterGo DSL ──► Blueprint(UI IR)
 | ④ | G | React Adapter(单 CSS) | `src/target/emit/react.ts` | 递归 tree→JSX；保真清单全过 |
 | P0-4 | G | DOM Map + restore-map | `emit/` + `data-restore-node` | region→node→file 链路通 |
 | ⑦ | C | Render+Verify 组合验收 | `src/verify/gate.ts` | global+region+geometry 组合 PASS |
-| ⑧ | C | 定位 | `adapters/loop.mjs` | region→DOM→node→file 定位 |
+| ⑧ | C | 定位 | `src/adapters/loop.ts` | region→DOM→node→file 定位 |
 | ⑨ | C | Patch Contract | `src/target/patch.ts` | Patch Request/Patch Policy 定义 |
-| ⑩ | C | LLM Repair(受限) | `adapters/loop.mjs` | 仅改 allowedFiles/Nodes |
+| ⑩ | C | LLM Repair(受限) | `src/adapters/loop.ts` | 仅改 allowedFiles/Nodes |
 | ⑪ | C | Patch Validator | `src/target/patch.ts` | 越界/依赖/DOM 异常拒收 |
 | P0-8 | C | Convergence Score | `src/verify/score.ts` | 单调收敛，best/regress 按 score |
 

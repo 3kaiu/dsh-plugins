@@ -16,12 +16,12 @@ import {
   decodePng,
   blockMetrics,
   validateBlueprint,
-} from '../dist/index.js'
-import { evaluateGate } from '../dist/index.js'
-import { computeScore, updateConvergence, isBetter } from '../dist/index.js'
-import { createPatchRequest, validatePatch, PATCH_POLICY } from '../dist/index.js'
-import { classifyRegions, shouldTriggerVision, diagnoseWithVision } from '../dist/index.js'
-import { collectLeaves } from './pipeline.mjs'
+} from '../index.ts'
+import { evaluateGate } from '../index.ts'
+import { computeScore, updateConvergence, isBetter } from '../index.ts'
+import { createPatchRequest, validatePatch, PATCH_POLICY } from '../index.ts'
+import { classifyRegions, shouldTriggerVision, diagnoseWithVision } from '../index.ts'
+import { collectLeaves } from './pipeline.ts'
 
 // ---------- ⑧ Region → Node → Source 定位 ----------
 

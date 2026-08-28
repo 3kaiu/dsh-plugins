@@ -5,20 +5,21 @@
 // 契约只有 flutter_harness(RenderParagraph 收集)一个实现, Web 闭环里 blockMatchRate 恒为 null。
 //
 // 契约(与 visual-diff.blockMetrics 对齐, 与 Flutter collectTextBlocks 同构):
-//   输出文件 = 裸数组 [{text,x,y,width,height}] —— pipeline.verifyScreenshots / restore.mjs verify
+//   输出文件 = 裸数组 [{text,x,y,width,height}] —— pipeline.verifyScreenshots / dist/restore.js verify
 //   经 readJson 直接消费; 坐标为视口 CSS px(deviceScaleFactor=1), 与截图逐像素同空间。
 //
 // 用法:
-//   node adapters/dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--wait ms] [--engine auto|playwright|cdp]
-//     auto = 系统 Chrome/Edge(裸 CDP, 零依赖)优先, 无则 Playwright —— 与 screenshot.mjs 的 auto 语义对齐
+//   node dist/dom-blocks.js <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--wait ms] [--engine auto|playwright|cdp]
+//     auto = 系统 Chrome/Edge(裸 CDP, 零依赖)优先, 无则 Playwright —— 与 screenshot.ts 的 auto 语义对齐
 //     cdp  = 强制系统浏览器 CDP(无则报错, 不静默换引擎 —— 保确定性时用)
-//     png 与块清单来自同一页面会话, 保证坐标与像素可比(不要与 screenshot.mjs 混用于同一验证)
+//     png 与块清单来自同一页面会话, 保证坐标与像素可比(不要与 screenshot.ts 混用于同一验证)
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
-import { findSystemChrome, toUrl } from './screenshot.mjs';
+import { fileURLToPath } from 'node:url';
+import { findSystemChrome, toUrl } from './screenshot.ts';
 
 /** 页内收集脚本: 遍历可见 TEXT 节点 → Range 客户端矩形并集(跨行文本取外接框, 对齐蓝图的整块 TEXT 叶子模型)。
  *  屏蔽 script/style/template; 祖先可见性用 checkVisibility(display/visibility/opacity), 旧内核回退 computedStyle。 */
@@ -195,7 +196,7 @@ export async function probe(target, outBlocks, opts = {}) {
 }
 
 // CLI 直跑入口(import 本模块时不执行 —— 与 screenshot.mjs 同款守卫)
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname;
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const args = process.argv.slice(2);
   const flag = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 && i + 1 < args.length ? args[i + 1] : null; };
