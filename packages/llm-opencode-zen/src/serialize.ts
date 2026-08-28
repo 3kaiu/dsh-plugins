@@ -80,6 +80,9 @@ function buildWireRequest(messages, options, tools, reasoning) {
   const maxTokens = options.purpose === "session-title"
     ? Math.min(options.maxTokens, 64)
     : options.maxTokens;
+  // top_p 是适配器自有采样默认: 官方 GenerateOptions 契约(provider/model/reasoningEffort/
+  // messages/system/tools/temperature/maxTokens/stop/signal/sessionId/purpose)无 topP 字段,
+  // 不存在"静默丢弃宿主字段"; 若上游未来增加 topP, 应在此透传而非沿用硬编码。
   return JSON.stringify({
     model: options.model,
     messages,

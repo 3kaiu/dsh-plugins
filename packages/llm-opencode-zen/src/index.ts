@@ -118,6 +118,16 @@ function httpErrorCode(status, error) {
   return "PROVIDER_ERROR";
 }
 
+// dsh-llm 错误谓词契约：入参是"provider error 的 code/type/message 拼接成的一个字符串"。
+// 这里把解析出的 JSON error 对象摊平成该字符串；直接传对象会让 RegExp.test
+// 永远命中 "[object Object]"，上下文超限等错误将被误分类为 PROVIDER_ERROR。
+function providerErrorDetail(error) {
+  if (error == null) return "";
+  if (typeof error === "string") return error;
+  if (typeof error !== "object") return String(error);
+  return [error.code, error.type, error.message].filter((v) => v != null).join(" ");
+}
+
 function opencodeHeaders(sessionId, userAgent, projectId) {
   return {
     "user-agent": userAgent,
@@ -248,6 +258,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
     if (!response.ok) {
       let message = `OpenCode Zen API error (HTTP ${response.status})`;
       let providerError;
+      let providerDetail = "";
       let rawBody = "";
       try {
         rawBody = await response.text();
@@ -257,13 +268,15 @@ class OpenCodeZenAdapter extends LlmAdapter {
         providerError = parsed?.error;
         if (providerError?.message) message = providerError.message;
         else if (parsed?.message) message = parsed.message;
+        providerDetail = providerErrorDetail(providerError) || providerErrorDetail(parsed);
       } catch {
         // 非 JSON 响应体（如 HTML 错误页/纯文本）：透出原文，避免信息被吞
-        const trimmed = rawBody.trim();
+        const trimmed = typeof rawBody === "string" ? rawBody.trim() : "";
         if (trimmed.length > 0) message = trimmed.slice(0, 300);
       }
       const retryAfter = providerRetryAfterMs(response.headers.get("retry-after"));
-      const code = httpErrorCode(response.status, providerError);
+      const reqId = requestId(response.headers);
+      const code = httpErrorCode(response.status, providerDetail);
       const locale = connection.locale ?? "zh";
       if (response.status === 429) {
         message = locale === "en"
@@ -277,7 +290,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
       throw new LlmError(message, code, {
         status: response.status,
         ...retryAfter !== void 0 ? { providerRetryAfterMs: retryAfter } : {},
-        ...requestId(response.headers) !== void 0 ? { requestId: requestId(response.headers) } : {},
+        ...reqId !== void 0 ? { requestId: reqId } : {},
       });
     }
 
@@ -575,6 +588,7 @@ export {
   apply,
   estimateUsage,
   freeModelCatalog,
+  buildWireRequest,
   inject,
   name,
   orderCatalog,

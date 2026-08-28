@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsx build.ts",
-    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts"
+    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts && tsx test/error-classify.test.ts && tsx test/options-map.test.ts"
   },
   "dsh": {
     "bundle": {
@@ -48,11 +48,11 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.7",
     "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.7",
     "@deepseek-ai/schemastery": "3.18.1",
     "eventsource-parser": "3.1.1",
