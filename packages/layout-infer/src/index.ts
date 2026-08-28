@@ -2,7 +2,7 @@
 // 把设计稿裸坐标(absolute)反推为 flex 语义(flexDirection/gap/padding/alignItems),
 // 辅助 LLM 在做 UI 还原时直接获得布局结构,而不是从坐标猜。
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { inferLayout } from "@3kaiu/dsh-plugin-kit";
+import { inferLayout, domToLayout, compareLayouts } from "@3kaiu/dsh-plugin-kit";
 import { annotate } from "./annotate.ts";
 import { classifyDsl } from "./classify.ts";
 import { applyCleanTool } from "./clean.ts";
@@ -45,12 +45,16 @@ function apply(ctx) {
             },
           },
         },
+        tolerance: {
+          type: "number",
+          description: "像素容差(默认 2，DOM 严格模式可传 1)",
+        },
       },
       output: {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => inferLayout({ container: args.container, children: args.children }),
+      execute: (args) => inferLayout({ container: args.container, children: args.children, tolerance: args.tolerance }),
     }),
   );
 
@@ -99,6 +103,55 @@ function apply(ctx) {
       execute: (args) => classifyDsl(args.dsl),
     }),
   );
+
+  ctx.tools.register(
+    defineTool({
+      name: "page_layout_tree",
+      description:
+        "把浏览器 DOM dump 转为与 annotate_layout 同构的标注树（实现侧布局树），与参考侧 clean_layout/annotate_layout 输出同构，可直接用于 compare_layouts。\n\n输入 domDump 为 browser_dom_dump 的输出（含 viewport 与 tree，tree 每节点 {id,tag,selector,role,rect:{x,y,w,h},text,visible,children,computed:{display,flexDirection,gap,padding,alignItems,justifyContent,position,font*,color,...}}），输出 {canvas, tree, stats}：tree 每节点 {id,name,type,selector,role,layout,suggestedName,rect,children}，layout 含 position/flexDirection/gap/padding/alignItems/justifyContent/confidence/source(computed|inferred)。DOM 自带层级，无需容器吸收/带状聚类，computed 直读优先于几何反推。",
+      parameters: {
+        domDump: {
+          type: "json",
+          required: true,
+          description: "browser_dom_dump 输出（含 viewport 与 tree）",
+        },
+        tolerance: {
+          type: "number",
+          description: "几何反推容差（默认 2，严格 1）",
+        },
+      },
+      output: {
+        schema: { type: "json" },
+        render: renderJson,
+      },
+      execute: (args) => domToLayout(args.domDump, { tolerance: args.tolerance }),
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "compare_layouts",
+      description:
+        "对比参考布局树与实现布局树，输出结构化差异列表。\n\n输入 referenceTree 与 implementedTree 为两棵标注树（clean_layout/annotate_layout 或 page_layout_tree 的 tree），输出 {matched, missing, extra, mismatches}：missing/extra 为未匹配节点路径，mismatches 每项 {path, prop, expected, actual, delta, priority, confidence}，priority 按 P0(结构/缺失) > P1(gap/padding/对齐) > P2(其他)。用于驱动单假设修复与回归检测。",
+      parameters: {
+        referenceTree: {
+          type: "json",
+          required: true,
+          description: "参考侧标注树（clean_layout/annotate_layout 的 tree）",
+        },
+        implementedTree: {
+          type: "json",
+          required: true,
+          description: "实现侧标注树（page_layout_tree 的 tree）",
+        },
+      },
+      output: {
+        schema: { type: "json" },
+        render: renderJson,
+      },
+      execute: (args) => compareLayouts({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
+    }),
+  );
 }
 
 export { name, apply };
@@ -106,3 +159,5 @@ export { name, apply };
 export { annotate, annotateNode, suggestName } from "./annotate.ts";
 export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "./classify.ts";
 export { applyCleanTool } from "./clean.ts";
+export { domToLayout } from "@3kaiu/dsh-plugin-kit";
+export { compareLayouts } from "@3kaiu/dsh-plugin-kit";

@@ -8,8 +8,8 @@
     "dist"
   ],
   "scripts": {
-    "test": "node test/layout-core.test.mjs",
-    "build": "node build.mjs"
+    "test": "tsx test/layout-core.test.ts",
+    "build": "tsx build.ts"
   },
   "keywords": [
     "dsh",

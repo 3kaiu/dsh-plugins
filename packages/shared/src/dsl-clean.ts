@@ -21,8 +21,22 @@
  */
 
 import { inferLayout, round1 } from './layout-core.ts'
+import {
+  isBackgroundRect as isBackgroundRectShared,
+  isContainerCandidate as isContainerCandidateShared,
+  clusterBandsAdaptive as clusterBandsAdaptiveShared,
+  clusterCols as clusterColsShared,
+  bandBBox as bandBBoxShared,
+} from './cluster.ts'
 
 const TOL = 2
+
+// 复用共享聚类内核（原地保留别名，保持调用方不变）
+const isBackgroundRect = isBackgroundRectShared
+const isContainerCandidate = isContainerCandidateShared
+const clusterBandsAdaptive = clusterBandsAdaptiveShared
+const clusterCols = clusterColsShared
+const bandBBox = bandBBoxShared
 
 // =====================================================================
 // 1. 归一化: section → 扁平节点(含页面绝对坐标 + 样式信号 + 原始 DSL)
@@ -64,73 +78,6 @@ function normalize({ canvas, sections }) {
 // =====================================================================
 // 2. 分类 + 容器吸收 + 带状聚类(语义角色)
 // =====================================================================
-
-const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
-
-function isBackgroundRect(n, canvas) {
-  if (n._width < canvas.width * 0.8) return false
-  if (Math.abs(n._rotation) > 0.5) return false
-  const isBottomStrip = n._y + n._height >= canvas.height - 10 && n._height <= 100
-  if (isBottomStrip) return false
-  const fill = typeof n._color === 'string' ? n._color : ''
-  if (GRADIENT_RE.test(fill)) return true
-  if (n._effect && /blur|backdrop/i.test(String(n._effect))) return true
-  return false
-}
-
-function isContainerCandidate(n) {
-  if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
-  if (Math.abs(n._rotation) > 0.5) return false
-  return true
-}
-
-/** y 轴自适应聚类(与 layout-core 语义一致): 全宽条独立; gap 断裂 */
-function clusterBandsAdaptive(items, canvas, tol = 2) {
-  const sorted = [...items].sort((a, b) => a._y - b._y)
-  const bands = []
-  for (const n of sorted) {
-    const isFullWidthStrip = n._width >= canvas.width * 0.9 && n._height <= 60
-    const end = n._y + n._height
-    const last = bands[bands.length - 1]
-    const gap = last ? n._y - last.maxEnd : 0
-    if (isFullWidthStrip) {
-      bands.push({ items: [n], maxEnd: end, fullWidth: true })
-      continue
-    }
-    if (last && !last.fullWidth && gap <= 12) {
-      last.items.push(n)
-      last.maxEnd = Math.max(last.maxEnd, end)
-    } else {
-      bands.push({ items: [n], maxEnd: end, fullWidth: false })
-    }
-  }
-  return bands
-}
-
-/** 带内 x 聚类成列 */
-function clusterCols(items, tol = 12) {
-  const sorted = [...items].sort((a, b) => a._x - b._x)
-  const cols = []
-  for (const n of sorted) {
-    const end = n._x + n._width
-    const last = cols[cols.length - 1]
-    if (last && n._x - last.maxEnd <= tol) {
-      last.items.push(n)
-      last.maxEnd = Math.max(last.maxEnd, end)
-    } else {
-      cols.push({ items: [n], maxEnd: end })
-    }
-  }
-  return cols
-}
-
-function bandBBox(band) {
-  const minX = Math.min(...band.items.map((n) => n._x))
-  const minY = Math.min(...band.items.map((n) => n._y))
-  const maxX = Math.max(...band.items.map((n) => n._x + n._width))
-  const maxY = Math.max(...band.items.map((n) => n._y + n._height))
-  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
-}
 
 // =====================================================================
 // 3. 语义命名
@@ -345,7 +292,13 @@ export function describeStructure(dsl) {
     if (node.effect) signals.push('效果:' + (typeof node.effect === 'string' ? node.effect : JSON.stringify(node.effect)))
     if (node.borderRadius) signals.push('圆角:' + node.borderRadius)
     if (node.role) signals.push('角色:' + node.role)
-    if (node.svgShortKey) signals.push('图标:' + node.svgShortKey)
+    if (node.svgShortKey || node.svgName) {
+      const namePart = node.svgName ? node.svgName : ''
+      const keyPart = node.svgShortKey ? node.svgShortKey : ''
+      if (namePart && keyPart) signals.push(`图标:${namePart}(${keyPart})`)
+      else if (namePart) signals.push(`图标:${namePart}`)
+      else signals.push(`图标:${keyPart}`)
+    }
     // 文本内容(短文本直接内联, 长文本保留占位符)
     const texts = []
     if (typeof node.text === 'string') texts.push(node.text)

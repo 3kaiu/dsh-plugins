@@ -1,0 +1,6 @@
+id: ui-reverse
+name: UI Reverse Engineering Agent
+description: "1:1 视觉还原 Agent — 参考 UI（截图/DSL/URL/多状态/多视口）→ 浏览器闭环对比（布局/几何/像素/排版/色彩五层评分）→ 单假设迭代至 0.96，无红线外 hack。"
+trust: user
+# DSH preset 目录名即 id（ui-reverse），用户可 `ctx.agentPresets.copy('ui-reverse','ui-reverse-myproj')` 定制
+# 组成由同目录 agent.cordis.yml 声明，roster 常驻挂载一次，每 Session 命名该 id 即继承其 Scope 层（tools/systemPrompt）

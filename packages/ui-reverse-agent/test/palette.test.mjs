@@ -1,0 +1,10 @@
+import { comparePalette } from "@3kaiu/dsh-plugin-kit";
+const ok=comparePalette({referencePalette:['#ff0000','#00ff00'], implementedPalette:['#ff0005','#00fe00']});
+console.log('palette pass',JSON.stringify(ok));
+if(ok.stats.fails!==0) throw new Error('近似色应 pass');
+if(ok.stats.meanDeltaE>1) throw new Error('meanDeltaE 应 <1');
+const fail=comparePalette({referencePalette:['#ff0000'], implementedPalette:['#0000ff']});
+console.log('palette fail',JSON.stringify(fail));
+if(fail.stats.fails!==1) throw new Error('红 vs 蓝应 fail');
+if(fail.colors[0].deltaE<30) throw new Error('ΔE 应 >30');
+console.log('palette OK ✓');

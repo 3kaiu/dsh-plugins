@@ -1,0 +1,575 @@
+// dsh-ui-reverse-agent: Visual Reverse Engineering Agent 工具集
+// 复用 layout-infer 的 4+2 个工具，新增感知/对比/守卫/记忆层工具（§3.1）
+import { defineTool } from "@deepseek-ai/dsh-tools";
+import { compareGeometry, compareTypography, comparePalette, compareScreenshots, scoreReport, antiHackScan } from "@3kaiu/dsh-plugin-kit";
+import { referenceIngest } from "./perception/reference.ts";
+import * as browser from "./perception/browser.ts";
+import { DevServer } from "./services/devserver.ts";
+import { stateRead, stateUpdate, syncGoalsAndTodo } from "./memory/state.ts";
+import { PROMPT_TEMPLATE } from "./agent/prompt.ts";
+import { COMPLETE_THRESHOLD } from "./config.ts";
+import { fanoutEvaluate, generateCandidates } from "./guard/fanout.ts";
+import { neutralIngest, neutralToBlueprint } from "./perception/neutral-ingest.ts";
+import { verifyNeutral } from "./guard/verify-neutral.ts";
+import { expandMatrix, aggregateMatrixScores, checkResponsive } from "./perception/viewport-matrix.ts";
+import { mapTypographyTokens, mapPaletteTokens } from "./services/token-map.ts";
+import { checkDesignConstraints, filterByConstraints } from "./guard/design-constraints.ts";
+import { hashOf, cacheKey, getCached, setCached } from "./services/cache.ts";
+import { checkA11y } from "./guard/a11y.ts";
+import { filterAbandonedSections, paginateSections, largeFileDiagnostics } from "./services/large-file.ts";
+import { classifyError, recoveryPlan, withRetry } from "./guard/recovery.ts";
+import { buildCiReport, writeCiArtifacts, ciGate } from "./services/ci.ts";
+import { checkDslSecurity, sanitizeDsl, sanitizeText, isAllowedUrl } from "./guard/security.ts";
+import { gitStatus, ensureRollbackPoint } from "./services/git.ts";
+import { createMetrics, estimateLoopCost } from "./services/metrics.ts";
+import { captureFeedback, loadFeedback, replayFeedback } from "./services/feedback.ts";
+import { MARKETPLACE_META, describeComposition } from "./services/marketplace.ts";
+import { runIntegrationFixture, integrationSuite } from "./testing/integration.ts";
+import { neutralToVue } from "./adapters/vue.ts";
+import { neutralToReact } from "./adapters/react.ts";
+import { toPercySnapshot, toChromaticSnapshot } from "./services/visual-regression.ts";
+import { critiqueDesign } from "./services/design-critique.ts";
+import { generateDesignSystem } from "./services/design-system.ts";
+import { classifyByExpert, planParallelExperts, mergeExpertResults } from "./orchestration/multi-agent.ts";
+import { generateHandoff } from "./services/handoff.ts";
+import { isCjk, cjkFontFallback, cjkLineBreak, cjkPunctWidth } from "./services/cjk.ts";
+import { extractAnimations, compareAnimations } from "./services/animation.ts";
+import { createTracer } from "./services/tracing.ts";
+import { defineRule, checkCustomRules, PRESET_RULES } from "./services/custom-rules.ts";
+import { generateToolDocs, generateHelperDocs } from "./services/docs.ts";
+import { genRandomTree, checkInvariant } from "./testing/property.ts";
+import { analyzeBundle, strictReport } from "./services/bundle-analysis.ts";
+import { createStream, livePreviewHtml } from "./services/streaming.ts";
+import { chunkFiles, incrementalPlan } from "./services/scale.ts";
+import { createComment, resolveComment, threadForPath } from "./services/collab.ts";
+import { evaluateRestoration } from "./testing/evaluation.ts";
+import { generateApiDocs, exampleSnippet } from "./services/typedoc.ts";
+
+const name = "dsh-ui-reverse-agent";
+const renderJson = (_args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }];
+
+let devServerInstance = null;
+
+function apply(ctx) {
+  // ── Preset Persona（若宿主提供 systemPrompt 则覆盖 deployment persona） ──
+  try {
+    if (ctx.systemPrompt?.section) {
+      ctx.systemPrompt.section({ name: 'deployment:persona', order: 0, text: PROMPT_TEMPLATE, complete: true });
+    }
+  } catch {}
+  try {
+    if (ctx.systemPrompt?.variable) {
+      ctx.systemPrompt.variable({ COMPLETE_THRESHOLD: String(COMPLETE_THRESHOLD) });
+    }
+  } catch {}
+  // Plan Mode 隔离：宿主若提供 planMode 服务，ui-reverse 的 phase0-4 默认在 plan scope 执行
+  // 由 preset 的 agent.cordis.yml isolate 配置保证，此处仅做兼容探测
+  try { if (ctx.planMode) { /* planMode 服务存在即支持 scope 隔离 */ } } catch {}
+
+  // ── Perception: reference_ingest ──────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "reference_ingest",
+    description: "摄取参考输入（截图/DSL/URL）并构建 Visual Blueprint：布局树 + 排版档案 + 调色板 + 资产清单 + 状态/视口清单，落盘 .ui-reverse/blueprint.json，供后续对比使用。输入 dsl 为 MasterGo DSL 或拍平稿 sections，screenshotPaths 为截图路径数组，url 为参考 URL（走 browser_dom_dump 管线）。",
+    parameters: {
+      dsl: { type: "json", description: "MasterGo DSL 或拍平稿 sections 数组" },
+      screenshotPaths: { type: "json", description: "参考截图路径数组" },
+      url: { type: "string", description: "参考 URL（与 dsl/screenshotPaths 三选一）" },
+      viewport: { type: "json", description: "视口 {width,height}，默认 1440x900" },
+      outPath: { type: "string", description: "blueprint 输出路径，默认 .ui-reverse/blueprint.json" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => referenceIngest(args),
+  }));
+
+  // ── Perception: browser_* ────────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "browser_start",
+    description: "启动 dev server（如未起）+ chromium，返回 URL 与健康状态。输入 devCommand/cwd/port 可托管子进程；url 为目标页。",
+    parameters: {
+      url: { type: "string", description: "目标 URL，默认 http://localhost:3000" },
+      devCommand: { type: "string", description: "dev server 启动命令，如 pnpm dev" },
+      cwd: { type: "string", description: "项目根路径" },
+      port: { type: "number", description: "端口" },
+      headless: { type: "boolean", description: "是否 headless，默认 true" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => {
+      if (args.devCommand || args.port) {
+        devServerInstance = new DevServer({ command: args.devCommand, cwd: args.cwd, port: args.port });
+        try { await devServerInstance.start() } catch {}
+      }
+      const url = args.url || devServerInstance?.url || "http://localhost:3000";
+      return browser.browserStart({ url, headless: args.headless !== false });
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_viewport",
+    description: "设置视口与 deviceScaleFactor",
+    parameters: {
+      width: { type: "number", required: true, description: "视口宽度" },
+      height: { type: "number", required: true, description: "视口高度" },
+      dpr: { type: "number", description: "deviceScaleFactor，默认 2" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => browser.browserViewport(args),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_navigate",
+    description: "导航到目标页",
+    parameters: { url: { type: "string", required: true, description: "目标 URL" } },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => browser.browserNavigate(args),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_screenshot",
+    description: "截图（full-page / viewport / element）→ PNG 文件",
+    parameters: {
+      path: { type: "string", description: "输出路径，默认 .ui-reverse/artifacts/current-*.png" },
+      fullPage: { type: "boolean", description: "是否全页，默认 true" },
+      selector: { type: "string", description: "元素选择器，仅截该元素" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => browser.browserScreenshot({ path: args.path, fullPage: args.fullPage, selector: args.selector }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_dom_dump",
+    description: "结构化 DOM dump：可见元素树 + rect + computed styles 子集（display/flexDirection/gap/padding/font*/color 等），供 page_layout_tree 使用",
+    parameters: {
+      selector: { type: "string", description: "根选择器，默认 body" },
+      includeComputed: { type: "boolean", description: "是否包含 computed，默认 true" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => browser.browserDomDump({ selector: args.selector, includeComputed: args.includeComputed !== false }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_state_trigger",
+    description: "CDP 强制伪状态（hover/active/focus/disabled/checked）并截图",
+    parameters: {
+      state: { type: "string", required: true, description: "hover | active | focus | disabled | checked" },
+      selector: { type: "string", description: "目标选择器" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => browser.browserStateTrigger(args),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_console",
+    description: "console 错误、未加载资源、字体加载状态检查",
+    parameters: {},
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async () => browser.browserConsole(),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "browser_stop",
+    description: "关闭当前 context/page，保留 browser 复用；进程结束时用 browserClose",
+    parameters: {},
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async () => browser.browserStop(),
+  }));
+
+  // ── Measure: compare_geometry ────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "compare_geometry",
+    description: "几何偏差：蓝图 regions / 参考树 vs 实现树 → 每节点 x/y/w/h 偏差（px），高于容差（默认 2px）即记 mismatch",
+    parameters: {
+      referenceTree: { type: "json", required: true, description: "参考树（blueprint.json 的 tree）" },
+      implementedTree: { type: "json", required: true, description: "实现树（page_layout_tree 的 tree）" },
+      tolerance: { type: "number", description: "容差 px，默认 2" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => compareGeometry({ referenceTree: args.referenceTree, implementedTree: args.implementedTree, tolerance: args.tolerance }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "compare_typography",
+    description: "排版偏差：实现侧文字度量 vs 排版档案 → 逐文本节点 family/size/weight/lineHeight/letterSpacing/color 偏差",
+    parameters: {
+      referenceTree: { type: "json", required: true, description: "参考树" },
+      implementedTree: { type: "json", required: true, description: "实现树" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => compareTypography({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "compare_palette",
+    description: "色彩偏差：实现侧主色 vs 参考调色板 → CIEDE2000 ΔE 列表，阈值 3",
+    parameters: {
+      referencePalette: { type: "json", description: "参考调色板 hex 数组" },
+      implementedPalette: { type: "json", description: "实现侧调色板 hex 数组" },
+      referenceTree: { type: "json", description: "参考树（自动提取调色板）" },
+      implementedTree: { type: "json", description: "实现树（自动提取调色板）" },
+      deltaEThreshold: { type: "number", description: "ΔE 阈值，默认 3" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => comparePalette({ referencePalette: args.referencePalette, implementedPalette: args.implementedPalette, referenceTree: args.referenceTree, implementedTree: args.implementedTree, deltaEThreshold: args.deltaEThreshold }),
+  }));
+
+  // ── Compare: pixel + score ──────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "compare_screenshots",
+    description: "像素对比：对齐 + SSIM + 像素差 + 热图 PNG + 分层分数。mode strict 要求同视口同比例，auto 先对齐",
+    parameters: {
+      reference: { type: "string", required: true, description: "参考截图路径" },
+      current: { type: "string", required: true, description: "当前截图路径" },
+      mode: { type: "string", description: "strict | auto，默认 strict" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => compareScreenshots({ reference: args.reference, current: args.current, mode: args.mode }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "score_report",
+    description: "加权评分：S=0.30*S_struct+0.30*S_geom+0.20*S_pixel+0.10*S_type+0.10*S_color，输出总分 + 分层分 + ΔS + regression 标记",
+    parameters: {
+      struct: { type: "number", description: "结构层分数 0..1" },
+      geom: { type: "number", description: "几何层分数 0..1" },
+      pixel: { type: "number", description: "像素层分数 0..1 (SSIM)" },
+      type: { type: "number", description: "排版层分数 0..1" },
+      color: { type: "number", description: "色彩层分数 0..1" },
+      previousTotal: { type: "number", description: "上一轮总分，用于 ΔS" },
+      blocked: { type: "boolean", description: "是否被 anti_hack_scan 阻断" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => scoreReport({ struct: args.struct, geom: args.geom, pixel: args.pixel, type: args.type, color: args.color, previousTotal: args.previousTotal, blocked: args.blocked }),
+  }));
+
+  // ── Guard: fanout_evaluate（Phase5 扇出，纯测量，可并行） ──────────
+  ctx.tools.register(defineTool({
+    name: "fanout_evaluate",
+    description: "扇出评估：对同一差异的多个候选修复值（gap/padding/size 等）打补丁→重对比→预测 ΔS，返回按总分降序的 ranked 列表。纯测量不改文件，可安全并行（isConcurrencySafe），供 Phase5 单假设择优，避免盲改。",
+    parameters: {
+      mismatch: { type: "json", required: true, description: "单个 mismatch 对象，来自 compare_geometry/compare_layouts（含 path/prop/expected/actual）" },
+      candidates: { type: "json", description: "候选修复值数组，如 [24,16,20] 或 [{value:24,label:'gap 24'}]，为空则自动生成 期望/±1px 三候选" },
+      referenceTree: { type: "json", required: true, description: "参考树（blueprint.json 的 tree）" },
+      implementedTree: { type: "json", required: true, description: "实现树（page_layout_tree 输出）" },
+      tolerance: { type: "number", description: "容差 px，默认 2" },
+      currentScore: { type: "number", description: "当前总分，用于 Δ 预测" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    isConcurrencySafe: () => true,
+    execute: (args) => fanoutEvaluate({
+      mismatch: args.mismatch,
+      candidates: args.candidates,
+      referenceTree: args.referenceTree,
+      implementedTree: args.implementedTree,
+      tolerance: args.tolerance,
+      currentScore: args.currentScore,
+    }),
+  }));
+
+  // ── Guard: anti_hack_scan ───────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "anti_hack_scan",
+    description: "静态反 hack 扫描：absolute 占比 / canvas 覆盖 / 背景冒充 / 隐藏 DOM / 图片代文字等，blocker 违规直接阻断计分",
+    parameters: {
+      domDump: { type: "json", description: "最新 browser_dom_dump 输出" },
+      treeStats: { type: "json", description: "page_layout_tree 的 stats" },
+      reference: { type: "json", description: "blueprint 摘要（含 stats.absolute）" },
+      codeStats: { type: "json", description: "可选的仓库静态扫描结果（inlineStyleCount 等）" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => antiHackScan({ domDump: args.domDump, treeStats: args.treeStats, reference: args.reference, codeStats: args.codeStats }),
+  }));
+
+  // ── Memory: state_read / state_update ───────────────────────────
+  ctx.tools.register(defineTool({
+    name: "state_read",
+    description: "读取 UI Reconstruction State（.ui-reverse/state.json）",
+    parameters: { statePath: { type: "string", description: "state.json 路径，默认 .ui-reverse/state.json" } },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => stateRead({ statePath: args.statePath }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "state_update",
+    description: "更新 UI Reconstruction State（append-only，同步写 history/ + goals/todo 双写），每轮结束必须调用",
+    parameters: {
+      patch: { type: "json", required: true, description: "要合并到 state 的 patch 对象" },
+      statePath: { type: "string", description: "state.json 路径" },
+      historyNote: { type: "string", description: "本轮备注，写入 history/" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => {
+      const res = stateUpdate(args.patch, { statePath: args.statePath, historyNote: args.historyNote });
+      // Goals/TODO 双写：文件已由 stateUpdate 内 syncGoalsAndTodo 完成；此处再尝试 ctx 级别同步（若宿主挂载）
+      try {
+        if (ctx.goals || ctx.todo) {
+          syncGoalsAndTodo(res.state, { statePath: res.path });
+        }
+      } catch {}
+      return res;
+    },
+  }));
+
+  // ── Perception: neutral_ingest（doc15 中立树 → blueprint） ──────────
+  ctx.tools.register(defineTool({
+    name: "neutral_ingest",
+    description: "摄取中立树（doc15 tree.json，render-dsl 输出）并转为 Visual Blueprint。不重新推导，已含 lineHeight/文字色/stroke 等已验证细节，落盘 .ui-reverse/blueprint.json。",
+    parameters: {
+      neutralTree: { type: "json", description: "中立树对象（{meta,root}）" },
+      neutralPath: { type: "string", description: "中立树文件路径（与 neutralTree 二选一）" },
+      outPath: { type: "string", description: "blueprint 输出路径，默认 .ui-reverse/blueprint.json" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: async (args) => neutralIngest(args),
+  }));
+
+  // ── Guard: verify_neutral（doc14 §5 确定性验证 + Phase6 互补） ────
+  ctx.tools.register(defineTool({
+    name: "verify_neutral",
+    description: "确定性验证：中立树/蓝图 vs 实现侧 DOM/截图的几何/文本命中/溢出/重叠断言（doc14 §5），与 anti_hack_scan 互补，Phase6 验证前调用。",
+    parameters: {
+      neutral: { type: "json", description: "中立树（neutralTree）或 null" },
+      blueprint: { type: "json", description: "blueprint 对象或 null" },
+      domDump: { type: "json", description: "browser_dom_dump 输出" },
+      implementedTree: { type: "json", description: "实现树（page_layout_tree 输出）" },
+      tolerance: { type: "number", description: "几何容差 px，默认 2" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    isConcurrencySafe: () => true,
+    execute: (args) => verifyNeutral(args),
+  }));
+
+  // ── Viewport/State 矩阵（doc13 §5.1） ─────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "viewport_matrix",
+    description: "展开多视口×多状态矩阵（笛卡尔积）并聚合评分。输入 viewports/states，输出 {key:viewport-state} 列表与聚合分，供 Phase3/6 多视口验证。",
+    parameters: {
+      viewports: { type: "json", description: "视口数组，如 [{name:'desktop',width:1440,height:900}] 或 ['desktop','mobile']，默认 desktop/tablet/mobile" },
+      states: { type: "json", description: "状态数组，如 ['default','hover','active']，默认 default/hover/active/disabled" },
+      results: { type: "json", description: "可选：已有的逐项分数 [{key,viewport,state,score:{total}}]，传入则直接聚合" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => {
+      const matrix = expandMatrix({ viewports: args.viewports, states: args.states })
+      if (args.results) {
+        const agg = aggregateMatrixScores(args.results)
+        const resp = checkResponsive(args.results)
+        return { matrix, aggregate: agg, responsive: resp }
+      }
+      return { matrix, count: matrix.length }
+    },
+  }));
+
+  // ── Token 映射（Phase2 仓库映射：复用项目 tokens） ─────────────────
+  ctx.tools.register(defineTool({
+    name: "token_map",
+    description: "设计令牌映射：blueprint 的 typographyProfile/palette vs 项目已有 tokens，输出 reuse/near/create 建议（ΔE≤3 复用）。供 Phase2 复用资产决策。",
+    parameters: {
+      typographyProfile: { type: "json", description: "blueprint.typographyProfile" },
+      palette: { type: "json", description: "blueprint.palette" },
+      projectTypography: { type: "json", description: "项目已有字体 tokens [{name,family,size,weight,cssVar}]" },
+      projectPalette: { type: "json", description: "项目已有色板 [hex]" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => {
+      const typo = args.typographyProfile ? mapTypographyTokens(args.typographyProfile, args.projectTypography || []) : []
+      const pal = args.palette ? mapPaletteTokens(args.palette, args.projectPalette || []) : []
+      return { typography: typo, palette: pal, summary: { typoReuse: typo.filter(t=>t.action==='reuse').length, palReuse: pal.filter(p=>p.action==='reuse').length } }
+    },
+  }));
+
+  // ── Guard: design_constraints（Design System 约束） ─────────────────
+  ctx.tools.register(defineTool({
+    name: "check_design_constraints",
+    description: "设计约束校验：候选值 {prop,value,path} 是否贴合项目 spacing/color/typography/radius scale（与 anti_hack_scan 互补），阻断任意值。",
+    parameters: {
+      prop: { type: "string", required: true, description: "属性名，如 gap/padding/color/fontSize" },
+      value: { type: "json", required: true, description: "候选值" },
+      path: { type: "string", description: "节点路径" },
+      constraints: { type: "json", description: "{spacingScale:[], colorPalette:[], typographyScale:{sizes,weights,families}, borderRadiusScale:[]}" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => checkDesignConstraints({ prop: args.prop, value: args.value, path: args.path }, args.constraints || {}),
+  }));
+
+  // ── Guard: a11y（可访问性） ───────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "check_a11y",
+    description: "可访问性校验：语义标签/alt/标题层级/对比度（WCAG AA 4.5:1），Phase6 验证与 anti_hack/verify_neutral 互补。",
+    parameters: {
+      tree: { type: "json", description: "实现树（page_layout_tree 输出）" },
+      domDump: { type: "json", description: "browser_dom_dump 输出（二选一）" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => checkA11y(args),
+  }));
+
+  // ── Recovery / CI ──────────────────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "recovery_plan",
+    description: "容错恢复：对 devServer/browser/network/file 错误分类并给出重试/降级建议（与 selfcorrect 的视觉回滚互补）。",
+    parameters: {
+      error: { type: "json", required: true, description: "错误对象或消息，如 {message:'ECONNREFUSED'}" },
+      attempt: { type: "number", description: "已重试次数，默认 0" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => recoveryPlan(args.error, args.attempt || 0),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "ci_report",
+    description: "CI 报告：基于 state 的阈值门禁（S≥0.96 无 P0/ blocked）与 artifacts 归档，输出 report.json/md 供 CI 门禁。",
+    parameters: {
+      state: { type: "json", required: true, description: "UI Reconstruction State（state.json 内容）" },
+      artifacts: { type: "json", description: "artifacts 路径数组" },
+      outDir: { type: "string", description: "输出目录，默认 .ui-reverse/ci" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => {
+      const report = buildCiReport({ state: args.state, artifacts: args.artifacts || [] })
+      const files = writeCiArtifacts(report, { outDir: args.outDir || '.ui-reverse/ci' })
+      const gate = ciGate(report)
+      return { report, files, gate }
+    },
+  }));
+
+  // ── Security / Git ─────────────────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "check_dsl_security",
+    description: "安全校验：DSL 文本/URL/SVG 的 XSS 与非 allowlist 资源检查（输入侧守卫，与 anti_hack 输出侧互补）。",
+    parameters: {
+      dsl: { type: "json", required: true, description: "MasterGo DSL 或中立树对象" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => checkDslSecurity(args.dsl),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "git_rollback_point",
+    description: "Git 锚点：读取当前 HEAD 与工作区状态，生成 rollbackPoints 条目（与 state.rollbackPoints 联动，Phase5 改前记录）。",
+    parameters: {
+      cwd: { type: "string", description: "仓库路径，默认 cwd" },
+      iteration: { type: "number", description: "当前迭代轮次" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => ensureRollbackPoint({ iteration: args.iteration ?? 0 }, args.cwd || process.cwd()),
+  }));
+
+  // ── Metrics / Feedback ─────────────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "estimate_cost",
+    description: "成本估算：按 sections×viewports×states 估算 loop 每轮/30 轮的解析/截图/对比耗时，供性能剖析。",
+    parameters: {
+      sections: { type: "number", required: true, description: "section 数量" },
+      viewports: { type: "number", description: "视口数，默认 3" },
+      states: { type: "number", description: "状态数，默认 1" },
+      hasBrowser: { type: "boolean", description: "是否含浏览器截图" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => estimateLoopCost({ sections: args.sections, viewports: args.viewports || 3, states: args.states || 1, hasBrowser: args.hasBrowser !== false }),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "capture_feedback",
+    description: "捕获人工校正：用户对某差异的纠正（userCorrection），写入 .ui-reverse/feedback.json 供回放为约束。",
+    parameters: {
+      path: { type: "string", required: true, description: "节点路径" },
+      prop: { type: "string", required: true, description: "属性" },
+      expected: { type: "json", description: "期望值" },
+      actual: { type: "json", description: "实际值" },
+      userCorrection: { type: "json", required: true, description: "用户纠正值" },
+      reason: { type: "string", description: "原因" },
+      iteration: { type: "number", description: "轮次" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => captureFeedback(args),
+  }));
+
+  // ── Design Critique / System ───────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "critique_design",
+    description: "设计批判：检测间距离散/主色过多/字体族过多等一致性问题，给出收敛建议（超越像素的设计质量）。",
+    parameters: {
+      blueprint: { type: "json", required: true, description: "blueprint 对象" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => critiqueDesign(args),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "generate_design_system",
+    description: "设计系统生成：从 blueprint 抽取 tokens（colors/typography/spacing）与 components（按 role 聚类），供 Phase2 复用。",
+    parameters: {
+      blueprint: { type: "json", required: true, description: "blueprint 对象" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => generateDesignSystem(args.blueprint),
+  }));
+
+  // ── Orchestration / Handoff ─────────────────────────────────────────
+  ctx.tools.register(defineTool({
+    name: "plan_experts",
+    description: "多智能体协作：按 layout/style/content 三专家分解 mismatches，输出并行计划（Phase4 专家分工，Phase5 合并）。",
+    parameters: {
+      mismatches: { type: "json", required: true, description: "mismatches 数组，来自 compare_geometry/compare_layouts" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => planParallelExperts(args.mismatches),
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "generate_handoff",
+    description: "交付文档：基于 blueprint/state/score 生成 handoff markdown（供设计师/开发者验收）。",
+    parameters: {
+      blueprint: { type: "json", required: true, description: "blueprint 对象" },
+      state: { type: "json", required: true, description: "state.json 内容" },
+      score: { type: "json", description: "score_report 输出" },
+    },
+    output: { schema: { type: "json" }, render: renderJson },
+    execute: (args) => ({ markdown: generateHandoff(args) }),
+  }));
+}
+
+export { name, apply, PROMPT_TEMPLATE };
+export { referenceIngest } from "./perception/reference.ts";
+export * from "./perception/browser.ts";
+export * from "./perception/neutral-ingest.ts";
+export * from "./perception/viewport-matrix.ts";
+export * from "./services/devserver.ts";
+export * from "./services/job-devserver.ts";
+export * from "./services/lsp-map.ts";
+export * from "./services/storage.ts";
+export * from "./services/token-map.ts";
+export * from "./services/cache.ts";
+export * from "./services/large-file.ts";
+export * from "./services/ci.ts";
+export * from "./services/git.ts";
+export * from "./services/metrics.ts";
+export * from "./services/feedback.ts";
+export * from "./services/marketplace.ts";
+export * from "./services/visual-regression.ts";
+export * from "./services/design-critique.ts";
+export * from "./services/design-system.ts";
+export * from "./services/cjk.ts";
+export * from "./services/animation.ts";
+export * from "./services/tracing.ts";
+export * from "./services/custom-rules.ts";
+export * from "./services/docs.ts";
+export * from "./services/bundle-analysis.ts";
+export * from "./services/streaming.ts";
+export * from "./services/scale.ts";
+export * from "./services/collab.ts";
+export * from "./services/typedoc.ts";
+export * from "./services/handoff.ts";
+export * from "./services/ask-user.ts";
+export * from "./memory/state.ts";
+export * from "./guard/fanout.ts";
+export * from "./guard/verify-neutral.ts";
+export * from "./guard/design-constraints.ts";
+export * from "./guard/a11y.ts";
+export * from "./guard/recovery.ts";
+export * from "./guard/security.ts";
+export * from "./testing/integration.ts";
+export * from "./testing/property.ts";
+export * from "./testing/evaluation.ts";
+export * from "./adapters/vue.ts";
+export * from "./adapters/react.ts";
+export * from "./orchestration/multi-agent.ts";

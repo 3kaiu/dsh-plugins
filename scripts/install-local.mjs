@@ -24,6 +24,13 @@ import { fileURLToPath } from "node:url";
 const PLUGINS = [
   { dir: "llm-opencode-zen", patchIds: ["llm-opencode-zen"], pkg: "@3kaiu/dsh-llm-opencode-zen" },
   { dir: "layout-infer", patchIds: ["dsh-layout-infer"], pkg: "@3kaiu/dsh-layout-infer" },
+  { dir: "ui-reverse-agent", patchIds: ["dsh-ui-reverse-agent"], pkg: "@3kaiu/dsh-ui-reverse-agent" },
+];
+
+// Preset 分发：ui-reverse 预设需落盘到用户 .agent-presets 目录（user trust，可 copy 定制）
+// 形态：Hybrid — bundle 仍提供工具，安装脚本自动把 preset/ui-reverse 模板拷贝到 ~/.dsh/.agent-presets/ui-reverse（若不存在）
+const PRESETS = [
+  { srcDir: "ui-reverse-agent/preset/ui-reverse", destId: "ui-reverse" },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -114,4 +121,33 @@ if (patchText.trim() !== "") {
   writeFileSync(patchFile, out.join("\n"));
   console.log("[install-local] cordis.patch.yml 已清理旧插件条目");
 }
-console.log("\n[install-local] 完成。请重启 dsh web 会话以加载插件。");
+// 5. 安装 Preset（ui-reverse）到 .agent-presets（user 根）
+for (const preset of PRESETS) {
+  let src = join(root, "packages", preset.srcDir);
+  // Release 模式时若 workspace 未构建，尝试从 profile 的 node_modules 解析
+  if (!existsSync(src)) {
+    const pkgName = PLUGINS.find(p => preset.srcDir.startsWith(p.dir))?.pkg;
+    if (pkgName) src = join(profileDir, "node_modules", pkgName, "preset", preset.destId);
+  }
+  const dest = join(dshHome, ".agent-presets", preset.destId);
+  if (!existsSync(src)) {
+    console.warn(`[install-local] preset src missing: ${src}, skip`);
+    continue;
+  }
+  if (existsSync(dest)) {
+    console.log(`[install-local] preset exists, keep: ${dest} (use ctx.agentPresets.copy 定制)`);
+    continue;
+  }
+  mkdirSync(dest, { recursive: true });
+  // 递归拷贝（Node < 16 无 cpSync，故手动）
+  const cpRecursive = (s, d) => {
+    for (const ent of readdirSync(s, { withFileTypes: true })) {
+      const sp = join(s, ent.name), dp = join(d, ent.name);
+      if (ent.isDirectory()) { mkdirSync(dp, { recursive: true }); cpRecursive(sp, dp); }
+      else writeFileSync(dp, readFileSync(sp));
+    }
+  };
+  cpRecursive(src, dest);
+  console.log(`[install-local] preset installed: ${src} -> ${dest}`);
+}
+console.log("\n[install-local] 完成。请重启 dsh web 会话以加载插件与预设（Agent 选择 ui-reverse）。");

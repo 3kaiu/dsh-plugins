@@ -15,8 +15,35 @@
  * (不再污染 globalThis——宿主进程全局对象不属于插件)。
  */
 
+import {
+  GRADIENT_RE,
+  isBackgroundRect as isBackgroundRectShared,
+  isContainerCandidate as isContainerCandidateShared,
+  clusterBandsAdaptive as clusterBandsAdaptiveShared,
+  clusterCols as clusterColsShared,
+  bandBBox as bandBBoxShared,
+  bandSize as bandSizeShared,
+  bandMinX as bandMinXShared,
+  bandMinY as bandMinYShared,
+  colBBox as colBBoxShared,
+  colSize as colSizeShared,
+} from './cluster.ts'
+
 const TOL = 2 // 像素容差(整数坐标设计稿)
 const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
+
+// 兼容导出：原地保留常量与函数引用，便于外部按旧路径导入
+const GRADIENT_RE_ALIAS = GRADIENT_RE
+const isBackgroundRect = isBackgroundRectShared
+const isContainerCandidate = isContainerCandidateShared
+const clusterBandsAdaptive = clusterBandsAdaptiveShared
+const clusterCols = clusterColsShared
+const bandBBox = bandBBoxShared
+const bandSize = bandSizeShared
+const bandMinX = bandMinXShared
+const bandMinY = bandMinYShared
+const colBBox = colBBoxShared
+const colSize = colSizeShared
 
 /** 众数: 出现次数最多的值;无唯一众数返回 null
  *
@@ -55,8 +82,11 @@ function round1(v) {
  * @param {object} opts
  * @param {{width:number,height:number}} opts.container
  * @param {Array<{id:string,x:number,y:number,width:number,height:number,rotation?:number}>} opts.children
+ * @param {number} [opts.tolerance] 像素容差，默认 TOL=2；DOM 严格模式可传 1
+ * @param {Array<string>} [opts.absolutesWhitelist] 参考本身即 absolute 的白名单 id，不计入违规
  */
-function inferLayout({ container, children }) {
+function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
+  const TOL_LOCAL = tolerance != null ? tolerance : TOL
   const cw = container.width
   const ch = container.height
   const kids = children || []
@@ -103,7 +133,7 @@ function inferLayout({ container, children }) {
     }
 
     // 水平居中: alignItems center,只保留垂直方向的显式 padding
-    if (cx <= TOL) {
+    if (cx <= TOL_LOCAL) {
       return maybeDowngrade({
         flexDirection: 'column',
         alignItems: 'center',
@@ -115,10 +145,10 @@ function inferLayout({ container, children }) {
         position: 'flex',
         confidence: 0.75,
         absolutes,
-      }, cw, ch, stable, absolutes)
+      }, cw, ch, stable, absolutes, TOL_LOCAL)
     }
     // 垂直居中: justifyContent center,水平位置由 padding 决定
-    if (cy <= TOL) {
+    if (cy <= TOL_LOCAL) {
       return maybeDowngrade({
         flexDirection: 'column',
         alignItems: 'flex-start',
@@ -130,25 +160,25 @@ function inferLayout({ container, children }) {
         position: 'flex',
         confidence: 0.7,
         absolutes,
-      }, cw, ch, stable, absolutes)
+      }, cw, ch, stable, absolutes, TOL_LOCAL)
     }
     return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
   }
 
   // 行/列判定: 支持「边缘对齐」「中心对齐」两种信号
   // 列布局的子元素可宽度不同(左/居中/右对齐);行布局的子元素可高度不同(顶/居中/底对齐)
-  const topAligned = Math.max(...ys) - minY <= TOL
-  const leftAligned = Math.max(...xs) - minX <= TOL
+  const topAligned = Math.max(...ys) - minY <= TOL_LOCAL
+  const leftAligned = Math.max(...xs) - minX <= TOL_LOCAL
   const minBY = Math.min(...stable.map((k) => k.y + k.height))
   const minRX = Math.min(...stable.map((k) => k.x + k.width))
-  const bottomAligned = maxBY - minBY <= TOL
-  const rightAligned = maxRX - minRX <= TOL
-  const centerXAligned = rangeX <= TOL
-  const centerYAligned = rangeY <= TOL
+  const bottomAligned = maxBY - minBY <= TOL_LOCAL
+  const rightAligned = maxRX - minRX <= TOL_LOCAL
+  const centerXAligned = rangeX <= TOL_LOCAL
+  const centerYAligned = rangeY <= TOL_LOCAL
   const spreadX = maxRX - minX
   const spreadY = maxBY - minY
-  const rowSig = (topAligned || centerYAligned || bottomAligned) && spreadX > TOL
-  const colSig = (leftAligned || centerXAligned || rightAligned) && spreadY > TOL
+  const rowSig = (topAligned || centerYAligned || bottomAligned) && spreadX > TOL_LOCAL
+  const colSig = (leftAligned || centerXAligned || rightAligned) && spreadY > TOL_LOCAL
 
   let isRow = false
   let isColumn = false
@@ -161,7 +191,7 @@ function inferLayout({ container, children }) {
 
   if (!isRow && !isColumn) {
     // 行列都不成立 → 尝试网格(wrap)
-    const grid = inferGrid(stable, TOL)
+    const grid = inferGrid(stable, TOL_LOCAL)
     if (grid) {
       return { ...grid, position: 'flex', confidence: 0.8, absolutes }
     }
@@ -214,7 +244,7 @@ function inferLayout({ container, children }) {
   const hasUniformGap = gap !== null && gaps.filter((g) => Math.abs(g - gap) <= 0.6).length >= gaps.length - 1
 
   // alignItems: 交叉轴对齐
-  let alignItems = inferCrossAlign(stable, isRow, TOL)
+  let alignItems = inferCrossAlign(stable, isRow, TOL_LOCAL)
 
   // padding: 子元素相对容器边缘
   const padLeft = round1(minX)
@@ -232,8 +262,8 @@ function inferLayout({ container, children }) {
   const crossExtent = main === 'row' ? maxBY : maxRX
   const mainContainer = main === 'row' ? cw : ch
   const crossContainer = main === 'row' ? ch : cw
-  const mainSizing = Math.abs(mainExtent - mainContainer) <= TOL ? 'fixed' : 'auto'
-  const crossSizing = Math.abs(crossExtent - crossContainer) <= TOL ? 'fixed' : 'auto'
+  const mainSizing = Math.abs(mainExtent - mainContainer) <= TOL_LOCAL ? 'fixed' : 'auto'
+  const crossSizing = Math.abs(crossExtent - crossContainer) <= TOL_LOCAL ? 'fixed' : 'auto'
 
   // 置信度: 主轴对齐一致性 + gap 均匀性
   let confidence = 0.75
@@ -264,14 +294,14 @@ function inferLayout({ container, children }) {
     const d = Math.max(Math.abs(s.x - k.x), Math.abs(s.y - k.y))
     if (d > maxDelta) maxDelta = d
   }
-  if (maxDelta > 2) {
+  if (maxDelta > TOL_LOCAL) {
     return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
   }
   return result
 }
 
 /** 视觉保真验证: 模拟反写后的子元素位置,偏差超阈值 → 降级 absolute(视觉不变优先) */
-function maybeDowngrade(result, cw, ch, stable, absolutes) {
+function maybeDowngrade(result, cw, ch, stable, absolutes, tolerance = TOL) {
   const sim = simulateFlex({ width: cw, height: ch }, result, stable)
   let maxDelta = 0
   for (let i = 0; i < sim.length && i < stable.length; i++) {
@@ -281,7 +311,7 @@ function maybeDowngrade(result, cw, ch, stable, absolutes) {
     const d = Math.max(Math.abs(s.x - k.x), Math.abs(s.y - k.y))
     if (d > maxDelta) maxDelta = d
   }
-  if (maxDelta > 2) {
+  if (maxDelta > tolerance) {
     return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
   }
   return result
@@ -433,75 +463,7 @@ function normRect(n) {
   return { x, y, width, height, rotation }
 }
 
-const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
 
-/** 背景装饰层判定: 全宽 + 渐变/位图填充, 或全宽 + blur/半透明条。
- *  底部全宽条(高度 ≤ 100, 贴底)不算背景 —— 它是 tab-bar 的背景条,
- *  应作为 tab-bar 的组成部分参与重建。 */
-function isBackgroundRect(n, rect, canvas) {
-  if (rect.width < canvas.width * 0.8) return false
-  const fill = typeof n._color === 'string' ? n._color : ''
-  if (n.rotation && Math.abs(n.rotation) > 0.5) return false
-  const isBottomStrip = rect.y + rect.height >= canvas.height - 10 && rect.height <= 100
-  if (isBottomStrip) return false
-  if (GRADIENT_RE.test(fill)) return true
-  if (n.effect && /blur|backdrop/i.test(String(n.effect))) return true
-  if (n.opacity != null && n.opacity < 0.5) return true
-  return false
-}
-
-/** 视觉容器候选: FRAME/GROUP/INSTANCE, 无旋转, 有内容体积或视觉特征 */
-function isContainerCandidate(n) {
-  if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
-  if (n.rotation && Math.abs(n.rotation) > 0.5) return false
-  return true
-}
-
-/** 自适应用户可见带聚类: 全宽条独立; gap 断裂; y 重叠合并
- *
- *  规则:
- *  - 全宽条(状态栏/导航栏, width≥0.9×画布宽 且 高≤60)恒独立成带,
- *    且绝不接受后续节点并入(避免把下方内容吞进状态栏/导航栏带)
- *  - 普通节点: 与上一带 gap ≤ 12 且上一带非全宽条 → 并入; 否则新带
- */
-function clusterBandsAdaptive(items, canvas, tol = 2) {
-  const sorted = [...items].sort((a, b) => a._y - b._y)
-  const bands = []
-  for (const n of sorted) {
-    const isFullWidthStrip = n.width >= canvas.width * 0.9 && n.height <= 60
-    const end = n._y + n.height
-    const last = bands[bands.length - 1]
-    const gap = last ? n._y - last.maxEnd : 0
-    if (isFullWidthStrip) {
-      bands.push({ items: [n], maxEnd: end, fullWidth: true })
-      continue
-    }
-    if (last && !last.fullWidth && gap <= 12) {
-      last.items.push(n)
-      last.maxEnd = Math.max(last.maxEnd, end)
-    } else {
-      bands.push({ items: [n], maxEnd: end, fullWidth: false })
-    }
-  }
-  return bands
-}
-
-/** 带内 x 聚类成列 */
-function clusterCols(items, tol = 12) {
-  const sorted = [...items].sort((a, b) => a._x - b._x)
-  const cols = []
-  for (const n of sorted) {
-    const end = n._x + n.width
-    const last = cols[cols.length - 1]
-    if (last && n._x - last.maxEnd <= tol) {
-      last.items.push(n)
-      last.maxEnd = Math.max(last.maxEnd, end)
-    } else {
-      cols.push({ items: [n], maxEnd: end })
-    }
-  }
-  return cols
-}
 
 /** 带语义角色: 全宽条按位置(顶/底)区分, 否则按内容分布 */
 function bandRoleOf(band, canvas) {
@@ -582,7 +544,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   stats.offCanvas = offCanvas.length
   const onCanvas = prepared.filter((n) => !offCanvas.includes(n))
 
-  const backgrounds = onCanvas.filter((n) => isBackgroundRect(n, n, canvas))
+  const backgrounds = onCanvas.filter((n) => isBackgroundRect(n, canvas))
   stats.background = backgrounds.length
   let rest = onCanvas.filter((n) => !backgrounds.includes(n))
 
@@ -773,40 +735,6 @@ function buildContainer(n, role) {
     layout: null,
     children: [],
   }
-}
-
-function bandBBox(band) {
-  const minX = Math.min(...band.items.map((n) => n._x))
-  const minY = Math.min(...band.items.map((n) => n._y))
-  const maxX = Math.max(...band.items.map((n) => n._x + n._width))
-  const maxY = Math.max(...band.items.map((n) => n._y + n._height))
-  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
-}
-
-function bandSize(band) {
-  const b = bandBBox(band)
-  return { width: b.width, height: b.height }
-}
-
-function bandMinX(band) {
-  return Math.min(...band.items.map((n) => n._x))
-}
-
-function bandMinY(band) {
-  return Math.min(...band.items.map((n) => n._y))
-}
-
-function colBBox(items) {
-  const minX = Math.min(...items.map((n) => n._x))
-  const minY = Math.min(...items.map((n) => n._y))
-  const maxX = Math.max(...items.map((n) => n._x + n._width))
-  const maxY = Math.max(...items.map((n) => n._y + n._height))
-  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
-}
-
-function colSize(items) {
-  const b = colBBox(items)
-  return { width: b.width, height: b.height }
 }
 
 export { inferLayout, mode, round1, simulateFlex, clusterByAxis, reconstructHierarchy, ROLES }

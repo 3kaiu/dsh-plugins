@@ -12,8 +12,8 @@
     "cordis.patch.yml"
   ],
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs && node test/stacked-restore.test.mjs && node test/dsl-clean.test.mjs"
+    "build": "tsx build.ts",
+    "test": "tsx build.ts && tsx test/layout-infer.test.ts && tsx test/classify.test.ts && tsx test/plugin-register.test.ts && tsx test/stacked-restore.test.ts && tsx test/dsl-clean.test.ts"
   },
   "dsh": {
     "bundle": {

@@ -16,8 +16,8 @@
     "typert.host.js"
   ],
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs && node test/catalog.test.mjs && node test/network-error.test.mjs"
+    "build": "tsx build.ts",
+    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts"
   },
   "dsh": {
     "bundle": {
