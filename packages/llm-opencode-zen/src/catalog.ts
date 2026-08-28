@@ -1,3 +1,4 @@
+import { assertSafeBaseURL } from "./config.ts";
 const MODELS_DEV_URL = "https://models.dev/api.json";
 const MODELS_DEV_PROVIDER = "opencode";
 const DEFAULT_CATALOG_REFRESH_MS = 3600000;
@@ -34,6 +35,7 @@ function orderCatalog(models, preferredModel) {
 }
 
 async function fetchFreeModels(baseURL, apiKey) {
+  assertSafeBaseURL(baseURL); // 目录请求同样携带 Bearer key，使用点处校验
   const [live, meta] = await Promise.all([
     fetchJson(`${baseURL}/models`, { Authorization: `Bearer ${apiKey}` }),
     fetchJson(MODELS_DEV_URL, {}),

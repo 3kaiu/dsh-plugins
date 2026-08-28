@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsx build.ts",
-    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts && tsx test/error-classify.test.ts && tsx test/options-map.test.ts"
+    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts && tsx test/error-classify.test.ts && tsx test/options-map.test.ts && tsx test/base-url.test.ts"
   },
   "dsh": {
     "bundle": {

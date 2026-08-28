@@ -42,8 +42,7 @@ import {
   PUBLIC_BASE_URL,
   BASE_URL_ENV,
   OPENCODE_UA,
-  resolveAdapterOptions,
-} from "./config.ts";
+  resolveAdapterOptions, assertSafeBaseURL } from "./config.ts";
 
 //#region telemetry
 const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
@@ -303,8 +302,11 @@ class OpenCodeZenAdapter extends LlmAdapter {
 
   async *stream(options) {
     const settings = this.config.options();
+    // 请求时再校验：settings 可被 replace 动态改写；未设时回退公共端点
+    // （connection 后续用于 `${baseURL}/chat/completions` 拼接，undefined 会产生非法请求 URL）
+    const effectiveBaseURL = assertSafeBaseURL(settings.baseURL ?? PUBLIC_BASE_URL);
     const connection = {
-      baseURL: settings.baseURL,
+      baseURL: effectiveBaseURL,
       apiKeyEnv: settings.apiKeyEnv,
       userAgent: settings.userAgent,
       locale: settings.locale,
@@ -589,6 +591,7 @@ export {
   estimateUsage,
   freeModelCatalog,
   buildWireRequest,
+  assertSafeBaseURL,
   inject,
   name,
   orderCatalog,

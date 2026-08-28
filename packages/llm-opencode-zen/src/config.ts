@@ -19,6 +19,29 @@ const OPENCODE_UA = "opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1
 const PUBLIC_BASE_URL = "https://opencode.ai/zen/v1";
 const BASE_URL_ENV = "OPENCODE_ZEN_BASE_URL";
 
+// baseURL 安全校验：适配器会把 Authorization 头与完整对话发往该地址，
+// 任意主机值即构成凭据/对话外泄面（settings 与 env 双入口都可注入）。
+// 策略：必须为合法 URL；仅允许 https（本地回环放行 http 便于开发代理）；
+// 拒绝携带 userinfo（user:pass@）的 URL —— 凭据不得经由 URL 夹带。
+export function assertSafeBaseURL(value) {
+  const raw = String(value ?? "");
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(`llm-opencode-zen: baseURL 不是合法 URL: ${JSON.stringify(raw.slice(0, 80))}`);
+  }
+  const host = parsed.hostname;
+  const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1" || host.endsWith(".localhost");
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopback)) {
+    throw new Error(`llm-opencode-zen: baseURL 仅允许 https（本地回环可 http），收到 ${parsed.protocol}//${host}`);
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("llm-opencode-zen: baseURL 不得携带 userinfo（user:pass@）——凭据请走 credential-ref");
+  }
+  return raw;
+}
+
 const DEFAULT_RETRY_POLICY = {
   mode: "normal",
   maxRetries: 2,
@@ -113,7 +136,7 @@ function resolveAdapterOptions(config, environment) {
     throw new Error(`llm-opencode-zen: catalogRefreshMs must be a finite number in [60000, ${MAX_TIMER_DELAY_MS}]`);
   return {
     apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
-    baseURL: config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? PUBLIC_BASE_URL,
+    baseURL: assertSafeBaseURL(config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? PUBLIC_BASE_URL),
     defaults: {
       thinking: config.thinking,
       reasoningEffort: config.reasoningEffort,
