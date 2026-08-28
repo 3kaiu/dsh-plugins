@@ -12,6 +12,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { sanitizeSvg } from './svg-sanitize'
+import { confineOrNull as confine } from '../path-guard'
 
 /**
  * 回填 assets.json(B0): 把 mcp_extractSvg / 设计侧位图导出的结果合并进产物包 assets 表。
@@ -168,17 +169,6 @@ export function imageBackgroundStyle(fill, bounds) {
 const sanitize = (s) => String(s || 'asset').replace(/[^a-zA-Z0-9_-]+/g, '_')
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
 const round2 = (n) => Math.round(n * 100) / 100
-
-/**
- * 路径收敛：将 file 解析到 root 之下，若含 `..`/绝对路径导致越界则返回 null（拒绝落盘/读取）。
- * 用于防止 assetDir/copyFrom/ext 中注入 `..` 造成的任意文件读写。
- */
-function confine(root: string, file: string): string | null {
-  const abs = path.resolve(root, file)
-  const rel = path.relative(root, abs)
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return null
-  return abs
-}
 
 /** 仅允许已知安全扩展名，避免 ext 注入造成的非预期落盘类型 */
 function safeExt(ext: string): string {

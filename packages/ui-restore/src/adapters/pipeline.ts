@@ -16,8 +16,7 @@ import {
   comparePng, blockMetrics, decodePng, diffRegions, diffToCorrections,
   enrichSemanticSync,
 } from '../index.ts';
-
-const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+import { readJsonStrict as readJson } from '../fs-util.ts';
 
 /** 蓝图管线公共段(scale 优先级: 显式参数 > 导出 meta 声明 > 不归一)。唯一实现 —— cli/mcp 一律薄转发到本模块(审计 P2 收敛: 原三处拷贝已出现行为分叉) */
 export async function buildBlueprint(designPath, opts = {}) {

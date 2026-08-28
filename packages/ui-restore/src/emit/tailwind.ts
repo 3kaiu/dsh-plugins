@@ -3,6 +3,8 @@
 // 原则：保真优先，任意值语法 w-[100px] / bg-[#FFF] 保证 1:1，不做近似取整
 // 复杂值(gradient/boxShadow 等)回落 inline，避免 Tailwind 无法表达导致的偏差
 
+import { esc } from './escape.ts'
+
 const UNITLESS_TW = new Set(['opacity','fontWeight','lineHeight','WebkitLineClamp'])
 
 function escArbitrary(v: string){ return String(v).replace(/\s+/g,'_').replace(/"/g,'') }
@@ -137,7 +139,6 @@ const pascal = (s:string) => {
   const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore' + (name || '')
 }
-const esc = (s:string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const jsxStyleObject = (style: Record<string, any>) => '{ ' + Object.entries(style)
   .filter(([, v]) => v != null && v !== '')
   .map(([k, v]) => `${k}: ${typeof v === 'number' ? JSON.stringify(v) : JSON.stringify(String(v))}`)

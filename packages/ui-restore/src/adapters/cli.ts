@@ -18,16 +18,9 @@ import {
 } from '../index.ts';
 // 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.ts
 import { buildBlueprint, writeArtifactBundle, collectLeaves } from './pipeline.ts';
+import { flag, hasFlag } from './args.ts';
 
 const [, , cmd, ...args] = process.argv;
-// 纯函数：不改动 args 数组，仅读取，避免 --help 等场景误改参数表导致目录误建或位置参数错位
-const flag = (name) => {
-  const i = args.indexOf(name);
-  if (i < 0) return null;
-  const v = args[i + 1];
-  // 缺值时返回 true（布尔开关语义），否则返回字符串值；不做 splice，保持 args 纯净
-  return v == null || String(v).startsWith('--') ? true : v;
-};
 
 function printGateSummary(bp, v) {
   console.log('契约校验:', v.ok ? 'PASS' : `FAIL ${JSON.stringify(v.errors.slice(0, 3))}`);
@@ -39,8 +32,8 @@ function printGateSummary(bp, v) {
 
 /** 蓝图管线公共段已上移 adapters/pipeline.buildBlueprint —— 本文件只做 CLI 参数搬运 */
 async function runBlueprint(designPath) {
-  const scaleArg = flag('--scale');
-  const expectSections = flag('--expect-sections');
+  const scaleArg = flag(args, '--scale');
+  const expectSections = flag(args, '--expect-sections');
   // scale/expectSections 优先级与原实现一致: CLI 显式参数 > 导出 meta 声明 > 不归一
   const { bp, v, lint } = await buildBlueprint(designPath, {
     scale: scaleArg ?? undefined,
@@ -57,7 +50,7 @@ async function main() {
   if (cmd === 'build' || cmd === 'blueprint') {
     const designPath = args[0];
     if (!designPath) { console.error(`用法: ui-restore ${cmd} <design.json> [--dir <outDir>] [--scale 2|auto] [--expect-sections N]`); process.exit(1); }
-    const outDir = flag('--dir') || path.dirname(designPath);
+    const outDir = flag(args, '--dir') || path.dirname(designPath);
     const { bp, v, lint } = await runBlueprint(designPath);
     printLint(lint);
     fs.mkdirSync(outDir, { recursive: true });
@@ -80,7 +73,7 @@ async function main() {
   if (cmd === 'doctor') {
     const designPath = args[0];
     if (!designPath) { console.error('用法: ui-restore doctor <design.json> [--expect-sections N]'); process.exit(1); }
-    const expectSections = flag('--expect-sections');
+    const expectSections = flag(args, '--expect-sections');
     const raw = JSON.parse(fs.readFileSync(designPath, 'utf8'));
     const lint = lintDesignExport(raw, { expectSections: expectSections ? Number(expectSections) : undefined });
     printLint(lint);
@@ -101,8 +94,8 @@ async function main() {
   if (cmd === 'diff') {
     const [truthPng, renderPng] = args;
     if (!truthPng || !renderPng) { console.error('用法: ui-restore diff <truth.png> <render.png> [--blocks <mTruth.json> <mRender.json>] [--canvas WxH]'); process.exit(1); }
-    const manifest = flag('--blocks');
-    const canvasFlag = flag('--canvas');
+    const manifest = flag(args, '--blocks');
+    const canvasFlag = flag(args, '--canvas');
     const r = comparePng(fs.readFileSync(truthPng), fs.readFileSync(renderPng));
     console.log('像素层:', JSON.stringify({ diffPixels: r.diffPixels, diffRatio: r.diffRatio }));
     if (manifest) {
@@ -114,18 +107,18 @@ async function main() {
       const b = blockMetrics(mT, mR, { designImg: imgT, renderImg: imgR, canvasWidth: W, canvasHeight: H });
       console.log('块级层:', JSON.stringify({ blockMatchRate: b.blockMatchRate, matchedPairs: b.matchedPairs, positionSimilarity: b.positionSimilarity, colorSimilarity: b.colorSimilarity, avgTextSimilarity: b.avgTextSimilarity }));
     }
-    const out = flag('--out');
+    const out = flag(args, '--out');
     if (out) fs.writeFileSync(out, r.diffPng);
     return;
   }
   if (cmd === 'regions') {
     const [truthPng, renderPng] = args;
     if (!truthPng || !renderPng) { console.error('用法: ui-restore regions <truth.png> <render.png> [--bp <blueprint.json>] [--grid 24] [--top 5]'); process.exit(1); }
-    const bpFlag = flag('--bp');
+    const bpFlag = flag(args, '--bp');
     let nodes;
     if (bpFlag) nodes = collectLeaves(JSON.parse(fs.readFileSync(bpFlag, 'utf8')));
-    const gridN = Number(flag('--grid')) || undefined;
-    const topN = Number(flag('--top')) || undefined;
+    const gridN = Number(flag(args, '--grid')) || undefined;
+    const topN = Number(flag(args, '--top')) || undefined;
     const r = diffRegions(fs.readFileSync(truthPng), fs.readFileSync(renderPng), { nodes, grid: gridN, top: topN });
     console.log(JSON.stringify(r, null, 1));
     if (bpFlag) {
@@ -141,8 +134,8 @@ async function main() {
   }
   if (cmd === 'region') {
     const designPath = args[0];
-    const rectFlag = flag('--rect');
-    const idsFlag = flag('--ids');
+    const rectFlag = flag(args, '--rect');
+    const idsFlag = flag(args, '--ids');
     if (!designPath || (!rectFlag && !idsFlag)) { console.error('用法: ui-restore region <design.json> --rect x,y,width,height | --ids id1,id2 [--dir <outDir>]'); process.exit(1); }
     const { bp } = await runBlueprint(designPath);
     const sel = rectFlag
@@ -150,7 +143,7 @@ async function main() {
       : { ids: idsFlag.split(',').map((s) => s.trim()) };
     const region = blueprintRegion(bp, sel);
     if (!region) { console.error('区域下钻失败: 非法参数'); process.exit(1); }
-    const outDir = flag('--dir') || path.dirname(designPath);
+    const outDir = flag(args, '--dir') || path.dirname(designPath);
     fs.mkdirSync(outDir, { recursive: true });
     const base = path.basename(designPath).replace(/\.json$/, '');
     const tag = rectFlag ? `r${Math.round(sel.x)}_${Math.round(sel.y)}` : 'ids';
@@ -164,10 +157,10 @@ async function main() {
     const projectDir = args[0];
     if (!projectDir) { console.error('用法: ui-restore profile <projectDir> [--out profile.json] [--styling x] [--framework x]'); process.exit(1); }
     const { analyzeProject, saveProfile } = await import('../index.ts');
-    const overrides = { framework: flag('--framework'), language: flag('--language'), styling: flag('--styling'), build: flag('--build'), assetDir: flag('--assetDir') };
+    const overrides = { framework: flag(args, '--framework'), language: flag(args, '--language'), styling: flag(args, '--styling'), build: flag(args, '--build'), assetDir: flag(args, '--assetDir') };
     for (const k of Object.keys(overrides)) if (overrides[k] == null) delete overrides[k];
     const r = analyzeProject(projectDir, { overrides });
-    const out = flag('--out') || path.join(projectDir, 'restore.profile.json');
+    const out = flag(args, '--out') || path.join(projectDir, 'restore.profile.json');
     saveProfile(r.profile, out);
     console.log(`Target Profile → ${out}`);
     for (const k of ['framework','language','styling','build']) {
@@ -178,18 +171,18 @@ async function main() {
   }
   if (cmd === 'generate') {
     const bpPath = args[0];
-    const projectDir = flag('--project');
+    const projectDir = flag(args, '--project');
     if (!bpPath || !projectDir) { console.error('用法: ui-restore generate <blueprint.json> --project <dir> [--profile <p.json>] [--assets <a.json>] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
     const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../index.ts');
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
-    const profile = flag('--profile') ? loadProfile(flag('--profile')) : (await import('../index.ts')).analyzeProject(projectDir).profile;
+    const profile = flag(args, '--profile') ? loadProfile(flag(args, '--profile')) : (await import('../index.ts')).analyzeProject(projectDir).profile;
     const plan = planGeneration(bp, profile);
-    const assetsPath = flag('--assets');
+    const assetsPath = flag(args, '--assets');
     const assets = resolveAssets(bp, plan, { assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath,'utf8')) : { vectors:[], images:[] }, assetDir: profile.assetDir, projectDir });
-    const outDir = path.join(projectDir, flag('--out') || 'restore');
-    const baseName = flag('--base-name') || 'Restore';
+    const outDir = path.join(projectDir, flag(args, '--out') || 'restore');
+    const baseName = flag(args, '--base-name') || 'Restore';
     await ensureBuiltins()
-    const adapter = await resolveAdapterAsync(profile, flag('--serializer') || undefined)
+    const adapter = await resolveAdapterAsync(profile, flag(args, '--serializer') || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName })
     const serializer = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
@@ -209,7 +202,7 @@ async function main() {
   }
   if (cmd === 'merge') {
     const projectDir = args[0];
-    const fromDir = flag('--from') || flag('--src');
+    const fromDir = flag(args, '--from') || flag(args, '--src');
     if (!projectDir) { console.error('用法: ui-restore merge <projectDir> [--from <generatedDir>] [--on-conflict rename|skip|overwrite]'); process.exit(1); }
     const { mergeIntoProject, canMerge } = await import('../index.ts');
     const srcDir = fromDir ? path.resolve(fromDir) : path.join(projectDir, 'restore');
@@ -226,15 +219,15 @@ async function main() {
       }
     };
     walk(srcDir);
-    const res = mergeIntoProject(projectDir, files, { onConflict: flag('--on-conflict') || 'rename' });
+    const res = mergeIntoProject(projectDir, files, { onConflict: flag(args, '--on-conflict') || 'rename' });
     console.log(`merge → ${res.written.length} 文件: ${res.written.map(w=> `${w.path}(${w.action})`).join(', ')}`);
     if(res.entrySuggestion) console.log(res.entrySuggestion);
     return;
   }
   if (cmd === 'gate') {
     const [truthPng, renderPng] = args;
-    const bpPath = flag('--bp');
-    const pixelOnly = flag('--pixel-only');
+    const bpPath = flag(args, '--bp');
+    const pixelOnly = hasFlag(args, '--pixel-only');
     if (!truthPng || !renderPng) { console.error('用法: ui-restore gate <truth.png> <render.png> [--bp <blueprint.json>] [--assets <assets.json>] [--pixel-only]'); process.exit(1); }
     const bp = bpPath ? JSON.parse(fs.readFileSync(bpPath,'utf8')) : null;
     const pixel = comparePng(fs.readFileSync(truthPng), fs.readFileSync(renderPng));
@@ -245,7 +238,7 @@ async function main() {
     }
     const contract = bp ? validateBlueprint(bp) : null;
     let assets = null;
-    const assetsPath = flag('--assets');
+    const assetsPath = flag(args, '--assets');
     if (assetsPath && fs.existsSync(assetsPath)) {
       const raw = JSON.parse(fs.readFileSync(assetsPath,'utf8'));
       const list = raw.vectors || raw.assets || [];

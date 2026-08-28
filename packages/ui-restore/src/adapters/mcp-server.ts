@@ -26,11 +26,13 @@ import {
 } from '../index.ts';
 // 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
 import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.ts';
+import { readJsonStrict } from '../fs-util.ts';
+import { loadSession as loadSessionFile, saveSession as saveSessionFile } from '../session-store.ts';
 
 // 路径越界防护（2026-08 接线）：守卫实现见 ./path-guard.mjs（可单测）。
 // 所有工具参数路径（读/写）解析后必须落在收容根内，防 ../ 逃逸与任意文件读写。
 const { confineUnder, confineTo } = makeGuard();
-const readJson = (p) => JSON.parse(fs.readFileSync(confineUnder(p), 'utf8'));
+const readJson = (p) => readJsonStrict(confineUnder(p));
 const readBuf = (p) => fs.readFileSync(confineUnder(p));
 const optIn = (p) => (p ? confineUnder(p) : undefined);
 const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
@@ -59,14 +61,8 @@ server.tool(
   },
   async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }) => {
     const sessionAbs = session_path ? confineUnder(session_path) : null;
-    const loadSession = () => (sessionAbs && fs.existsSync(sessionAbs) ? JSON.parse(fs.readFileSync(sessionAbs, 'utf8')) : null);
-    const saveSession = (patch) => {
-      if (!sessionAbs) return null;
-      const s = { ...(loadSession() || { createdAt: new Date().toISOString() }), ...patch, updatedAt: new Date().toISOString() };
-      fs.mkdirSync(path.dirname(sessionAbs), { recursive: true });
-      fs.writeFileSync(sessionAbs, JSON.stringify(s, null, 1));
-      return s;
-    };
+    const loadSession = () => (sessionAbs ? loadSessionFile(sessionAbs) : null);
+    const saveSession = (patch) => (sessionAbs ? saveSessionFile(sessionAbs, patch) : null);
     const m = mode || (truth_png || render_png ? 'verify' : 'analyze');
 
     // 第三态: restore 编排器 —— 只做确定性推进决策, 不实现任何 LLM 行为

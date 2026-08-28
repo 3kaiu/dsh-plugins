@@ -45,9 +45,9 @@ jobs:
       - name: 构建插件(未发布 npm,从仓库构建;依赖锁定,确定性安装)
         run: |
           pnpm install --frozen-lockfile
-          (cd packages/shared && node build.mjs)
-          (cd packages/layout-infer && node build.mjs)
-          (cd packages/llm-opencode-zen && node build.mjs)
+          (cd packages/shared && pnpm build)
+          (cd packages/layout-infer && pnpm build)
+          (cd packages/llm-opencode-zen && pnpm build)
 
       - name: 装进 headless profile(与本地验证配方一致)
         run: |

@@ -3,6 +3,7 @@
 // 否则上一次运行的冷却残留会污染下一次(慢速运行触发防抖写入时会泄漏)。
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { mockFetch } from "@3kaiu/dsh-plugin-kit";
 process.env.DSH_QUOTA_FILE = join(tmpdir(), `dsh-quota-test-${process.pid}-${Date.now()}.json`);
 const { OpenCodeZenAdapter, quota, resolveAdapterOptions } = await import("../dist/index.js");
 
@@ -19,15 +20,6 @@ const adapter = new OpenCodeZenAdapter(
   { options: () => opts, resolveApiKey: async () => "public" },
   { acquire: async () => {}, release: () => {} },
 );
-
-function mockFetch(status, body, contentType = "application/json") {
-  global.fetch = async () => ({
-    status,
-    ok: false,
-    headers: new Map([["content-type", contentType]]),
-    text: async () => body,
-  });
-}
 
 async function run(sessionId) {
   try {

@@ -5,6 +5,7 @@
 // 结构分两遍: 先遍历 IR 产出样式常量声明, 再遍历产出 JSX(行号据此回填 restore-map)。
 import { buildElementTree } from './style-ir.ts'
 import { sanitizeSvg } from '../target/svg-sanitize.ts'
+import { esc } from './escape.ts'
 
 const safeIdent = (s, prefix) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
 const pascal = (s) => {
@@ -12,7 +13,6 @@ const pascal = (s) => {
   const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore' + (name || '')
 }
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const jsxStyleObject = (style) => '{ ' + Object.entries(style)
   .filter(([, v]) => v != null && v !== '')
   .map(([k, v]) => `${k}: ${typeof v === 'number' ? JSON.stringify(v) : JSON.stringify(String(v))}`)

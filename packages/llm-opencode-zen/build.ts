@@ -8,6 +8,7 @@
 // @deepseek-ai/dsh-typert-protocol 必须 external(host 提供,避免 cordis/标记双实例)。
 import { build } from "esbuild";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { DSH_EXTERNALS } from "../../scripts/esbuild-common.mjs";
 
 const ID = "@3kaiu/dsh-llm-opencode-zen";
 
@@ -43,16 +44,8 @@ await build({
   legalComments: "none",
   entryPoints: ["src/index.ts"],
   outfile: "dist/index.js",
-  external: [
-    "@deepseek-ai/dsh-typert-protocol",
-    "@deepseek-ai/dsh-llm",
-    "@deepseek-ai/dsh-credentials",
-    "@deepseek-ai/dsh-launch-environment",
-    "@deepseek-ai/dsh-settings",
-    "@deepseek-ai/dsh-timeout",
-    "@deepseek-ai/schemastery",
-    "eventsource-parser",
-  ],
+  // DSH 外部清单单一来源(scripts/esbuild-common.mjs)防漂移; dsh-tools 本包未引用, external 无害
+  external: ["@deepseek-ai/dsh-typert-protocol", ...DSH_EXTERNALS],
 });
 console.log("built dist/index.js");
 

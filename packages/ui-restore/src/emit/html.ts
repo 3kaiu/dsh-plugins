@@ -6,8 +6,7 @@
 // 避免为 V1 引入 React 构建链; 修复循环的 Patch 同时作用于两份(同源所以等价)。
 import { buildElementTree, styleToCssDeclarations } from './style-ir.ts'
 import { sanitizeSvg } from '../target/svg-sanitize.ts'
-
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+import { esc } from './escape.ts'
 
 /**
  * 生成 preview.html(自包含单文件, 无网络依赖)。

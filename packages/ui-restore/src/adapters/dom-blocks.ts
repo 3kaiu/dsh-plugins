@@ -19,7 +19,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { fileURLToPath } from 'node:url';
-import { findSystemChrome, toUrl } from './screenshot.ts';
+import { findSystemChrome, toUrl } from './browser-launch.ts';
+import { flag } from './args.ts';
 
 /** 页内收集脚本: 遍历可见 TEXT 节点 → Range 客户端矩形并集(跨行文本取外接框, 对齐蓝图的整块 TEXT 叶子模型)。
  *  屏蔽 script/style/template; 祖先可见性用 checkVisibility(display/visibility/opacity), 旧内核回退 computedStyle。 */
@@ -199,18 +200,17 @@ export async function probe(target, outBlocks, opts = {}) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const args = process.argv.slice(2);
-  const flag = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 && i + 1 < args.length ? args[i + 1] : null; };
   const [target, outBlocks] = args;
   if (!target || !outBlocks) {
     console.error('用法: dom-blocks.mjs <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--wait ms] [--engine auto|playwright|cdp]');
     process.exit(1);
   }
   probe(target, outBlocks, {
-    png: flag('png') || undefined,
-    width: Number(flag('width')) || undefined,
-    height: Number(flag('height')) || undefined,
-    waitMs: flag('wait') != null ? Number(flag('wait')) : undefined,
-    engine: flag('engine') || undefined,
+    png: flag(args, 'png') || undefined,
+    width: Number(flag(args, 'width')) || undefined,
+    height: Number(flag(args, 'height')) || undefined,
+    waitMs: flag(args, 'wait') != null ? Number(flag(args, 'wait')) : undefined,
+    engine: flag(args, 'engine') || undefined,
   })
     .then((r) => console.log(`探针完成: ${r.count} 个文本块 → ${outBlocks}${r.pngPath ? ` | 截图 ${r.pngPath}` : ''} (${r.engine})`))
     .catch((e) => { console.error(e.message); process.exit(1); });

@@ -18,6 +18,7 @@ import {
   validateBlueprint,
 } from '../index.ts'
 import { evaluateGate } from '../index.ts'
+import { flag, hasFlag } from './args.ts'
 import { computeScore, updateConvergence, isBetter } from '../index.ts'
 import { createPatchRequest, validatePatch, PATCH_POLICY } from '../index.ts'
 import { classifyRegions, shouldTriggerVision, diagnoseWithVision } from '../index.ts'
@@ -432,20 +433,18 @@ export async function runConvergeLoop(opts) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const args = process.argv.slice(2)
-  const flag = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 && i + 1 < args.length ? args[i + 1] : null }
-  const has = (n) => args.includes(`--${n}`)
-  if (has('help') || !flag('bp') || !flag('truth') || !flag('render')) {
+  if (hasFlag(args, 'help') || !flag(args, 'bp') || !flag(args, 'truth') || !flag(args, 'render')) {
     console.log('用法: loop.mjs --bp <blueprint.json> --truth <truth.png> --render <render.png> --map <restore-map.json> --project <dir> [--max 8] [--assets <assets.json>]')
     process.exit(1)
   }
   runConvergeLoop({
-    bpPath: flag('bp'),
-    truthPng: flag('truth'),
-    renderPng: flag('render'),
-    restoreMapPath: flag('map'),
-    projectDir: flag('project') || process.cwd(),
-    assetsPath: flag('assets'),
-    maxIterations: Number(flag('max')) || 8,
+    bpPath: flag(args, 'bp'),
+    truthPng: flag(args, 'truth'),
+    renderPng: flag(args, 'render'),
+    restoreMapPath: flag(args, 'map'),
+    projectDir: flag(args, 'project') || process.cwd(),
+    assetsPath: flag(args, 'assets'),
+    maxIterations: Number(flag(args, 'max')) || 8,
   }).then((r) => {
     console.log(JSON.stringify({ status: r.status, iteration: r.iteration, gate: r.verify?.gate, score: r.verify?.score }, null, 1))
   }).catch((e) => { console.error(e); process.exit(1) })

@@ -7,10 +7,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ProjectFacts, Candidate } from './types.ts'
+import { readJsonTolerant as readJson, readTextTolerant as readText } from '../fs-util.ts'
 
 const exists = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
-const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return null } }
-const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch { return '' } }
 
 function walk(dir, depth, out, maxDepth = 4) {
   let entries = []

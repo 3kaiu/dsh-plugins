@@ -4,14 +4,13 @@
 
 import { buildElementTree, styleToCssDeclarations } from './style-ir.ts'
 import { sanitizeSvg } from '../target/svg-sanitize.ts'
+import { esc } from './escape.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
   const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore'
 }
-const esc = (s:string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
 function pxToRpx(v: string|number, scale: number): string {
   if(typeof v==='number') return `${Math.round(v*scale)}rpx`
   const n=parseFloat(String(v))

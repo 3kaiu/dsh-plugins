@@ -29,6 +29,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { analyzeDesign, verifyScreenshots, evaluateVerify, restoreAdvisor, verifyQualityKey, MAX_ITERATIONS } from './pipeline.ts';
+import { flag } from './args.ts';
 import {
   renderGeometrySnapshot,
   analyzeProject, resolveProfile, saveProfile, loadProfile,
@@ -39,10 +40,6 @@ import {
 
 const args = process.argv.slice(2);
 const cmd = args[0];
-const flag = (name) => {
-  const i = args.indexOf(`--${name}`);
-  return i >= 0 && i + 1 < args.length ? args[i + 1] : null;
-};
 
 function loadSession(p) {
   if (!p) return null;
@@ -66,16 +63,16 @@ async function main() {
     const designPath = args[1];
     if (!designPath) { console.error('用法: restore.mjs analyze <design.json> [--dir out] [--scale auto] [--expect-sections N] [--session s.json]'); process.exit(1); }
     const r = await analyzeDesign(designPath, {
-      outDir: flag('dir') || undefined,
-      scale: flag('scale') || undefined,
-      expectSections: flag('expect-sections') || undefined,
+      outDir: flag(args, 'dir') || undefined,
+      scale: flag(args, 'scale') || undefined,
+      expectSections: flag(args, 'expect-sections') || undefined,
     });
     const g = r.summary.gates;
     console.log(`门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`);
     for (const c of r.lint.checks.filter((c) => c.level === 'WARN' || c.level === 'FAIL')) console.log(`! [${c.level}] ${c.check}: ${c.detail}`);
     console.log(`产物: ${Object.values(r.files).length} 个文件 @ ${r.summary.outDir}`);
     console.log('消费顺序: INDEX 见 checklist.txt(合同) → outline.txt(空间心智+消费指南) → blueprint.json(精确数值)');
-    const sp = flag('session');
+    const sp = flag(args, 'session');
     if (sp) saveSession(sp, {
       status: 'analyzed',
       source: { designPath },
@@ -87,11 +84,11 @@ async function main() {
 
   if (cmd === 'verify') {
     const [truthPng, renderPng] = [args[1], args[2]];
-    const bpPath = flag('bp');
+    const bpPath = flag(args, 'bp');
     if (!truthPng || !renderPng || !bpPath) { console.error('用法: restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> [--grid N] [--top N] [--session s.json]'); process.exit(1); }
     const r = verifyScreenshots({ truthPng, renderPng, bpPath,
-      grid: Number(flag('grid')) || undefined, top: Number(flag('top')) || undefined,
-      blocksTruth: flag('blocks-truth') || undefined, blocksRender: flag('blocks-render') || undefined });
+      grid: Number(flag(args, 'grid')) || undefined, top: Number(flag(args, 'top')) || undefined,
+      blocksTruth: flag(args, 'blocks-truth') || undefined, blocksRender: flag(args, 'blocks-render') || undefined });
     console.log(JSON.stringify(r.pixel));
     if (r.blocks) console.log('块级层:', JSON.stringify(r.blocks));
     if (r.corrections) {
@@ -100,7 +97,7 @@ async function main() {
     } else if (r.regions) {
       console.log(JSON.stringify(r.regions.regions?.slice(0, 5)));
     }
-    const sp = flag('session');
+    const sp = flag(args, 'session');
     if (sp) {
       // 记账/验收/防退化全部走 pipeline.evaluateVerify 单一实现(V1.5):
       // 质量键 [区域数, 标记占比, diffRatio] 字典序比较(零人为权重); 劣化轮次被拒绝并要求回滚到最佳轮。
@@ -140,10 +137,10 @@ async function main() {
   if (cmd === 'snapshot') {
     // 参考图来源(d2c 第十四节): 蓝图 → 几何参考快照, truth 不再依赖"正确实现"
     const bpPath = args[1];
-    const outPng = flag('out') || args[2];
+    const outPng = flag(args, 'out') || args[2];
     if (!bpPath || !outPng) { console.error('用法: restore.mjs snapshot <blueprint.json> <out.png> [--scale N] [--background #FFF]'); process.exit(1); }
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
-    const r = renderGeometrySnapshot(bp, { scale: Number(flag('scale')) || 1, background: flag('background') || undefined });
+    const r = renderGeometrySnapshot(bp, { scale: Number(flag(args, 'scale')) || 1, background: flag(args, 'background') || undefined });
     fs.mkdirSync(path.dirname(path.resolve(outPng)), { recursive: true });
     fs.writeFileSync(outPng, r.png);
     console.log(`几何快照: ${outPng} (${r.width}x${r.height}) — geometry 级参考: 可检出位置/尺寸/颜色块差异, 不含字形细节`);
@@ -156,11 +153,11 @@ async function main() {
     if (!projectDir) { console.error('用法: restore.mjs profile <projectDir> [--out profile.json] [--styling x] [--framework x] [--assetDir dir]'); process.exit(1); }
     const r = analyzeProject(projectDir, {
       overrides: {
-        framework: flag('framework'), language: flag('language'),
-        styling: flag('styling'), build: flag('build'), assetDir: flag('assetDir'),
+        framework: flag(args, 'framework'), language: flag(args, 'language'),
+        styling: flag(args, 'styling'), build: flag(args, 'build'), assetDir: flag(args, 'assetDir'),
       },
     });
-    const out = flag('out') || path.join(projectDir, 'restore.profile.json');
+    const out = flag(args, 'out') || path.join(projectDir, 'restore.profile.json');
     saveProfile(r.profile, out);
     console.log(`Target Profile → ${out}`);
     for (const k of ['framework', 'language', 'styling', 'build']) {
@@ -174,22 +171,22 @@ async function main() {
   if (cmd === 'generate') {
     // v4 Phase 2: blueprint + profile → 契约决策 → 资产解析 → React tsx + preview.html + restore-map
     const bpPath = args[1];
-    const projectDir = flag('project');
+    const projectDir = flag(args, 'project');
     if (!bpPath || !projectDir) { console.error('用法: restore.mjs generate <blueprint.json> --project <dir> [--profile p.json] [--assets assets.json] [--out subdir] [--base-name X] [--serializer inline|tailwind|vue|flutter|miniprogram]'); process.exit(1); }
     const bp = JSON.parse(fs.readFileSync(bpPath, 'utf8'));
-    const profile = flag('profile') ? loadProfile(flag('profile')) : analyzeProject(projectDir).profile;
+    const profile = flag(args, 'profile') ? loadProfile(flag(args, 'profile')) : analyzeProject(projectDir).profile;
     const plan = planGeneration(bp, profile);
-    const assetsPath = flag('assets');
+    const assetsPath = flag(args, 'assets');
     const assets = resolveAssets(bp, plan, {
       assetsExport: assetsPath ? JSON.parse(fs.readFileSync(assetsPath, 'utf8')) : { vectors: [], images: [] },
       assetDir: profile.assetDir,
       projectDir, // 落盘已解析资产
     });
-    const outDir = path.join(projectDir, flag('out') || 'restore');
-    const baseName = flag('base-name') || 'Restore';
+    const outDir = path.join(projectDir, flag(args, 'out') || 'restore');
+    const baseName = flag(args, 'base-name') || 'Restore';
     await ensureBuiltins()
     // 热插拔按需加载：仅加载所需适配器，Flutter 不加载 React/Vue
-    const adapter = await resolveAdapterAsync(profile, flag('serializer') || undefined)
+    const adapter = await resolveAdapterAsync(profile, flag(args, 'serializer') || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName });
     const serializer = adapter.id
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
@@ -213,7 +210,7 @@ async function main() {
   if (cmd === 'merge') {
     // ⑳ V2 合并：已生成文件 → 合入既有项目（保守，冲突重命名）
     const projectDir = args[1];
-    const fromDir = flag('from') || flag('src');
+    const fromDir = flag(args, 'from') || flag(args, 'src');
     if (!projectDir) { console.error('用法: restore.mjs merge <projectDir> [--from <generatedDir>] [--on-conflict rename|skip|overwrite]'); process.exit(1); }
     const srcDir = fromDir ? path.resolve(fromDir) : path.join(projectDir, 'restore')
     if (!fs.existsSync(srcDir)) { console.error(`生成目录不存在: ${srcDir}`); process.exit(1); }
@@ -230,7 +227,7 @@ async function main() {
       }
     }
     walk(srcDir)
-    const res = mergeIntoProject(projectDir, files, { onConflict: flag('on-conflict') || 'rename' })
+    const res = mergeIntoProject(projectDir, files, { onConflict: flag(args, 'on-conflict') || 'rename' })
     console.log(`merge → ${res.written.length} 文件: ${res.written.map(w=> `${w.path}(${w.action})`).join(', ')}`)
     if(res.conflicts.length) console.log(`! 冲突 ${res.conflicts.length} 处: ${res.conflicts.map(c=> c.path+':'+c.reason).join('; ')}`)
     if(res.entrySuggestion) console.log(res.entrySuggestion)
@@ -238,7 +235,7 @@ async function main() {
   }
 
   if (cmd === 'status') {
-    const sp = flag('session');
+    const sp = flag(args, 'session');
     if (!sp) { console.error('用法: restore.mjs status --session <s.json>'); process.exit(1); }
     console.log(fs.existsSync(sp) ? fs.readFileSync(sp, 'utf8') : `会话不存在: ${sp}`);
     return;
@@ -246,13 +243,13 @@ async function main() {
 
   if (cmd === 'restore') {
     // V1.5 编排器入口: 与 MCP ui_restore_run(mode=restore) 同一语义 —— 只推进状态机, 不内置 LLM
-    const sp = flag('session');
+    const sp = flag(args, 'session');
     if (!sp) { console.error('用法: restore.mjs restore [design.json] --session <s.json>'); process.exit(1); }
     let s = loadSession(sp);
     // 位置参数只在首个参数且非旗标时视为 design.json(本文件 flag() 不消费参数值, 防止把 --session 的值误当设计稿)
     const designPath = args[1] && !String(args[1]).startsWith('--') ? args[1] : null;
     if (!s?.phases?.analyze && designPath) {
-      const r = await analyzeDesign(designPath, { outDir: flag('dir') || path.dirname(designPath) });
+      const r = await analyzeDesign(designPath, { outDir: flag(args, 'dir') || path.dirname(designPath) });
       saveSession(sp, { status: 'analyzed', source: { designPath }, phases: { ...(loadSession(sp)?.phases || {}), analyze: r.summary }, artifacts: r.files });
       console.log(`[analyze 完成] 门禁: 契约 ${r.summary.gates.contract} | 几何 ${r.summary.gates.geometry} | 样式 ${r.summary.gates.style} | 真值 ${r.summary.gates.truth}`);
       s = loadSession(sp);

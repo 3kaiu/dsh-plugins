@@ -3,6 +3,7 @@
 // RegExp.test("[object Object]") 永不命中，上下文超限被误分类为 PROVIDER_ERROR。
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { mockFetch } from "@3kaiu/dsh-plugin-kit";
 process.env.DSH_QUOTA_FILE = join(tmpdir(), `dsh-quota-test-${process.pid}-${Date.now()}.json`);
 const { OpenCodeZenAdapter } = await import("../dist/index.js");
 
@@ -19,15 +20,6 @@ const adapter = new OpenCodeZenAdapter(
   { options: () => opts, resolveApiKey: async () => "public" },
   { acquire: async () => {}, release: () => {} },
 );
-
-function mockFetch(status, body) {
-  global.fetch = async () => ({
-    status,
-    ok: false,
-    headers: new Map([["content-type", "application/json"]]),
-    text: async () => body,
-  });
-}
 
 async function run(sessionId) {
   try {

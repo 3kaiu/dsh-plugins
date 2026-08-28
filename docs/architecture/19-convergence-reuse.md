@@ -39,7 +39,7 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 - ura 死 shim ×7：`src/measure/{typography,dom-to-layout,compare}.ts`、`src/compare/{pixel,align}.ts`、`src/guard/{antihack,selfcorrect}.ts` —— 全是 `export … from "@3kaiu/dsh-plugin-kit"` 一行壳，index.ts 未引用。另 3 个 shim 是活的（geometry/score/palette）。
 - `shared/src/test-utils.ts`：仅被 index.ts re-export，无真实消费者（其 mockFetch 在 llm 测试里被手写了两次）。
 - shared 部分死导出（shim-only）：`selfcorrect.ts` 全模块、`score.ts:quickScore`、`palette.ts:{parseColor,extractPaletteFromTree}`、`dom-to-layout.ts:{parseGap,isVisibleNode}`。注意：kit 是已发布包，删公共 API 属 breaking，需major 版本决策。
-- build.mjs 死孪生 ×4：`layout-infer`、`shared`、`ura`、`llm` 四包 package.json 均接 `tsx build.ts`，同名 `build.mjs` 全部闲置（llm 的两份 84/85 行仅差 1 行注释）。另 `llm/build.ts:51-59` 手抄了 DSH 外部列表子集，未复用 `scripts/esbuild-common.mjs` 的 `DSH_EXTERNALS`，可漂移。
+- build.mjs 死孪生 ×4：`layout-infer`、`shared`、`ura`、`llm` 四包 package.json 均接 `tsx build.ts`，同名 `build.mjs` 未接任何 package.json script（其中 3 份被 agent-loop.yml 直呼 —— 实施时已同步把 CI 切到 `pnpm build` 后删除；ura 的 .mjs 孪生已实际漂移：缺 build.ts 后来加的 zod external）。另 `llm/build.ts:51-59` 手抄了 DSH 外部列表子集，未复用 `scripts/esbuild-common.mjs` 的 `DSH_EXTERNALS`，可漂移。
 
 ### 1.4 脚手架/脚本重复（P2）
 
@@ -66,9 +66,10 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 **第 1 批 — 零风险清理 + 安全一致性（P0，半天内）**
 1. 删 ura 7 个死 shim、4 个 build.mjs 死孪生。
 2. `llm/build.ts` 外部列表改 import `scripts/esbuild-common.mjs` 的 `DSH_EXTERNALS`。
-3. ui-restore 内部收敛：`flag()`×5 → `adapters/args.ts`（取 cli 版语义为准）；`readJson`×3 → `src/fs-util.ts`（`readJsonConfined` + `readJsonTolerant` 两变体；pipeline 的 design_path/out_dir 接收容）；`confineOrNull` 并入 path-guard；session load/save 收敛为一个会话模块。
+3. ui-restore 内部收敛：`flag()`×5 → `adapters/args.ts`（取 cli 版守卫语义为准）；`readJson`×3 → `src/fs-util.ts`（`readJsonStrict`/`readJsonTolerant` 两变体。实施修正：收容留在入口适配层 —— 库层收容会打断 benchmark/CLI 的收容根外合法路径；MCP 入口已全部收容）；`confineOrNull` 并入 path-guard（asset-resolver 的本地 confine 改引，宽容变体含"rel=根本身拒绝"语义）；session load/save 收敛为 `src/session-store.ts`（restore 的缺文件自建骨架语义用 `create` 选项保留）。
 4. `emit/vue.ts` 的 `escAttr` 升级为强转义（与 ura 版对齐），emit 侧统一走新建 `emit/escape.ts` 单一来源。
 5. 测试真用 `shared/test-utils.ts` 的 `mockFetch`（llm 两处手写迁过去）——kit 导出从死变活，优于删除。
+6. 实施附加修复：多入口 split 使 screenshot.ts 被 dom-blocks 引用而整体进共享 chunk，`dist/screenshot.js` 直跑失活 —— 抽出 `adapters/browser-launch.ts` 共享层，screenshot.ts 还原纯 CLI 叶入口。
 
 **第 2 批 — 常量与语义收敛 + 分叉显式化（P1）**
 1. 方案乙落地：三组分叉文件头加"正本/冻结"声明 + 公共函数签名契约哨兵测试。
