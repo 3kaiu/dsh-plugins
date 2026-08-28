@@ -40,11 +40,33 @@ if (!existsSync(join(profileDir, "package.json"))) {
 }
 
 // 1. 安装依赖
+// 优先走官方 `dsh plugin --profile <name> add <pkg>`(0.1.1+ CLI 已修 pnpm -w 转发,
+// 自动完成 bundle reconcile 与 manifest 维护);CLI 缺失或失败时回退到手搓路径。
+const dshCliAvailable = spawnSync("dsh", ["--version"], { encoding: "utf8" }).status === 0;
+const cliAdd = (spec, label) => {
+  console.log(`[install-local] dsh plugin add ${label} <- ${spec}`);
+  // pnpm 在 profile 目录 add 会误判 workspace root(0.1.1-rc.2 CLI 未传 -w),
+  // 用 ignore-workspace-root-check 解锁官方路径;仅影响本次子进程。
+  const r = spawnSync("dsh", ["plugin", "--profile", "web", "add", spec], {
+    stdio: "inherit",
+    env: { ...process.env, npm_config_ignore_workspace_root_check: "true" },
+  });
+  if (r.status !== 0) {
+    console.warn(`[install-local] dsh plugin add 失败(status=${r.status}),回退手动路径: ${label}`);
+    return false;
+  }
+  return true;
+};
 const pnpmAddSync = (spec, label) => {
   // --ignore-scripts: 插件无需构建步骤, 防 tarball install 脚本执行
   console.log(`[install-local] add ${label} <- ${spec}`);
   const r = spawnSync("pnpm", ["add", "-w", "--ignore-scripts", spec], { cwd: profileDir, stdio: "inherit" });
   if(r.status!==0) throw new Error(`pnpm add 失败: ${label}`);
+};
+const installSpec = (spec, label) => {
+  if (dshCliAvailable && cliAdd(spec, label)) return true;
+  pnpmAddSync(spec, label);
+  return false;
 };
 const fetchBuf = async (url) => {
   const res = await fetch(url, { headers: { "User-Agent": "dsh-install-local" } });
@@ -70,7 +92,7 @@ for (const plugin of PLUGINS) {
     }
     console.log(`[install-local] SHA-256 校验通过: ${tgz} ${got.slice(0, 12)}…`);
     // 安装已校验的本地文件(而非重新从网络拉取 URL, 避免校验/安装不一致 TOCTOU)
-    pnpmAddSync(`file:${tmpTgz}`, plugin.pkg);
+    installSpec(`file:${tmpTgz}`, plugin.pkg);
     continue;
   }
   const abs = join(root, "packages", plugin.dir);
@@ -79,7 +101,7 @@ for (const plugin of PLUGINS) {
     process.exit(1);
   }
   console.log(`\n[install-local] add ${plugin.pkg} (${abs})`);
-  pnpmAddSync(`file:${abs}`, plugin.pkg);
+  installSpec(abs, plugin.pkg);
 }
 
 // 2. 清理旧 install.mjs 写入的无 scope 依赖条目(dsh-llm-opencode-zen 等)

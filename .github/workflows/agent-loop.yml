@@ -6,7 +6,7 @@ on:
       task:
         description: 无头 Agent 的任务(单行;默认:自检插件测试 + 写运行记录)
         required: false
-        default: "在本仓库根目录:1) 运行 node packages/llm-opencode-zen/test/rate-limit.test.mjs 并确认它通过;2) 把一行追加到 docs/architecture/AGENT-LOOP.md,内容为竖线分隔的今天日期与 pass;3) 最后一行输出 VERDICT: pass"
+        default: "在本仓库根目录:1) 运行 npx tsx packages/llm-opencode-zen/test/rate-limit.test.ts 并确认它通过;2) 把一行追加到 docs/architecture/AGENT-LOOP.md,内容为竖线分隔的今天日期与 pass;3) 最后一行输出 VERDICT: pass"
       open_pr:
         description: 用 Agent 产物开 PR(人工 merge,不自动合)
         type: boolean

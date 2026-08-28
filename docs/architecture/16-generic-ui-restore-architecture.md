@@ -17,19 +17,25 @@
 ## 1. 耦合审计(实证)
 
 ```text
-# 现状(2026-08 审计后, 壳核拆分已落地)
+# 现状(2026-08 审计后): @ui-restore/core 包已成立且零宿主依赖, 但 shared 切包(§6 步骤1)尚未执行
 packages/ui-restore/src/          # = @ui-restore/core(零宿主依赖, 仅 4 个通用 npm 包)
   layout-core/repeat/yoga-truth/text-metrics/visual-diff/scale/system-chrome    [纯]
   dsl-clean/design-tokens                                                       [纯]
   classify                    ← 自 layout-infer 壳包归位(kind/sizing/position/spacing 决策属算法)
   ir/schema|ingest|outline|checklist                                            [契约层]
 packages/shared/src/              # = @3kaiu/dsh-plugin-kit
-  quota-tracker/semaphore/test-utils → 宿主设施(UI 核心已全部迁出)              [宿主]
+  quota-tracker/semaphore/test-utils                                             [宿主]
+  layout-core/dsl-clean/cluster/dom-to-layout/compare/geometry/typography/
+  palette/pixel/score/antihack/selfcorrect/blueprint                            [旧 UI 内核, 仍被 layout-infer 消费]
 packages/layout-infer/src/        # = @3kaiu/dsh-layout-infer
   index.ts/clean.ts/annotate.ts → @deepseek-ai/dsh-tools defineTool 注册壳        [壳]
 ```
 
-**结论:UI 还原核心(算法+验证+分类+描述产物)已零宿主耦合且单包自洽。**
+**结论:UI 还原核心(@ui-restore/core)已零宿主耦合且单包自洽;但旧内核仍留在
+shared,layout-infer 走的是 shared 版本 —— 两套实现并存,且 layout-core 已分叉
+(shared ≈764 行 vs ui-restore ≈1534 行)。§6 步骤1(切包)完成前,
+**新能力一律进 @ui-restore/core**,shared 的 UI 模块视为冻结的旧内核,
+不得在两侧平行修改同一算法。
 宿主耦合只剩工具注册壳(本就该薄)。另据同一轮审计, 编排逻辑已按「单一实现」收敛:
 蓝图构建(buildBlueprint)/产物包(writeArtifactBundle, 含 INDEX)/视觉验证(verifyScreenshots)
 只存在于 adapters/pipeline.mjs 一份, cli.mjs 与 mcp-server.mjs 一律薄转发 —— 此前三处拷贝
@@ -110,8 +116,9 @@ dsh 壳与 Skill 是同一核心的两个薄适配;Agent(13 篇)站在工具面�
 
 ## 6. 迁移路径(不破坏 dsh 现状)
 
-1. **切包**:shared 中 UI 相关 8 文件 → `ui-restore/core`(纯);quota/semaphore 留宿主侧;
+1. **切包(未执行)**:shared 中 UI 相关 13 文件 → `ui-restore/core`(纯);quota/semaphore 留宿主侧;
    layout-infer 改为调 core 的 dsh 壳。对内 import 路径变更,对外行为零变化(全量回归门禁)。
+   ⚠️ 切包前 layout-core 已在 shared 与 ui-restore 双实现分叉,切包时须逐算法定夺取舍,不可简单覆盖。
 2. **契约固化**:BlueprintSchema v1 + JSON Schema 校验进单测;双表征序列化器。
 3. **CLI**:三个子命令包装现有函数(batch 基线脚本即雏形)。
 4. **MCP Server**:@modelcontextprotocol/sdk 暴露 `blueprint/verify/diff/tokens` 四工具;
