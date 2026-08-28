@@ -2,6 +2,7 @@
 // design-constraints — 设计系统约束校验（Phase5 实现前的守卫，与 anti_hack_scan 互补）
 // 输入：候选修改 {prop, value, path} + 项目约束 {spacingScale, colorPalette, typographyScale}
 // 输出：{passed, violations, warnings, suggestion} — 阻止“任意值”破坏 Design System
+import { runtimeConfig } from '../config.ts'
 
 export interface DesignConstraints {
   spacingScale?: number[] // 如 [0,4,8,16,24,32,48,64]，空则不校验
@@ -20,7 +21,7 @@ export function checkDesignConstraints({ prop, value, path }, constraints: Desig
     const scale = constraints.spacingScale
     const nearest = scale.reduce((a, b) => Math.abs(b - value) < Math.abs(a - value) ? b : a, scale[0])
     const dist = Math.abs(value - nearest)
-    if (dist > 2) { // 容差 2px（与 TOL 对齐）
+    if (dist > runtimeConfig.tol) { // 容差（config.tol，默认 2px）
       violations.push({ rule: 'spacing-scale', prop, value, nearest, dist, path, reason: `值 ${value} 未命中 spacingScale，近邻 ${nearest} 距 ${dist}px` })
     } else if (dist > 0) {
       warnings.push({ rule: 'spacing-scale', prop, value, nearest, dist, path, reason: `近邻 ${nearest} 更贴合 scale` })

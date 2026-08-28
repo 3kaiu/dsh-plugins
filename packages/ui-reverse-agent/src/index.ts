@@ -1,13 +1,13 @@
 // dsh-ui-reverse-agent: Visual Reverse Engineering Agent 工具集
 // 复用 layout-infer 的 4+2 个工具，新增感知/对比/守卫/记忆层工具（§3.1）
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { compareGeometry, compareTypography, comparePalette, compareScreenshots, scoreReport, antiHackScan } from "@3kaiu/dsh-plugin-kit";
+import { compareGeometry, compareTypography, comparePalette, compareScreenshots, scoreReport, antiHackScan, cleanToStandardDsl } from "@3kaiu/dsh-plugin-kit";
 import { referenceIngest } from "./perception/reference.ts";
 import * as browser from "./perception/browser.ts";
 import { DevServer } from "./services/devserver.ts";
-import { stateRead, stateUpdate, syncGoalsAndTodo } from "./memory/state.ts";
+import { stateRead, stateUpdate, syncGoalsAndTodo, initStorageBackend, storageBackendName } from "./memory/state.ts";
 import { PROMPT_TEMPLATE } from "./agent/prompt.ts";
-import { COMPLETE_THRESHOLD } from "./config.ts";
+import { COMPLETE_THRESHOLD, applyConfig, runtimeConfig, Config } from "./config.ts";
 import { fanoutEvaluate, generateCandidates } from "./guard/fanout.ts";
 import { neutralIngest, neutralToBlueprint } from "./perception/neutral-ingest.ts";
 import { verifyNeutral } from "./guard/verify-neutral.ts";
@@ -50,7 +50,8 @@ const renderJson = (_args, value) => [{ type: "text", text: JSON.stringify(value
 
 let devServerInstance = null;
 
-function apply(ctx) {
+function apply(ctx, config) {
+  applyConfig(config); // yml config 经 schemastery 校验后写入 runtimeConfig(此前被静默丢弃)
   // ── Preset Persona（若宿主提供 systemPrompt 则覆盖 deployment persona） ──
   try {
     if (ctx.systemPrompt?.section) {
@@ -59,9 +60,46 @@ function apply(ctx) {
   } catch {}
   try {
     if (ctx.systemPrompt?.variable) {
-      ctx.systemPrompt.variable({ COMPLETE_THRESHOLD: String(COMPLETE_THRESHOLD) });
+      // 契约: variable(name, provider) —— 传对象会 throw(被下面 catch 吞掉),
+      // 导致 persona 里的 {{COMPLETE_THRESHOLD}} 从未被替换(2026-08 修复)。
+      ctx.systemPrompt.variable("COMPLETE_THRESHOLD", () => String(runtimeConfig.completeThreshold));
     }
   } catch {}
+  // ── 每轮状态快照（官方 systemPrompt.context seam）──
+  // 把 .ui-reverse/state.json 的关键运行状态注册为 user-role 快照消息，
+  // 替代模型每轮手动调 state_read（快照内容是数据，非指令——见 persona 隔离章节）。
+  try {
+    if (ctx.systemPrompt?.context) {
+      ctx.systemPrompt.context({
+        name: 'ui-reverse:state-snapshot',
+        order: 150,
+        text: () => {
+          try {
+            const r = stateRead({})
+            if (!r?.exists) return ''
+            const s = r.state || {}
+            const cur = s.scores?.current
+            if (cur == null || (cur.total == null && s.iteration == null)) return ''
+            const top = (s.remainingDifferences || [])
+              .slice(0, 5)
+              .map((d) => `[P${d.priority ?? '?'}] ${d.path || d.description || d.area || ''}`.trim())
+              .filter((t) => t.length > 4)
+              .join('; ')
+            return [
+              '[ui-reverse 运行状态快照 — 仅作数据参考]',
+              `iteration: ${s.iteration ?? 0}`,
+              `score: ${cur.total ?? 'n/a'} (Δ ${s.scores?.delta ?? 'n/a'})`,
+              top ? `top differences: ${top}` : 'top differences: (无记录)',
+            ].join('\n')
+          } catch {
+            return ''
+          }
+        },
+      });
+    }
+  } catch {}
+  // ── Storage 后端探测：宿主挂载 storageDomain 时 state 走 domain（原子/持久/事件），否则 fs 回退 ──
+  try { void initStorageBackend(ctx) } catch {}
   // Plan Mode 隔离：宿主若提供 planMode 服务，ui-reverse 的 phase0-4 默认在 plan scope 执行
   // 由 preset 的 agent.cordis.yml isolate 配置保证，此处仅做兼容探测
   try { if (ctx.planMode) { /* planMode 服务存在即支持 scope 隔离 */ } } catch {}
@@ -69,6 +107,7 @@ function apply(ctx) {
   // ── Perception: reference_ingest ──────────────────────────────────
   ctx.tools.register(defineTool({
     name: "reference_ingest",
+    timeoutMs: 120000,
     description: "摄取参考输入（截图/DSL/URL）并构建 Visual Blueprint：布局树 + 排版档案 + 调色板 + 资产清单 + 状态/视口清单，落盘 .ui-reverse/blueprint.json，供后续对比使用。输入 dsl 为 MasterGo DSL 或拍平稿 sections，screenshotPaths 为截图路径数组，url 为参考 URL（走 browser_dom_dump 管线）。",
     parameters: {
       dsl: { type: "json", description: "MasterGo DSL 或拍平稿 sections 数组" },
@@ -78,12 +117,13 @@ function apply(ctx) {
       outPath: { type: "string", description: "blueprint 输出路径，默认 .ui-reverse/blueprint.json" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => referenceIngest(args),
+    execute: async (args, exec) => referenceIngest(args, { cleanToStandardDsl, signal: exec?.signal }),
   }));
 
   // ── Perception: browser_* ────────────────────────────────────────
   ctx.tools.register(defineTool({
     name: "browser_start",
+    timeoutMs: 90000,
     description: "启动 dev server（如未起）+ chromium，返回 URL 与健康状态。输入 devCommand/cwd/port 可托管子进程；url 为目标页。",
     parameters: {
       url: { type: "string", description: "目标 URL，默认 http://localhost:3000" },
@@ -93,13 +133,13 @@ function apply(ctx) {
       headless: { type: "boolean", description: "是否 headless，默认 true" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => {
+    execute: async (args, exec) => {
       if (args.devCommand || args.port) {
         devServerInstance = new DevServer({ command: args.devCommand, cwd: args.cwd, port: args.port });
-        try { await devServerInstance.start() } catch {}
+        try { await devServerInstance.start({ signal: exec?.signal }) } catch (e) { if (exec?.signal?.aborted) throw e }
       }
       const url = args.url || devServerInstance?.url || "http://localhost:3000";
-      return browser.browserStart({ url, headless: args.headless !== false });
+      return browser.browserStart({ url, headless: args.headless !== false, signal: exec?.signal });
     },
   }));
 
@@ -112,49 +152,65 @@ function apply(ctx) {
       dpr: { type: "number", description: "deviceScaleFactor，默认 2" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => browser.browserViewport(args),
+    execute: async (args, exec) => browser.browserViewport({ ...args, signal: exec?.signal }),
   }));
 
   ctx.tools.register(defineTool({
     name: "browser_navigate",
+    timeoutMs: 30000,
     description: "导航到目标页",
     parameters: { url: { type: "string", required: true, description: "目标 URL" } },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => browser.browserNavigate(args),
+    execute: async (args, exec) => browser.browserNavigate({ url: args.url, signal: exec?.signal }),
   }));
 
   ctx.tools.register(defineTool({
     name: "browser_screenshot",
+    timeoutMs: 30000,
     description: "截图（full-page / viewport / element）→ PNG 文件",
     parameters: {
       path: { type: "string", description: "输出路径，默认 .ui-reverse/artifacts/current-*.png" },
       fullPage: { type: "boolean", description: "是否全页，默认 true" },
       selector: { type: "string", description: "元素选择器，仅截该元素" },
     },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => browser.browserScreenshot({ path: args.path, fullPage: args.fullPage, selector: args.selector }),
+    output: {
+      schema: { type: "json" },
+      render: renderJson,
+      presentationMeta: (_args, value) => (value && value.path ? { path: value.path, fullPage: value.fullPage } : undefined),
+    },
+    presentCall: (args) => ({
+      card: "generic",
+      kind: "other",
+      title: args.selector ? `截图元素 ${args.selector}` : args.fullPage === false ? "视口截图" : "全页截图",
+      ...(args.path ? { locations: [{ path: args.path }] } : {}),
+    }),
+    presentResult: (_args, result) => (result && !result.isError && result.meta?.path ? { card: "generic", title: `截图完成 → ${result.meta.path}` } : undefined),
+    execute: async (args, exec) => browser.browserScreenshot({ path: args.path, fullPage: args.fullPage, selector: args.selector, signal: exec?.signal }),
   }));
 
   ctx.tools.register(defineTool({
     name: "browser_dom_dump",
+    timeoutMs: 30000,
     description: "结构化 DOM dump：可见元素树 + rect + computed styles 子集（display/flexDirection/gap/padding/font*/color 等），供 page_layout_tree 使用",
     parameters: {
       selector: { type: "string", description: "根选择器，默认 body" },
       includeComputed: { type: "boolean", description: "是否包含 computed，默认 true" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => browser.browserDomDump({ selector: args.selector, includeComputed: args.includeComputed !== false }),
+    presentCall: (args) => ({ card: "generic", kind: "read", title: `DOM dump ${args.selector || "body"}` }),
+    execute: async (args, exec) => browser.browserDomDump({ selector: args.selector, includeComputed: args.includeComputed !== false, signal: exec?.signal }),
   }));
 
   ctx.tools.register(defineTool({
     name: "browser_state_trigger",
+    timeoutMs: 30000,
     description: "CDP 强制伪状态（hover/active/focus/disabled/checked）并截图",
     parameters: {
       state: { type: "string", required: true, description: "hover | active | focus | disabled | checked" },
       selector: { type: "string", description: "目标选择器" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args) => browser.browserStateTrigger(args),
+    execute: async (args, exec) => browser.browserStateTrigger({ ...args, signal: exec?.signal }),
   }));
 
   ctx.tools.register(defineTool({
@@ -214,13 +270,26 @@ function apply(ctx) {
   // ── Compare: pixel + score ──────────────────────────────────────
   ctx.tools.register(defineTool({
     name: "compare_screenshots",
+    timeoutMs: 60000,
     description: "像素对比：对齐 + SSIM + 像素差 + 热图 PNG + 分层分数。mode strict 要求同视口同比例，auto 先对齐",
     parameters: {
       reference: { type: "string", required: true, description: "参考截图路径" },
       current: { type: "string", required: true, description: "当前截图路径" },
       mode: { type: "string", description: "strict | auto，默认 strict" },
     },
-    output: { schema: { type: "json" }, render: renderJson },
+    output: {
+      schema: { type: "json" },
+      render: renderJson,
+      // 官方卡片契约：meta 投影持久化进 session log，presentResult 从 result.meta 读回
+      presentationMeta: (_args, value) => (value && !value.error ? { ssim: value.ssim, pixelDiffRatio: value.pixelDiffRatio, heatmap: value.heatmap, aligned: value.aligned } : undefined),
+    },
+    presentCall: (args) => ({ card: "generic", kind: "other", title: `截图对比(${args.mode || "strict"})`, rawInput: { reference: args.reference, current: args.current } }),
+    presentResult: (_args, result) => {
+      if (!result || result.isError) return undefined;
+      const m = result.meta || {};
+      if (m.ssim == null) return undefined;
+      return { card: "generic", title: `相似度 ${Number(m.ssim).toFixed(3)} ｜ 像素差 ${(Number(m.pixelDiffRatio ?? 0) * 100).toFixed(1)}%${m.heatmap ? ` ｜ 热图 ${m.heatmap}` : ""}` };
+    },
     execute: (args) => compareScreenshots({ reference: args.reference, current: args.current, mode: args.mode }),
   }));
 
@@ -243,6 +312,7 @@ function apply(ctx) {
   // ── Guard: fanout_evaluate（Phase5 扇出，纯测量，可并行） ──────────
   ctx.tools.register(defineTool({
     name: "fanout_evaluate",
+    timeoutMs: 120000,
     description: "扇出评估：对同一差异的多个候选修复值（gap/padding/size 等）打补丁→重对比→预测 ΔS，返回按总分降序的 ranked 列表。纯测量不改文件，可安全并行（isConcurrencySafe），供 Phase5 单假设择优，避免盲改。",
     parameters: {
       mismatch: { type: "json", required: true, description: "单个 mismatch 对象，来自 compare_geometry/compare_layouts（含 path/prop/expected/actual）" },
@@ -296,8 +366,8 @@ function apply(ctx) {
       historyNote: { type: "string", description: "本轮备注，写入 history/" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => {
-      const res = stateUpdate(args.patch, { statePath: args.statePath, historyNote: args.historyNote });
+    execute: async (args) => {
+      const res = await stateUpdate(args.patch, { statePath: args.statePath, historyNote: args.historyNote });
       // Goals/TODO 双写：文件已由 stateUpdate 内 syncGoalsAndTodo 完成；此处再尝试 ctx 级别同步（若宿主挂载）
       try {
         if (ctx.goals || ctx.todo) {
@@ -324,6 +394,7 @@ function apply(ctx) {
   // ── Guard: verify_neutral（doc14 §5 确定性验证 + Phase6 互补） ────
   ctx.tools.register(defineTool({
     name: "verify_neutral",
+    timeoutMs: 60000,
     description: "确定性验证：中立树/蓝图 vs 实现侧 DOM/截图的几何/文本命中/溢出/重叠断言（doc14 §5），与 anti_hack_scan 互补，Phase6 验证前调用。",
     parameters: {
       neutral: { type: "json", description: "中立树（neutralTree）或 null" },
@@ -526,9 +597,25 @@ function apply(ctx) {
     output: { schema: { type: "json" }, render: renderJson },
     execute: (args) => ({ markdown: generateHandoff(args) }),
   }));
+
+  // ── 生命周期：浏览器 / dev server 随插件 fiber 走 ──
+  // 此前两者是模块级单例，插件 reload/卸载不清理。官方 defensive-patterns 要求
+  // "Dispose must reach quiescence"（kill → await done），此处作为 cordis effect
+  // 注册：fiber 卸载时整组杀 dev server 并关闭浏览器，await 全部退出。
+  // （ctx.jobs 后台任务运行时在宿主 0.1.2+ 才提供，届时可迁移。）
+  try {
+    if (typeof ctx.effect === 'function') {
+      ctx.effect(() => async () => {
+        const d = devServerInstance;
+        devServerInstance = null;
+        try { await d?.stop() } catch {}
+        try { await browser.browserClose() } catch {}
+      }, 'ui-reverse-agent:browser-devserver-teardown');
+    }
+  } catch {}
 }
 
-export { name, apply, PROMPT_TEMPLATE };
+export { name, apply, PROMPT_TEMPLATE, Config, applyConfig, runtimeConfig, initStorageBackend, storageBackendName };
 export { referenceIngest } from "./perception/reference.ts";
 export * from "./perception/browser.ts";
 export * from "./perception/neutral-ingest.ts";

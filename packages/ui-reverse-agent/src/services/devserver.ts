@@ -13,7 +13,8 @@ export class DevServer {
     this.url = null
   }
 
-  async start({ timeoutMs = 30000 } = {}) {
+  async start({ timeoutMs = 30000, signal } = {}) {
+    if (signal?.aborted) throw new Error('devserver start aborted before dispatch')
     if (!this.command) {
       // 尝试推断
       const pkgPath = `${this.cwd}/package.json`
@@ -29,7 +30,9 @@ export class DevServer {
     }
     const parts = this.command.split(' ')
     const cmd = parts[0], args = parts.slice(1)
-    this.proc = spawn(cmd, args, { cwd: this.cwd, env: { ...process.env, ...this.env }, stdio: ['ignore','pipe','pipe'], shell: true })
+    // detached: shell 进程成为进程组长, stop 时可整组杀死(官方 defensive-patterns:
+    // "Dispose must reach quiescence" — 只 SIGTERM shell 会留孤儿 dev server)
+    this.proc = spawn(cmd, args, { cwd: this.cwd, env: { ...process.env, ...this.env }, stdio: ['ignore','pipe','pipe'], shell: true, detached: process.platform !== 'win32' })
     this.proc.stdout?.on('data', d => process.stderr.write(`[devserver] ${d}`))
     this.proc.stderr?.on('data', d => process.stderr.write(`[devserver:err] ${d}`))
 
@@ -37,7 +40,12 @@ export class DevServer {
     const port = this.port || await this.detectPort()
     this.url = `http://localhost:${port}`
     if (port) {
-      await this.waitForHealth(this.url, timeoutMs)
+      await this.waitForHealth(this.url, timeoutMs, signal)
+    }
+    if (signal?.aborted) {
+      // 调用方取消：不留下一个刚拉起的孤儿 dev server
+      await this.stop()
+      throw new Error('devserver start aborted')
     }
     return { url: this.url, pid: this.proc.pid }
   }
@@ -58,11 +66,12 @@ export class DevServer {
     } catch { return true }
   }
 
-  async waitForHealth(url, timeoutMs) {
+  async waitForHealth(url, timeoutMs, signal) {
     const start = Date.now()
     while (Date.now() - start < timeoutMs) {
+      if (signal?.aborted) return
       try {
-        const res = await fetch(url, { method: 'GET' })
+        const res = await fetch(url, { method: 'GET', signal })
         if (res.ok || res.status < 500) return
       } catch {}
       await new Promise(r=>setTimeout(r, 800))
@@ -70,10 +79,19 @@ export class DevServer {
     // 超时不抛错，仅警告（调用方决定）
   }
 
-  async stop() {
-    if (!this.proc) return
-    try { this.proc.kill('SIGTERM'); } catch {}
+  async stop({ timeoutMs = 5000 } = {}) {
+    const proc = this.proc
+    if (!proc) return { stopped: true }
     this.proc = null
     this.url = null
+    if (proc.exitCode != null || proc.signalCode != null) return { stopped: true, alreadyExited: true }
+    const killGroup = (sig) => {
+      try { process.kill(-proc.pid, sig) } catch { try { proc.kill(sig) } catch {} }
+    }
+    const exited = new Promise((resolve) => { proc.once('exit', resolve); })
+    killGroup('SIGTERM')
+    const killTimer = setTimeout(() => killGroup('SIGKILL'), timeoutMs)
+    try { await exited } finally { clearTimeout(killTimer) }
+    return { stopped: true }
   }
 }

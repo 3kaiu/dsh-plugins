@@ -4,11 +4,12 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { runtimeConfig } from '../config.ts'
 
 export function buildCiReport({ state, blueprint, artifacts = [] } = {}) {
   const scores = state?.scores || {}
   const total = scores.current?.total ?? 0
-  const threshold = 0.96
+  const threshold = runtimeConfig.completeThreshold
   const blocked = state?.antiHack?.violations?.length > 0 || false
   const hasP0 = (state?.remainingDifferences || []).some(d => d.priority === 'P0')
   const passed = total >= threshold && !blocked && !hasP0
@@ -52,7 +53,7 @@ export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' } = {}) {
   }
 }
 
-export function ciGate(report, { threshold = 0.96, allowBlocked = false, allowP0 = false } = {}) {
+export function ciGate(report, { threshold = runtimeConfig.completeThreshold, allowBlocked = false, allowP0 = false } = {}) {
   if (!allowBlocked && report.blocked) return { pass: false, reason: 'blocked by anti_hack' }
   if (!allowP0 && report.hasP0) return { pass: false, reason: 'has P0 remaining' }
   if (report.total < threshold) return { pass: false, reason: `S ${report.total} < ${threshold}` }

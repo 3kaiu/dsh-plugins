@@ -15,7 +15,23 @@ async function getPlaywright() {
   }
 }
 
-export async function browserStart({ url, headless = true, viewport } = {}) {
+// exec.signal 契约(官方 "Honor exec.signal"): 调用方取消时在途工作必须中止。
+// page.evaluate 无原生 signal 选项，用 race 包装; 其余 Playwright API 原生透传。
+function raceAbort(promise, signal) {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(new Error('aborted before dispatch'))
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new Error('aborted'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (v) => { signal.removeEventListener('abort', onAbort); resolve(v) },
+      (e) => { signal.removeEventListener('abort', onAbort); reject(e) },
+    )
+  })
+}
+
+export async function browserStart({ url, headless = true, viewport, signal } = {}) {
+  if (signal?.aborted) return { error: 'aborted', mock: true }
   const pw = await getPlaywright()
   if (!pw) return { error: 'playwright not installed', url: url || 'http://localhost:3000', mock: true }
   const { chromium } = pw
@@ -28,7 +44,7 @@ export async function browserStart({ url, headless = true, viewport } = {}) {
   })
   pageInstance = await contextInstance.newPage()
   if (url) {
-    try { await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }) } catch (e) { /* ignore */ }
+    try { await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000, signal }) } catch (e) { /* ignore */ }
   }
   return { url: url || 'about:blank', viewport: viewport || { width: 1440, height: 900 }, launched: true }
 }
@@ -43,26 +59,25 @@ export async function browserViewport({ width, height, dpr } = {}) {
   return vp
 }
 
-export async function browserNavigate({ url }) {
+export async function browserNavigate({ url, signal }) {
   if (!pageInstance) return { error: 'browser not started', url }
   try {
-    await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 })
+    await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000, signal })
     return { url, ok: true }
   } catch (e) {
     return { url, ok: false, error: String(e) }
   }
 }
 
-export async function browserScreenshot({ path: outPath, fullPage = true, selector } = {}) {
+export async function browserScreenshot({ path: outPath, fullPage = true, selector, signal } = {}) {
   if (!pageInstance) return { error: 'browser not started', path: outPath || null, mock: true }
   const p = outPath || `.ui-reverse/artifacts/current-${Date.now()}.png`
   try {
-    const opts = { path: p, fullPage }
     if (selector) {
       const loc = pageInstance.locator(selector)
-      await loc.screenshot({ path: p })
+      await loc.screenshot({ path: p, signal })
     } else {
-      await pageInstance.screenshot(opts)
+      await pageInstance.screenshot({ path: p, fullPage, signal })
     }
     return { path: p, fullPage, ok: true }
   } catch (e) {
@@ -70,12 +85,12 @@ export async function browserScreenshot({ path: outPath, fullPage = true, select
   }
 }
 
-export async function browserDomDump({ selector = 'body', includeComputed = true } = {}) {
+export async function browserDomDump({ selector = 'body', includeComputed = true, signal } = {}) {
   if (!pageInstance) return { error: 'browser not started', viewport: { width: 1440, height: 900, dpr: 2 }, tree: [], mock: true }
 
   // 在页面内执行结构化 dump
   try {
-    const dump = await pageInstance.evaluate(({ selector, includeComputed }) => {
+    const dump = await raceAbort(pageInstance.evaluate(({ selector, includeComputed }) => {
       function getRect(el) {
         const r = el.getBoundingClientRect()
         return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
@@ -125,29 +140,30 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
         }
       }
       return { viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio }, tree, issues }
-    }, { selector, includeComputed })
+    }, { selector, includeComputed }), signal)
     return dump
   } catch (e) {
+    if (signal?.aborted) return { error: 'aborted', viewport: { width: 1440, height: 900, dpr: 2 }, tree: [] }
     return { error: String(e), viewport: { width: 1440, height: 900, dpr: 2 }, tree: [] }
   }
 }
 
-export async function browserStateTrigger({ state, selector } = {}) {
+export async function browserStateTrigger({ state, selector, signal } = {}) {
   // state: hover | active | focus | disabled | checked
   if (!pageInstance) return { error: 'browser not started', mock: true }
   try {
     if (state === 'hover' && selector) {
-      await pageInstance.hover(selector, { timeout: 3000 })
+      await pageInstance.hover(selector, { timeout: 3000, signal })
     } else if (state === 'focus' && selector) {
       await pageInstance.focus(selector)
     } else if (state === 'active' && selector) {
       // mouse down
       const loc = pageInstance.locator(selector)
-      await loc.click({ timeout: 3000 })
+      await loc.click({ timeout: 3000, signal })
     }
     // 截图
     const p = `.ui-reverse/artifacts/state-${state}-${Date.now()}.png`
-    await pageInstance.screenshot({ path: p, fullPage: true })
+    await pageInstance.screenshot({ path: p, fullPage: true, signal })
     return { state, selector, path: p, ok: true }
   } catch (e) {
     return { state, selector, error: String(e) }

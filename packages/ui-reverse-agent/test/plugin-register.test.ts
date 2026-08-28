@@ -1,12 +1,21 @@
 import { apply } from "../dist/index.js";
 const registered=[];
-const ctx={ tools:{ register(def){ registered.push(def); return ()=>{}; } } };
+const variables=[];
+const sections=[];
+const ctx={ tools:{ register(def){ registered.push(def); return ()=>{}; } }, systemPrompt:{ section(s){ sections.push(s); }, variable(name, provider){ variables.push([name, provider]); } } };
 apply(ctx);
 const names=registered.map(t=>t.name);
 console.log('registered',names.join(', '));
 const must=['reference_ingest','neutral_ingest','browser_start','browser_viewport','browser_navigate','browser_screenshot','browser_dom_dump','browser_state_trigger','browser_console','browser_stop','compare_geometry','compare_typography','compare_palette','compare_screenshots','score_report','fanout_evaluate','verify_neutral','viewport_matrix','token_map','check_design_constraints','check_a11y','recovery_plan','ci_report','check_dsl_security','git_rollback_point','estimate_cost','capture_feedback','critique_design','generate_design_system','plan_experts','generate_handoff','anti_hack_scan','state_read','state_update'];
 for(const n of must){ if(!names.includes(n)) throw new Error(`缺少 ${n}`);}
 console.log('all required tools present ✓');
+// systemPrompt.variable 契约：variable(name, provider) 形式注册且返回可用的阈值字符串
+// （2026-08 前误传对象导致 throw 被吞、persona 的 {{COMPLETE_THRESHOLD}} 从未替换）
+const tv=variables.find(([n])=>n==='COMPLETE_THRESHOLD');
+if(!tv) throw new Error('未注册 COMPLETE_THRESHOLD 变量');
+if(typeof tv[1]!=='function' || !/^\d\.\d+$/.test(String(tv[1]({})))) throw new Error('COMPLETE_THRESHOLD provider 应返回数值字符串');
+if(!sections.some(s=>s.name==='deployment:persona')) throw new Error('persona section 未注册');
+console.log('systemPrompt variable/section contract ✓');
 // 执行 compare_geometry
 const cg=registered.find(t=>t.name==='compare_geometry');
 const geom=await cg.execute({ referenceTree:[{id:'a',name:'header',rect:{x:0,y:0,w:1440,h:80},children:[]}], implementedTree:[{id:'a',name:'header',rect:{x:0,y:0,w:1440,h:64},children:[]}]},{});

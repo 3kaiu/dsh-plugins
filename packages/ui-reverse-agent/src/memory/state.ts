@@ -1,12 +1,65 @@
 'use strict'
 // Memory.State：UI Reconstruction State（append-only）
-// 路径：<项目根>/.ui-reverse/state.json + history/ + artifacts/
+// 双后端：
+//  - 宿主挂载 dsh-storage（ctx.storageDomain）时 → 开 `ui-reverse-state` domain，
+//    global 单槽存整份 state，写入走宿主持久写链（原子 + durable + domain/changed 事件）
+//  - 缺席时 → fs 回退：<项目根>/.ui-reverse/state.json + history/ + artifacts/
+// initStorageBackend(ctx) 在 apply 时探测；open 失败/未挂载自动留在 fs 后端。
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { z } from 'zod'
 
 const STATE_PATH = '.ui-reverse/state.json'
 const HISTORY_DIR = '.ui-reverse/history'
+
+// state 形态随版本演进：顶层 loose（未知键透传，防 strip 静默丢字段），null 必须被拒
+// （storage-domain 以 null 为"从未写入"哨兵，global schema 接受 null 会在 open 时抛错）
+const STATE_GLOBAL_SCHEMA = z.looseObject({})
+
+// 宿主 facility 注入点（initStorageBackend 设置）
+let domainFacility = null
+let domainHandle = null
+let domainInitialRef = null // spec.global.initial 引用：facility 在首次 set 前原样返回它，据此判"从未写入"
+const DOMAIN_NAME = 'ui-reverse-state'
+const DOMAIN_VERSION = 1
+
+/**
+ * 探测并打开 storage domain（fire-and-forget：open 完成前读取走 fs 回退）
+ * @returns Promise<Domain|null>
+ */
+export function initStorageBackend(ctx) {
+  try {
+    const facility = ctx?.storageDomain
+      || (typeof ctx?.get === 'function' && (() => { try { return ctx.get('storageDomain') } catch { return null } })())
+      || null
+    if (!facility || typeof facility.open !== 'function') return Promise.resolve(null)
+    domainFacility = facility
+    const spec = {
+      name: DOMAIN_NAME,
+      version: DOMAIN_VERSION,
+      global: { schema: STATE_GLOBAL_SCHEMA, initial: defaultState() },
+      tables: {},
+    }
+    domainInitialRef = spec.global.initial
+    return Promise.resolve(facility.open(spec))
+      .then((h) => { domainHandle = h; return h })
+      .catch((e) => {
+        // 打开失败：回到 fs 后端（清掉可能残留的旧 handle），不阻塞插件加载
+        domainFacility = null
+        domainHandle = null
+        console.warn(`[ui-reverse] storage domain 不可用(${String(e).slice(0, 120)})，state 回退 fs`)
+        return null
+      })
+  } catch (e) {
+    console.warn(`[ui-reverse] storage domain 探测失败: ${String(e).slice(0, 120)}`)
+    return Promise.resolve(null)
+  }
+}
+
+export function storageBackendName() {
+  return domainHandle ? 'storage-domain' : 'fs'
+}
 
 function ensureDir(p) {
   try { fs.mkdirSync(path.dirname(p), { recursive: true }) } catch {}
@@ -35,21 +88,30 @@ export function defaultState(project = {}) {
 }
 
 export function stateRead({ statePath } = {}) {
+  // domain 后端：global 未写入时 facility 返回 initial（= defaultState），语义即 exists:false
+  if (domainHandle) {
+    try {
+      const v = domainHandle.global.get()
+      if (v !== domainInitialRef && v && typeof v === 'object' && !Array.isArray(v)) {
+        return { exists: true, state: v, path: `storage-domain:${DOMAIN_NAME}`, backend: 'storage-domain' }
+      }
+      return { exists: false, state: defaultState(), path: `storage-domain:${DOMAIN_NAME}`, backend: 'storage-domain' }
+    } catch (e) {
+      return { exists: false, error: String(e), state: defaultState(), path: `storage-domain:${DOMAIN_NAME}`, backend: 'storage-domain' }
+    }
+  }
   const p = statePath || STATE_PATH
   try {
-    if (!fs.existsSync(p)) return { exists: false, state: defaultState(), path: p }
+    if (!fs.existsSync(p)) return { exists: false, state: defaultState(), path: p, backend: 'fs' }
     const raw = fs.readFileSync(p, 'utf8')
     const state = JSON.parse(raw)
-    return { exists: true, state, path: p }
+    return { exists: true, state, path: p, backend: 'fs' }
   } catch (e) {
-    return { exists: false, error: String(e), state: defaultState(), path: p }
+    return { exists: false, error: String(e), state: defaultState(), path: p, backend: 'fs' }
   }
 }
 
-export function stateUpdate(patch = {}, { statePath, historyNote } = {}) {
-  const p = statePath || STATE_PATH
-  ensureDir(p)
-  const { state: prev } = stateRead({ statePath: p })
+function nextState(prev, patch) {
   const next = { ...prev, ...patch }
   // iteration 自增（若 patch 未显式指定）
   if (patch.iteration == null && prev.iteration != null) next.iteration = prev.iteration + 1
@@ -66,22 +128,37 @@ export function stateUpdate(patch = {}, { statePath, historyNote } = {}) {
       next.scores.delta = Math.round(((patch.scores.current.total ?? 0) - (prev.scores.current.total ?? 0)) * 1000) / 1000
     }
   }
+  return next
+}
 
+function writeHistoryEntry(next, patch, historyNote, p) {
+  if (historyNote == null && patch.lastChanges == null) return
+  const hdir = path.dirname(p) + '/history'
+  ensureDir(hdir + '/x')
+  const fname = `${String(next.iteration).padStart(4, '0')}-iteration.json`
+  const entry = { iteration: next.iteration, timestamp: new Date().toISOString(), patch, note: historyNote || null, stateSnapshot: next }
+  try { fs.writeFileSync(path.join(hdir, fname), JSON.stringify(entry, null, 2)) } catch {}
+}
+
+export async function stateUpdate(patch = {}, { statePath, historyNote } = {}) {
+  const { state: prev } = stateRead({ statePath })
+  const next = nextState(prev, patch)
+
+  if (domainHandle) {
+    // 宿主持久写链：global.set 原子且 durable（失败不落地，内存不动）
+    await domainHandle.global.set(next)
+    try { syncGoalsAndTodo(next, { statePath: statePath || STATE_PATH }) } catch {}
+    writeHistoryEntry(next, patch, historyNote, statePath || STATE_PATH)
+    return { state: next, path: `storage-domain:${DOMAIN_NAME}`, backend: 'storage-domain' }
+  }
+
+  const p = statePath || STATE_PATH
+  ensureDir(p)
   fs.writeFileSync(p, JSON.stringify(next, null, 2))
   // 同步 goals/todo（Preset 增强，不抛异常）
   try { syncGoalsAndTodo(next, { statePath: p }) } catch {}
-
-  // history 条目
-  if (historyNote != null || patch.lastChanges) {
-    const hdir = path.dirname(p) + '/history'
-    ensureDir(hdir + '/x')
-    const fname = `${String(next.iteration).padStart(4,'0')}-iteration.json`
-    const hpath = path.join(hdir, fname)
-    const entry = { iteration: next.iteration, timestamp: new Date().toISOString(), patch, note: historyNote || null, stateSnapshot: next }
-    try { fs.writeFileSync(hpath, JSON.stringify(entry, null, 2)) } catch {}
-  }
-
-  return { state: next, path: p }
+  writeHistoryEntry(next, patch, historyNote, p)
+  return { state: next, path: p, backend: 'fs' }
 }
 
 export function appendHistory(entry, { statePath } = {}) {

@@ -31,9 +31,12 @@ console.log('decide fallback', a1);
 let a2 = await decideWithAsk({}, { type: 'asset-missing', detail: 'logo', options: ['placeholder'], fallback: 'placeholder' });
 if (a2.source !== 'fallback') throw new Error('no svc should fallback');
 console.log('decide no svc', a2);
-const mockAsk = { ask: async () => ({ answer: 'Inter' }) };
-let a3 = await decideWithAsk({ approval: mockAsk }, { type: 'sticker', detail: 'x', options: ['Inter','skip'], fallback: 'skip' });
-if (a3.decision !== 'Inter' || a3.source !== 'ask') throw new Error('mock ask should return Inter via ask');
+// ask-user: 官方 userQuestions 契约（2026-08 前错误探测 ctx.approval + {answer} 回答形状）
+let a3 = await decideWithAsk(
+  { userQuestions: { ask: async (req) => ({ answers: { [req.questions[0].id]: { selected: ['Inter'] } } }) } },
+  { type: 'sticker', detail: 'x', options: ['Inter','skip'], fallback: 'skip' },
+);
+if (a3.decision !== 'Inter' || a3.source !== 'ask') throw new Error('mock ask should return Inter via userQuestions.ask');
 console.log('ask mock', a3);
 
 // heatmap node

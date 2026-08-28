@@ -1,45 +1,59 @@
 'use strict'
 // AskUser — 歧义决策点（字体缺失/素材未提供/贴纸判定）
-// 优先 ctx.approval / ctx.askUser（dsh-user-approval），否则回退到 knownConstraints 白名单 + 占位
+// 官方正解是 dsh-user-questions 的 `ctx.userQuestions.ask({questions:[...]})`
+// （多选一提问，selected/custom 结构化回答）。dsh-user-approval 是 allow/reject
+// 审批语义，不适合多选询问（2026-08 修正此前对 approval 的错误探测与错误传参）。
+// 宿主未装配 user-questions 插件时优雅回退 fallback。
+import { stateRead } from '../memory/state.ts'
 
 /**
- * 探测 Ask-User 能力
+ * 探测 UserQuestionService 能力
  */
 export function detectAskUser(ctx) {
   if (!ctx) return { available: false, svc: null }
-  const svc = ctx.approval || ctx.askUser || (ctx.get && (() => { try { return ctx.get('approval') } catch { return null } })()) || null
-  const alt = !svc && ctx.get ? (() => { try { return ctx.get('dsh-user-approval') } catch { return null } })() : null
-  const s = svc || alt
-  return { available: !!s && (typeof s.ask === 'function' || typeof s.request === 'function'), svc: s }
+  const svc = ctx.userQuestions
+    || (typeof ctx.get === 'function' && (() => { try { return ctx.get('userQuestions') } catch { return null } })())
+    || null
+  return { available: !!svc && typeof svc.ask === 'function', svc }
 }
 
 /**
- * 歧义决策（白名单优先，其次询问）
+ * 歧义决策（knownConstraints 白名单优先，其次 ctx.userQuestions.ask，最后 fallback）
  * @param ctx DSH ctx
- * @param {type, detail, options, fallback} type: font-missing | asset-missing | sticker | other
- * @returns {decision, source}
+ * @param {type, detail, options, fallback, agent} type: font-missing | asset-missing | sticker | other
+ * @returns {decision, source, raw?}
  */
-export async function decideWithAsk(ctx, { type, detail, options, fallback }) {
-  // 已知约束白名单：若 state.json 已有同类约束则直接复用
+export async function decideWithAsk(ctx, { type, detail, options, fallback, agent, signal } = {}) {
+  // 已知约束白名单：若 state.json 已有同类约束则直接复用（避免重复打扰用户）
   if (type === 'font-missing' && fallback) {
     return { decision: fallback, source: 'knownConstraints' }
   }
   const { available, svc } = detectAskUser(ctx)
   if (!available) {
-    // 无询问能力：记录约束并用 fallback
-    return { decision: fallback || options?.[0], source: 'fallback', reason: 'ask not available' }
+    return { decision: fallback || options?.[0], source: 'fallback', reason: 'userQuestions not available' }
   }
+  const id = `q-${type}-${Date.now().toString(36)}`
+  const labels = (options && options.length ? options : ['继续用占位', '跳过该差异']).map((o) =>
+    typeof o === 'string' ? { label: o } : o,
+  )
   try {
-    const askFn = svc.ask || svc.request
-    const res = await askFn.call(svc, {
-      question: detail || `UI 还原遇到歧义：${type}`,
-      options: options || ['继续用占位', '跳过该差异'],
-      kind: type,
-    })
-    const decision = res?.answer || res?.decision || res?.selected || options?.[0]
-    return { decision, source: 'ask', raw: res }
+    const req = {
+      questions: [{
+        id,
+        question: detail || `UI 还原遇到歧义：${type}`,
+        header: 'ui-reverse',
+        options: labels,
+        multiSelect: false,
+      }],
+      ...(agent ? { agent } : {}),
+      ...(signal ? { signal } : {}),
+    }
+    const res = await svc.ask(req)
+    const ans = res?.answers?.[id]
+    const decision = ans?.custom || ans?.selected?.[0] || fallback || labels[0]?.label
+    return { decision, source: 'ask', raw: ans }
   } catch (e) {
-    return { decision: fallback || options?.[0], source: 'fallback', error: String(e) }
+    return { decision: fallback || labels[0]?.label, source: 'fallback', error: String(e) }
   }
 }
 
