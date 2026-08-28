@@ -16,8 +16,8 @@
     "typert.host.js"
   ],
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node build.mjs && node test/rate-limit.test.mjs && node test/reasoning-echo.test.mjs && node test/catalog.test.mjs && node test/network-error.test.mjs"
+    "build": "tsx build.ts",
+    "test": "tsx build.ts && tsx test/rate-limit.test.ts && tsx test/reasoning-echo.test.ts && tsx test/catalog.test.ts && tsx test/network-error.test.ts"
   },
   "dsh": {
     "bundle": {
@@ -36,54 +36,7 @@
   },
   "devDependencies": {
     "@3kaiu/dsh-plugin-kit": "workspace:*",
-    "@deepseek-ai/dsh-credentials": "next",
-    "@deepseek-ai/dsh-launch-environment": "next",
-    "@deepseek-ai/dsh-llm": "next",
-    "@deepseek-ai/dsh-settings": "next",
-    "@deepseek-ai/dsh-timeout": "next",
-    "@deepseek-ai/dsh-typert-protocol": "next",
-    "@deepseek-ai/schemastery": "3.18.1",
-    "esbuild": "^0.24.2",
-    "eventsource-parser": "3.1.1"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-credentials": "*",
-    "@deepseek-ai/dsh-launch-environment": "*",
-    "@deepseek-ai/dsh-llm": "*",
-    "@deepseek-ai/dsh-settings": "*",
-    "@deepseek-ai/dsh-timeout": "*",
-    "@deepseek-ai/dsh-typert-protocol": "*",
-    "@deepseek-ai/schemastery": "*",
-    "eventsource-parser": "*"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-credentials": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-launch-environment": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-llm": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-settings": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-timeout": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-typert-protocol": {
-      "optional": true
-    },
-    "@deepseek-ai/schemastery": {
-      "optional": true
-    },
-    "eventsource-parser": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "zod": "^4.4.0"
+    "esbuild": "^0.24.2"
   },
   "keywords": [
     "dsh",
@@ -93,5 +46,16 @@
     "plugin",
     "dsh-plugin"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.7",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "eventsource-parser": "3.1.1",
+    "zod": "^4.4.0"
+  }
 }

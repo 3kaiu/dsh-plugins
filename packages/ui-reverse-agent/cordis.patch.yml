@@ -1,0 +1,5 @@
+- insert:
+    - id: dsh-ui-reverse-agent
+      name: '@3kaiu/dsh-ui-reverse-agent'
+      inject:
+        - tools

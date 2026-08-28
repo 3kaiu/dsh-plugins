@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8"/>
-<title>MasterGo MCP 介绍文档 — DSL 还原</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<title>DSL 还原 demo</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: paint_2:161; display: flex; justify-content: center; padding: 24px 0; }
-  #canvas { position: relative; width: 819px; height: 1178px; background: paint_2:161; overflow: hidden; }
+  body { background: #E5E5E5; display: flex; justify-content: center; }
+  #canvas { position: relative; width: 819px; height: 1178px; background: #FFFFFF; overflow: hidden; }
+  #canvas svg { display: block; }
 </style>
 </head>
 <body>
 <div id="canvas">
-<div style="position:absolute;left:140px;top:237.76px;width:491px;height:152.74px;overflow:hidden;"><svg class="mg-bg" xmlns="http://www.w3.org/2000/svg" viewBox="140 237.76 491 152.74" width="491" height="152.74">
+<div style="position:absolute;left:140px;top:237.76px;width:491px;height:152.74px;overflow:hidden"><svg class="mg-bg" xmlns="http://www.w3.org/2000/svg" viewBox="140 237.76 491 152.74" width="491" height="152.74">
   <defs><linearGradient id="grad_paint_40_998" x1="1.0000" y1="0.5000" x2="-0.0000" y2="0.5000"><stop offset="0" stop-color="#E4E4E4"/><stop offset="1" stop-color="rgb(216,216,216)" stop-opacity="0"/></linearGradient><linearGradient id="grad_paint_40_991" x1="0.5000" y1="-0.0000" x2="0.5000" y2="1.0000"><stop offset="0" stop-color="rgb(246,247,251)" stop-opacity="0"/><stop offset="1" stop-color="#F9F2F2"/></linearGradient><linearGradient id="grad_paint_40_0160" x1="0.5000" y1="-0.0000" x2="0.5000" y2="1.0000"><stop offset="0" stop-color="rgb(246,247,251)" stop-opacity="0"/><stop offset="1" stop-color="#F7F8FA"/></linearGradient></defs>
   <path d="M140,384L293.00002,384L293.00002,380L140,380L140,384Z" fill="url(#grad_paint_40_998)"/>
   <path d="M470,386L590,386L590,382L470,382L470,386Z" fill="url(#grad_paint_40_998)"/>
@@ -32,58 +30,46 @@ M465.4882080078125,344.18749Q465.4882080078125,356.94527,474.5093180078125,365.9
 M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.50703125,663,390.50703125L743,390.50703125Q755.75779,390.50703125,764.7789,381.48592125Q773.8,372.46482125,773.8,359.70703125L773.8,289.70703125Q773.8,276.94924725,764.7789,267.92814225Q755.75779,258.90703125,743,258.90703125L663,258.90703125Q650.242222,258.90703125,641.221111,267.92814125Q632.2,276.94925325,632.2,289.70703125L632.2,359.70703125Z" fill="url(#grad_paint_40_0160)" transform="matrix(-0.9903619885444641,-0.13850341737270355,-0.13850341737270355,0.9903619885444641,1291.611719280656,89.87943968153559)"/>
   <path d="M502.9654612457031,251.2928958375Q497.8377022757031,256.9919574375,498.48120594070315,266.5566404375Q502.38811014570314,259.8692664375,507.5159540457031,254.6894534375Q512.6438033457031,249.5096435375,519.5537143457032,244.6865234375Q508.09322074570315,245.5938320175,502.9654612457031,251.2928958375Z" fill="#FFFFFF" transform="matrix(0.9738145470619202,0.2276783436536789,-0.2276783436536789,0.9738145470619202,68.76089968129054,-107.06981158270855)"/>
 </svg></div>
-<div style="position:absolute;left:0px;top:0px;width:820px;height:199px;"><div style="width:820px;height:199px;;background:linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%)"></div></div>
-
-<div style="position:absolute;left:0px;top:48px;width:820px;height:44px;"><div style="width:820px;height:44px;;position:relative;">
-
+<div style="position:absolute;left:0px;top:0px;background:linear-gradient(180deg, #CED8FA 0%, rgba(245, 246, 250, 0) 100%);width:820px;height:199px"></div>
+<div style="position:absolute;left:0px;top:48px;width:820px;height:44px">
 <div style="position:absolute;left:34px;top:5px;font-family:'PingFang HK', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:24px;font-weight:500;color:#111E38;white-space:nowrap;width:48px;height:34px">课程</div>
-<div style="position:absolute;left:744px;top:3px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 38" width="42" height="38">
+<div style="position:absolute;left:744px;top:3px;width:42px;height:38px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 38" width="42" height="38">
   <path d="M0,19C0,29.493412,8.506588,38,19,38L23,38C33.493412,38,42,29.493412,42,19C42,8.506588,33.493412,0,23,0L19,0C8.506588,0,0,8.506588,0,19Z" fill="#FFFFFF"/>
   <path  transform="translate(11.00,9.00)" d="M10.000063,0C15.522882,0,20,4.4771185,20,9.9999256C20,15.522854,15.522854,20,10.000011,20C4.4771276,20,0.000025008958,15.562809,0.000042712156,10.039999C0.000042797634,10.013333,0.000042882206,9.9866676,0.000042965858,9.960001C0.000060290666,4.4371438,4.4772048,0,10.000063,0" fill="#8D94A2"/>
   <path  transform="translate(11.00,9.00)" d="M8.00019997,8Q8.00020003,7.901528291,8.01941091,7.8049487Q8.03862178,7.70836911,8.07630527,7.61739314Q8.11398876,7.52641714,8.1686967,7.44454092Q8.223404649999999,7.3626647,8.29303467,7.29303467Q8.3626647,7.22340465,8.44454092,7.16869676Q8.52641714,7.11398882,8.61739314,7.07630533Q8.70836911,7.03862178,8.8049487,7.0194109099999995Q8.901528291,7.00020003,9,7.00019997Q9.098471709,7.00020003,9.1950513,7.0194109099999995Q9.29163089,7.03862178,9.38260686,7.07630527Q9.47358286,7.11398876,9.55545908,7.1686967Q9.6373353,7.22340465,9.70696533,7.29303467Q9.776595350000001,7.3626647,9.83130324,7.44454092Q9.88601118,7.52641714,9.92369467,7.61739314Q9.96137822,7.70836911,9.98058909,7.8049487Q9.99979997,7.901528291,9.99980003,8L10,8L10,9.9999999L12,9.9999999L12,10.0002Q12.0984716,10.0002,12.195051,10.0194111Q12.2916305,10.038621899999999,12.3826065,10.0763052Q12.4735825,10.113988899999999,12.5554588,10.1686966Q12.6373351,10.2234046,12.706965199999999,10.2930346Q12.7765951,10.3626647,12.8313026,10.444540700000001Q12.8860106,10.526417,12.9236944,10.617393Q12.9613779,10.708369300000001,12.9805887,10.8049486Q12.9997997,10.9015284,12.9998,11Q12.9997997,11.0984716,12.9805889,11.195051Q12.961378100000001,11.2916305,12.923694600000001,11.3826065Q12.8860109,11.4735825,12.8313029,11.5554588Q12.7765951,11.6373351,12.7069654,11.706965199999999Q12.6373353,11.7765951,12.5554588,11.8313026Q12.4735825,11.8860106,12.3826065,11.9236944Q12.2916305,11.9613779,12.195051,11.9805887Q12.0984716,11.9997997,12,11.9998L12,12L9,12Q8.9015086,11.9999998,8.80490969,11.9807849Q8.70831078,11.9615703,8.6173166,11.9238791Q8.52632242,11.886188,8.44442987,11.8314693Q8.36253726,11.7767506,8.29289329,11.7071066Q8.22324938,11.6374626,8.168530520000001,11.5555699Q8.113811609999999,11.4736774,8.07612056,11.3826833Q8.0384295,11.2916889,8.01921481,11.1950901Q8.00000006,11.0984912,8,11L8,8L8.00019997,8Z" fill="#FFFFFF"/>
 </svg></div>
-<div style="width:88px;height:38px;;position:absolute;left:644px;top:3px;">
-<div style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 38" width="88" height="38">
+<div style="position:absolute;left:644px;top:3px;width:88px;height:38px">
+<div style="left:0;top:0;width:100%;height:100%;overflow:hidden"><svg class="mg-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 38" width="88" height="38">
   <path d="M0,19C0,29.493412,8.506588,38,19.000002,38L69,38C79.493408,38,88,29.493412,88,19C88,8.506588,79.493408,0,69,0L19,0C8.506588,0,0,8.506588,0,19Z" fill="#FFFFFF"/>
 </svg></div>
-
 <div style="position:absolute;left:12px;top:8px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:16px;font-weight:500;color:#3E495F;white-space:nowrap;width:64px;height:22px">电脑上课</div>
 </div>
-</div></div>
-<div style="position:absolute;left:394.5px;top:142px;width:50px;height:50px;"><div style="width:50px;height:50px;;background-image:url(assets/eb73fb43f5354357.png);background-size:cover;background-position:center;"></div></div>
-<div style="position:absolute;left:355.5px;top:196px;width:108px;height:25px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:600;text-transform:uppercase;color:#5D636D;white-space:nowrap;width:108px;height:25px">课程学习成果</div></div>
-<div style="position:absolute;left:178.4px;top:246.16px;width:144px;height:134px;box-shadow:inset 0px 7.2px 16.8px 0px #FAE8E8;"></div>
-
-
-<div style="position:absolute;left:478.41px;top:247.09px;width:144px;height:134px;box-shadow:inset 0px 7.2px 16.8px 0px #FAE8FA;"></div>
-<div style="position:absolute;left:327.69px;top:249.35px;width:144px;height:134px;box-shadow:inset 0px 7.2px 16.8px 0px #E6F1ED;"></div>
-
-<div style="position:absolute;left:218px;top:277px;width:43px;height:50px;"><div style="font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5px #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:43px;height:50px">25</div></div>
-<div style="position:absolute;left:368px;top:277px;width:49px;height:50px;"><div style="font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5px #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:49px;height:50px">94</div></div>
-<div style="position:absolute;left:516px;top:277px;width:44px;height:50px;"><div style="font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5px #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:44px;height:50px">67</div></div>
-<div style="position:absolute;left:263px;top:300px;width:24px;height:20px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:24px;height:20px">min</div></div>
-<div style="position:absolute;left:419px;top:300px;width:14px;height:20px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:14px;height:20px">天</div></div>
-<div style="position:absolute;left:562px;top:300px;width:24px;height:20px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:24px;height:20px">min</div></div>
-<div style="position:absolute;left:222px;top:321px;width:60px;height:21px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">今日学习</div></div>
-<div style="position:absolute;left:371px;top:321px;width:60px;height:21px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">连续学习</div></div>
-<div style="position:absolute;left:521px;top:321px;width:60px;height:21px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">累计时长</div></div>
-
-
-
-<div style="position:absolute;left:34px;top:433px;width:64px;height:22px;"><div style="font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:16px;font-weight:500;color:#8F96A4;white-space:nowrap;width:64px;height:22px">我的课程</div></div>
-<div style="position:absolute;left:34px;top:471px;width:752px;height:130px;"><div style="width:752px;height:130px;;position:relative;">
-<template id="tpl-0"><div style="width:364px;height:130px;;position:relative;">
-
-<div style="width:364px;height:130px;;position:absolute;left:0px;top:0px;">
-
-<div style="width:364px;height:130px;;position:absolute;left:0px;top:0px;">
-<div style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 130" width="364" height="130">
+</div>
+<div style="position:absolute;left:394.5px;top:142px;background-image:url(assets/eb73fb43f5354357.png);background-size:cover;background-position:center;;width:50px;height:50px"></div>
+<div style="position:absolute;left:355.5px;top:196px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:600;text-transform:uppercase;color:#5D636D;white-space:nowrap;width:108px;height:25px">课程学习成果</div>
+<div style="position:absolute;left:178.4px;top:246.16px;box-shadow:inset 0px 7.2px 16.8px 0px #FAE8E8;width:144px;height:134px"></div>
+<div style="position:absolute;left:478.41px;top:247.09px;box-shadow:inset 0px 7.2px 16.8px 0px #FAE8FA;width:144px;height:134px"></div>
+<div style="position:absolute;left:327.69px;top:249.35px;box-shadow:inset 0px 7.2px 16.8px 0px #E6F1ED;width:144px;height:134px"></div>
+<div style="position:absolute;left:218px;top:277px;font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5 #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:43px;height:50px">25</div>
+<div style="position:absolute;left:368px;top:277px;font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5 #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:49px;height:50px">94</div>
+<div style="position:absolute;left:516px;top:277px;font-family:'JoonFont', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:50px;font-weight:400;color:#000000;-webkit-text-stroke:2.5 #FFFFFF;white-space:nowrap;box-shadow:0px 1px 6px 0px #E3DFE4;width:44px;height:50px">67</div>
+<div style="position:absolute;left:263px;top:300px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:24px;height:20px">min</div>
+<div style="position:absolute;left:419px;top:300px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:14px;height:20px">天</div>
+<div style="position:absolute;left:562px;top:300px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:14px;font-weight:400;color:#111E38;white-space:nowrap;width:24px;height:20px">min</div>
+<div style="position:absolute;left:222px;top:321px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">今日学习</div>
+<div style="position:absolute;left:371px;top:321px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">连续学习</div>
+<div style="position:absolute;left:521px;top:321px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:400;color:#AAAAAA;white-space:nowrap;width:60px;height:21px">累计时长</div>
+<div style="position:absolute;left:34px;top:433px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:16px;font-weight:500;color:#8F96A4;white-space:nowrap;width:64px;height:22px">我的课程</div>
+<div style="position:absolute;left:34px;top:471px;width:752px;height:130px">
+<template id="tpl-0"><div style="position:absolute;left:0px;top:0px;width:364px;height:130px">
+<div style="position:absolute;left:0px;top:0px;width:364px;height:130px">
+<div style="position:absolute;left:0px;top:0px;width:364px;height:130px">
+<div style="left:0;top:0;width:100%;height:100%;overflow:hidden"><svg class="mg-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 364 130" width="364" height="130">
   <path d="M0,102C0,117.46397,12.536026,130,28,130L336,130C351.46399,130,364,117.46397,364,102L364,28C364,12.536024,351.46399,0,336,0L28.000002,0C12.536026,0,0,12.536024,0,28L0,102Z" fill="#E6F1ED"/>
 </svg></div>
-
-<div style="position:absolute;left:304px;top:66px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+<div style="position:absolute;left:304px;top:66px;width:40px;height:40px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40.000003814697266">
   <path d="M40,20.000001907348633C40,31.045697956748192,31.045694996,40.000003814697266,20,40.000003814697266C8.954305004,40.000003814697266,0,31.045697956748192,0,20.000001907348633C0,8.954305857949072,8.954305004,0,20,0C31.045694996,0,40,8.954305857949072,40,20.000001907348633Z" fill="#FFFFFF"/><g transform="translate(8,10)"><path d="M6,3L6,17L9,17L9,15L12,15L12,13L15,13L15,11L18,11L18,9L15,9L15,7L12,7L12,5L9,5L9,3L6,3Z" fill="#FF9B05"/></g></svg></div>
-<div style="position:absolute;left:24px;top:24px;width:82px;height:82px;;background-image:url(assets/c305b53f461e1a46.png);background-size:cover;background-position:center;;border-radius:12px"></div>
+<div style="position:absolute;left:24px;top:24px;background-image:url(assets/c305b53f461e1a46.png);background-size:cover;background-position:center;;border-radius:12px;width:82px;height:82px"></div>
 </div>
 </div>
 <div style="position:absolute;left:118px;top:24px;font-family:'PingFang SC', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:500;color:#38302B;text-align:center;white-space:nowrap;width:188px;height:25px">90天“祖成”英语陪跑课</div>
@@ -92,28 +78,24 @@ M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.507
 </div></template>
 <div style="position:absolute;left:0px;top:0px;" data-tpl="tpl-0"></div>
 <div style="position:absolute;left:388px;top:0px;" data-tpl="tpl-0"></div>
-</div></div>
-<div style="position:absolute;left:0px;top:879px;width:820px;height:301px;"><div style="width:820px;height:301px;;background:linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #F6F7FB 40%)"></div></div>
-<div style="position:absolute;left:290px;top:1011px;width:240px;height:54px;"><div style="width:240px;height:54px;;position:relative;">
-
-<div style="width:240px;height:54px;;position:absolute;left:0px;top:0px;">
-<div style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;box-shadow:0px 10px 20px 0px rgba(0, 0, 0, 0.04);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 54" width="240" height="54">
+</div>
+<div style="position:absolute;left:0px;top:879px;background:linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #F6F7FB 40%);width:820px;height:301px"></div>
+<div style="position:absolute;left:290px;top:1011px;width:240px;height:54px">
+<div style="position:absolute;left:0px;top:0px;width:240px;height:54px">
+<div style="left:0;top:0;width:100%;height:100%;overflow:hidden"><svg class="mg-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 54" width="240" height="54">
   <path d="M0,27C0,41.91169,12.088309,54,27.000002,54L213,54C227.9117,54,240,41.91169,240,27C240,12.088309,227.9117,0,213,0L27,0C12.088309,0,0,12.088309,0,27Z" fill="#FFFFFF"/>
 </svg></div>
-
 <div style="position:absolute;left:112px;top:13px;font-family:'PingFang HK', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:20px;font-weight:500;color:#111E38;white-space:nowrap;width:40px;height:28px">课程</div>
-<div style="width:28px;height:28px;;position:absolute;left:84px;top:13px;">
-
-<div style="position:absolute;left:0px;top:-1px;width:26.73px;height:26.73px;;background-image:url(assets/fbd6e7480c1aee18.png);background-size:cover;background-position:center;"></div>
+<div style="position:absolute;left:84px;top:13px;width:28px;height:28px">
+<div style="position:absolute;left:0px;top:-1px;background-image:url(assets/fbd6e7480c1aee18.png);background-size:cover;background-position:center;;width:26.73px;height:26.73px"></div>
 </div>
 <div style="position:absolute;left:180px;top:14px;font-family:'PingFang HK', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:500;color:#B6BDCA;white-space:nowrap;width:36px;height:25px">直播</div>
 <div style="position:absolute;left:24px;top:14px;font-family:'PingFang HK', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:500;color:#B6BDCA;white-space:nowrap;width:36px;height:25px">词书</div>
 </div>
-</div></div>
-<div style="position:absolute;left:91px;top:1095px;width:28px;height:47px;"><div style="width:28px;height:47px;;position:relative;">
-
+</div>
+<div style="position:absolute;left:91px;top:1095px;width:28px;height:47px">
 <div style="position:absolute;left:2px;top:30px;font-family:'PingFangSC', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:12px;font-weight:500;color:#D1D1D1;text-align:center;white-space:nowrap;width:24px;height:17px">对话</div>
-<div style="position:absolute;left:0px;top:0px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.67 23.33" width="28" height="28">
+<div style="position:absolute;left:0px;top:0px;width:28px;height:28px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.67 23.33" width="28" height="28">
   <path d="M0,8.1666665L3.5,8.1666665L3.5,3.5L0,3.5L0,8.1666665Z" fill="#D1D1D1"/>
   <path d="M0,19.833658687499998L3.5,19.833658687499998L3.5,15.1669921875L0,15.1669921875L0,19.833658687499998Z" fill="#D1D1D1"/>
   <path d="M22.16666603088379,8.1666665L25.66666603088379,8.1666665L25.66666603088379,3.5L22.16666603088379,3.5L22.16666603088379,8.1666665Z" fill="#D1D1D1"/>
@@ -127,11 +109,10 @@ M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.507
   <path d="M1.94828584415625,3.605650075Q1.86661893165625,3.8506493749999997,3.49994747265625,4.667317675Q3.49993647265625,4.083990775,3.79159447265625,3.792324075Q4.08325887265625,3.500650975,4.66660497265625,3.500650975Q5.01661107265625,3.500650975,5.0516114726562495,3.395649575Q5.13327817265625,3.150648535,3.49994747265625,2.333984375Q3.49993587265625,3.500650975,2.33328074265625,3.500650975Q1.98328572465625,3.500650975,1.94828584415625,3.605650075Z" fill="#D1D1D1"/>
   <path d="M1.94828584415625,22.2716657Q1.86661893165625,22.516665,3.49994747265625,23.3333333Q3.49993647265625,22.7500064,3.79159447265625,22.4583397Q4.08325887265625,22.1666666,4.66660497265625,22.1666666Q5.01661107265625,22.1666666,5.0516114726562495,22.0616652Q5.13327817265625,21.81666416,3.49994747265625,21Q3.49993587265625,22.1666666,2.33328074265625,22.1666666Q1.98328572465625,22.1666666,1.94828584415625,22.2716657Z" fill="#D1D1D1" transform="matrix(1,0,0,-1,0,42)"/>
 </svg></div>
-</div></div>
-<div style="position:absolute;left:294px;top:1095px;width:28px;height:47px;"><div style="width:28px;height:47px;;position:relative;">
-
+</div>
+<div style="position:absolute;left:294px;top:1095px;width:28px;height:47px">
 <div style="position:absolute;left:2px;top:30px;font-family:'PingFangSC', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:12px;font-weight:500;color:#D1D1D1;text-align:center;white-space:nowrap;width:24px;height:17px">首页</div>
-<div style="position:absolute;left:0px;top:0px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.67 22.17" width="28" height="28">
+<div style="position:absolute;left:0px;top:0px;width:28px;height:28px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.67 22.17" width="28" height="28">
   <path d="M0,22.166665000000002L3.5,22.166665000000002L3.5,7L0,7L0,22.166665000000002Z" fill="#D1D1D1"/>
   <path d="M22.166671752929688,7L22.166671752929688,22.166665000000002L25.666671752929688,22.166665000000002L25.666671752929688,7L22.166671752929688,7Z" fill="#D1D1D1"/>
   <path d="M18.666671752929688,7L22.166671752929688,7L22.166671752929688,3.5L18.666671752929688,3.5L18.666671752929688,7Z" fill="#D1D1D1"/>
@@ -143,10 +124,9 @@ M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.507
   <path d="M20.226102616617187,3.6046735125Q20.14443570411719,3.8496728124999997,21.777764245117186,4.6663411125Q21.77775324511719,4.0830142125,22.069411245117188,3.7913475125Q22.36107564511719,3.4996744125,22.94442174511719,3.4996744125Q23.294427845117188,3.4996744125,23.32942824511719,3.3946730125Q23.41109494511719,3.1496719725,21.777764245117186,2.3330078125Q21.777752645117186,3.4996744125,20.611097515117187,3.4996744125Q20.261102497117186,3.4996744125,20.226102616617187,3.6046735125Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,40.444427490234375,0)"/>
   <path d="M23.726102616617187,7.1046735125Q23.64443570411719,7.3496728125,25.277764245117186,8.1663411125Q25.27775324511719,7.5830142125,25.569411245117188,7.2913475125Q25.86107564511719,6.9996744125,26.44442174511719,6.9996744125Q26.794427845117188,6.9996744125,26.82942824511719,6.8946730125Q26.91109494511719,6.6496719725,25.277764245117186,5.8330078125Q25.277752645117186,6.9996744125,24.111097515117187,6.9996744125Q23.761102497117186,6.9996744125,23.726102616617187,7.1046735125Z" fill="#D1D1D1" transform="matrix(-1,0,0,1,47.444427490234375,0)"/>
 </svg></div>
-</div></div>
-<div style="position:absolute;left:496px;top:1095px;width:28px;height:47px;"><div style="width:28px;height:47px;;position:relative;">
-
-<div style="position:absolute;left:0px;top:0px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26.83 23.33" width="28" height="28">
+</div>
+<div style="position:absolute;left:496px;top:1095px;width:28px;height:47px">
+<div style="position:absolute;left:0px;top:0px;width:28px;height:28px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26.83 23.33" width="28" height="28">
   <path d="M0,3.5L0,19.833332L3.5,19.833332L3.5,3.5L0,3.5Z" fill="#D1D1D1"/>
   <path d="M11.66668701171875,3.5L11.66668701171875,14L15.16668701171875,14L15.16668701171875,3.5L11.66668701171875,3.5Z" fill="#D1D1D1"/>
   <path d="M23.3333740234375,3.5L23.3333740234375,19.833332L26.8333740234375,19.833332L26.8333740234375,3.5L23.3333740234375,3.5Z" fill="#D1D1D1"/>
@@ -159,12 +139,10 @@ M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.507
   <path d="M0,23.333984375L26.83333,23.333984375L26.83333,19.833984375L0,19.833984375L0,23.333984375Z" fill="#D1D1D1"/>
 </svg></div>
 <div style="position:absolute;left:2px;top:30px;font-family:'PingFangSC', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:12px;font-weight:500;color:#D1D1D1;text-align:center;white-space:nowrap;width:24px;height:17px">学习</div>
-</div></div>
-<div style="position:absolute;left:699px;top:1095px;width:28px;height:47px;"><div style="width:28px;height:47px;;position:relative;">
-
-<div style="width:28px;height:28px;;position:absolute;left:0px;top:0px;">
-
-<div style="position:absolute;left:0px;top:1.17px;"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26.83 24.5" width="26.83" height="24.5"><rect x="8.17" y="9.33" width="16.33" height="12.83" fill="#FFA621"/>
+</div>
+<div style="position:absolute;left:699px;top:1095px;width:28px;height:47px">
+<div style="position:absolute;left:0px;top:0px;width:28px;height:28px">
+<div style="position:absolute;left:0px;top:1.17px;width:26.83px;height:24.5px"><svg class="mg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26.83 24.5" width="26.833251953125" height="24.5"><rect x="8.166748046875" y="9.3330078125" width="16.333332061767578" height="12.833333015441895" fill="#FFA621"/>
   <path d="M3.5,12.25L3.5,15.75L23.33333,15.75L23.33333,12.25L3.5,12.25Z" fill="#111E38"/>
   <path d="M10.5,10.5L17.5,10.5L17.5,7L10.5,7L10.5,10.5Z" fill="#111E38"/>
   <path d="M3.5,21L3.5,24.5L23.33333,24.5L23.33333,21L3.5,21Z" fill="#111E38"/>
@@ -183,54 +161,50 @@ M632.2,359.70703125Q632.2,372.46482125,641.22111,381.48592125Q650.242216,390.507
 </svg></div>
 </div>
 <div style="position:absolute;left:2px;top:30px;font-family:'PingFangSC', 'DIN Alternate', 'Arial Narrow', -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;font-size:12px;font-weight:500;color:#111E38;text-align:center;white-space:nowrap;width:24px;height:17px">我的</div>
-</div></div>
+</div>
 </div>
 <script>
-(function () {
-  // 组件模板实例化:clone 时重写 id 与 url(#) 引用,避免多实例 defs 冲突
-  let copySeq = 0;
+(() => {
+  // 组件模板实例化(复制内容 + 局部 id/url 唯一化)
   document.querySelectorAll("[data-tpl]").forEach((el) => {
     const tpl = document.getElementById(el.getAttribute("data-tpl"));
     if (!tpl) return;
     const copy = tpl.content.cloneNode(true);
-    const suffix = "-i" + (++copySeq);
+    const suffix = "-i" + Math.random().toString(36).slice(2, 8);
     const idMap = new Map();
     copy.querySelectorAll("[id]").forEach((x) => { idMap.set(x.id, x.id + suffix); x.id = x.id + suffix; });
-    if (idMap.size) {
-      copy.querySelectorAll("*").forEach((x) => {
-        for (const attr of x.attributes) {
-          if (typeof attr.value === "string" && attr.value.includes("url(#")) {
-            attr.value = attr.value.replace(/url(#([^)]+))/g, (m, id) => (idMap.has(id) ? "url(#" + id + suffix + ")" : m));
-          }
+    copy.querySelectorAll("*").forEach((x) => {
+      for (const attr of ["fill", "stroke", "filter", "clip-path", "mask"]) {
+        const v = x.getAttribute(attr);
+        if (v && v.startsWith("url(#")) {
+          const key = v.slice(5, -1);
+          x.setAttribute(attr, "url(#" + (idMap.get(key) || key) + ")");
         }
-      });
-    }
-    el.appendChild(copy);
-    el.removeAttribute("data-tpl");
+      }
+    });
+    el.replaceWith(copy);
   });
-  // svg → 4x 高质量 webp(不支持 webp 时回退 png):小图标(mg-icon)与容器背景(mg-bg)统一位图化
-  const icons = document.querySelectorAll("svg.mg-icon, svg.mg-bg");
-  if (!icons.length) return;
+  // svg → 4x 位图(canvas),webp 优先,png 兜底
   const toUrl = (svg, w, h) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      try {
-        const c = document.createElement("canvas");
-        c.width = Math.max(1, Math.round(w * 4));
-        c.height = Math.max(1, Math.round(h * 4));
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0, c.width, c.height);
-        let url = c.toDataURL("image/webp", 0.92);
-        if (!url.startsWith("data:image/webp")) url = c.toDataURL("image/png");
-        resolve(url);
-      } catch (e) { resolve(null); }
+      const scale = 4;
+      const c = document.createElement("canvas");
+      c.width = Math.round(w * scale);
+      c.height = Math.round(h * scale);
+      const g = c.getContext("2d");
+      g.fillStyle = "#0000"; g.clearRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL("image/webp", 0.92);
+      if (url.startsWith("data:image/webp")) resolve(url);
+      else { const p = c.toDataURL("image/png"); resolve(p.startsWith("data:image/png") ? p : null); }
     };
     img.onerror = () => resolve(null);
     const str = new XMLSerializer().serializeToString(svg);
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(str);
   });
   (async () => {
-    for (const svg of icons) {
+    for (const svg of document.querySelectorAll("svg.mg-icon, svg.mg-bg")) {
       const w = svg.getAttribute("width") || svg.clientWidth || 24;
       const h = svg.getAttribute("height") || svg.clientHeight || 24;
       const url = await toUrl(svg, w, h);

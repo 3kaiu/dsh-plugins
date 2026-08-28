@@ -1,7 +1,20 @@
-// @3kaiu/dsh-plugin-kit — dsh 宿主设施(配额/并发/测试工具)
+// @3kaiu/dsh-plugin-kit — DeepSeek Harness 插件公共能力
 //
-// UI 还原核心已迁至 @ui-restore/core(零宿主依赖,见 docs/architecture/16 篇)。
-// 本包只保留与宿主运行相关的基础设施,供各 dsh 插件复用。
+// 被各插件包在构建时 bundle 进 dist(不要求运行时安装),
+// 同时以源码形式对外发布,供其他插件/MasterGo 工具 import。
 export * from "./quota-tracker.ts";
 export * from "./semaphore.ts";
+export * from "./layout-core.ts";
+export * from "./dsl-clean.ts";
+export * from "./cluster.ts";
+export * from "./dom-to-layout.ts";
+export * from "./compare.ts";
+export * from "./geometry.ts";
+export * from "./typography.ts";
+export * from "./palette.ts";
+export * from "./pixel.ts";
+export * from "./score.ts";
+export * from "./antihack.ts";
+export * from "./selfcorrect.ts";
+export * from "./blueprint.ts";
 export * from "./test-utils.ts";

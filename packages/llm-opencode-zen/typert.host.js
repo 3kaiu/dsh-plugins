@@ -7,8 +7,6 @@ import { z } from "zod";
 
 const str = { mode: "strict", typeSymbol: "string", schema: z.string() };
 const any = { mode: "strict", typeSymbol: "ZenModelsResult", schema: z.any() };
-// sourceLocation 仅为信息性元数据:typert-loader 只校验其形状(string file +
-// 正整数 line/column),不读取源码、不影响 wire 行为,行号随 index.ts 演进漂移无副作用。
 const src = (file, line) => ({ file, line, column: 3 });
 
 export const TYPERT = {

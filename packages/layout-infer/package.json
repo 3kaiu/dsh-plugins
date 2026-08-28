@@ -12,8 +12,8 @@
     "cordis.patch.yml"
   ],
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node build.mjs && node test/layout-infer.test.mjs && node test/classify.test.mjs && node test/plugin-register.test.mjs && node test/dsl-clean.test.mjs && node test/repeat.test.mjs"
+    "build": "tsx build.ts",
+    "test": "tsx build.ts && tsx test/layout-infer.test.ts && tsx test/classify.test.ts && tsx test/plugin-register.test.ts && tsx test/stacked-restore.test.ts && tsx test/dsl-clean.test.ts"
   },
   "dsh": {
     "bundle": {
@@ -21,17 +21,8 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-tools": "next",
-    "esbuild": "^0.24.2",
-    "@ui-restore/core": "workspace:*"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "*"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-tools": {
-      "optional": true
-    }
+    "@3kaiu/dsh-plugin-kit": "workspace:*",
+    "esbuild": "^0.24.2"
   },
   "keywords": [
     "dsh",
@@ -42,5 +33,8 @@
     "plugin",
     "dsh-plugin"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6"
+  }
 }

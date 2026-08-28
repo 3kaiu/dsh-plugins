@@ -8,7 +8,7 @@
 // 用法:node adapter-html.mjs [fixtureDir] → demo.html
 import fs from "node:fs";
 
-const DIR = process.argv[2] || "../../packages/layout-infer/fixtures/mg-demo-2025";
+const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
 const TREE = `${DIR}/tree.json`;
 const OUT = `${DIR}/demo.html`;
 

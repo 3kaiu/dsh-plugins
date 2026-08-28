@@ -1,0 +1,38 @@
+# ui-reverse Agent Preset — Cordis 组合声明
+# 目录名即 preset id（ui-reverse）；roster 常驻挂载一次，Session 命名该 id 即继承 Scope 层
+# 对齐 `apps/cli/config/agent-presets/standard/agent.cordis.yml` 行风格：每行一个 plugin compose
+# 工具与 systemPrompt 注册均写入 preset 层（agent plane 父链），天然隔离于其他 preset / host-global
+
+# ── 0. Persona — 由主插件在 preset 层注册 systemPrompt.section（complete:true 覆盖默认） ──
+# 以下行依赖宿主的 dsh-system-prompt 服务；若宿主未安装则静默跳过（由 apply 自检）
+# prompt 文本来自同目录 prompt.md，变量由插件的 config 注入 systemPrompt.variable
+# 不单独拆 persona 子包，避免新增 npm entry；主插件 dsh-ui-reverse-agent 在 apply 时
+# 检测 ctx.systemPrompt 与 config.promptPath 存在即注册 persona（见 src/index.ts / src/persona.ts）
+
+# ── 1. 基础仓库工具（宿主已提供，preset 层显式依赖以保证 toolOrder 稳定） ──
+# DSH host 已注册 read/write/edit/glob/grep/bash；此处仅声明依赖，不重复 inject
+
+# ── 2. 布局度量（无服务，无需 isolate；复用 layout-infer 的 6 工具） ──
+- id: dsh-layout-infer
+  name: '@3kaiu/dsh-layout-infer'
+  # 提供：infer_layout / annotate_layout / clean_layout / classify_design / page_layout_tree / compare_layouts
+
+# ── 3. 视觉还原 Agent 工具集（17 工具）+ 浏览器/守卫/记忆服务 ──
+# 含 Playwright 单例与 DevServer 子进程 — 需 per-agent 隔离，避免多 Session 串扰
+- id: dsh-ui-reverse-agent
+  name: '@3kaiu/dsh-ui-reverse-agent'
+  isolate:
+    playwright: true
+    devServer: true
+  config:
+    tol: 2
+    completeThreshold: 0.96
+    weights: { struct: 0.30, geom: 0.30, pixel: 0.20, type: 0.10, color: 0.10 }
+
+# ── 4. 可选增强：Skills / Goals / TODO / Workflow（若宿主未安装则静默跳过，apply 自检） ──
+# - id: skill-filesystem  name: '@deepseek-ai/dsh-skill-filesystem'  # 发现 skills/ui-restore/SKILL.md
+# - id: tool-skill        name: '@deepseek-ai/dsh-tool-skill'        # 聚合 skill catalog
+# - id: workflowEngine    name: '@deepseek-ai/dsh-workflow-engine' isolate: { workflowEngine: true } # 驱动 preset/ui-reverse/workflow.yml Ralph 循环
+# - id: subagent          name: '@deepseek-ai/dsh-subagent' isolate: { subagent: true }             # Phase5 扇出子代（备用，当前用 fanout_evaluate 的 isConcurrencySafe 并行替代）
+# 以上增强在 `standard` preset 已验证；ui-reverse 预设侧按需增量挂载，当前由 persona 插件内按 ctx 能力探测注册
+

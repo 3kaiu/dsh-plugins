@@ -1,0 +1,156 @@
+# UI 还原闭环 Workflow（Ralph 风格，待宿主挂载 dsh-workflow-engine 后由 tool-workflow/tool-ralph 驱动）
+# 目标：Reference → Blueprint → Baseline → Diff → Fanout → Implement → Verify → Iterate 直至 S≥0.96 无 P0/P1
+# 调用方式（宿主具备 workflow 时）：
+#   dsh workflow run --preset ui-reverse --workflow preset/ui-reverse/workflow.yml --var PROJECT_PATH=. --var REFERENCE_INPUT=./reference.png
+# 无 workflow 引擎时，LLM 按 SKILL.md 的 Phase 0-7 手动驱动（等价语义）
+
+name: ui-reverse-loop
+description: "1:1 视觉还原 Ralph 闭环 — 浏览器截图 + 五层评分 + 扇出择优 + 自纠错，迭代至阈值"
+# 变量由 preset 的 systemPrompt.variable 或 workflow --var 注入
+vars:
+  PROJECT_PATH: "."
+  REFERENCE_INPUT: ""
+  VIEWPORTS: "desktop 1440x900"
+  STATES: "default"
+  COMPLETE_THRESHOLD: 0.96
+  MAX_ITERATIONS: 30
+
+# 并发与隔离：扇出评估可并行（isConcurrencySafe），其余步骤串行
+concurrency:
+  maxParallel: 3
+
+steps:
+  - id: phase0_env
+    name: "Phase0 环境发现"
+    tool: browser_start
+    args: { url: "http://localhost:3000" }
+    # 宿主需先 pnpm dev 起服务；失败则阻塞工作流
+    onError: fail
+
+  - id: phase1_reference
+    name: "Phase1 参考分析 — 构建 Visual Blueprint"
+    tool: reference_ingest
+    args: { url: "{{REFERENCE_INPUT}}" } # 或 dsl/screenshotPaths 二选一
+    outputs:
+      blueprintPath: ".ui-reverse/blueprint.json"
+
+  - id: phase2_mapping
+    name: "Phase2 仓库映射（人工 + grep/glob）"
+    # 非工具步骤：LLM 读 blueprint 与项目代码产出 mapping.md
+    type: manual
+    outputs:
+      mappingPath: ".ui-reverse/mapping.md"
+
+  - id: phase3_baseline
+    name: "Phase3 基线渲染"
+    run:
+      - tool: browser_screenshot
+        args: { fullPage: true, path: ".ui-reverse/artifacts/baseline-desktop-1440.png" }
+      - tool: browser_dom_dump
+        args: { selector: "body", includeComputed: true }
+        outputs:
+          domDump: domDump
+      # 可选：仅当项目需布局语义时走 page_layout_tree（layout-infer）
+      - tool: page_layout_tree
+        args: { domDump: "{{domDump}}" }
+        outputs:
+          implementedTree: implementedTree
+
+  - id: phase4_diff
+    name: "Phase4 差异分析 — 四层对比"
+    run:
+      - tool: compare_geometry
+        args: { referenceTree: "{{blueprint.tree}}", implementedTree: "{{implementedTree}}", tolerance: 2 }
+        outputs:
+          geomDiff: geomDiff
+      - tool: compare_screenshots
+        args: { reference: "{{blueprint.screenshot}}", current: ".ui-reverse/artifacts/baseline-desktop-1440.png", mode: "strict" }
+        outputs:
+          pixelDiff: pixelDiff
+      - tool: compare_typography
+        args: { referenceTree: "{{blueprint.tree}}", implementedTree: "{{implementedTree}}" }
+        outputs:
+          typeDiff: typeDiff
+      - tool: compare_palette
+        args: { referenceTree: "{{blueprint.tree}}", implementedTree: "{{implementedTree}}" }
+        outputs:
+          colorDiff: colorDiff
+      - tool: score_report
+        args: { struct: 0.9, geom: "{{geomDiff.stats.meanDelta}}", pixel: "{{pixelDiff.ssim}}", type: "{{typeDiff.score}}", color: "{{colorDiff.deltaE}}" }
+        outputs:
+          score: score
+
+  # Ralph 循环：每轮仅处理 remainingDifferences 头部单假设，扇出择优后 edit 单文件
+  - id: loop
+    name: "Phase5-7 迭代循环（Ralph maxRounds 30）"
+    type: ralph
+    maxRounds: 30
+    # 退出条件：S≥阈值 且无 P0/P1
+    until: "{{score.total}} >= {{COMPLETE_THRESHOLD}} && {{geomDiff.mismatchedCount}} == 0"
+    steps:
+      - id: pick_diff
+        name: "取剩余差异头部"
+        tool: state_read
+        args: {}
+        outputs:
+          state: state
+          nextMismatch: "{{state.remainingDifferences[0]}}"
+
+      - id: fanout
+        name: "扇出评估（3 候选并行）"
+        tool: fanout_evaluate
+        args:
+          mismatch: "{{nextMismatch}}"
+          # 为空时自动生成 期望/±1px 三候选
+          referenceTree: "{{blueprint.tree}}"
+          implementedTree: "{{implementedTree}}"
+          tolerance: 2
+          currentScore: "{{score.total}}"
+        outputs:
+          fanout: fanout
+          bestValue: "{{fanout.best.value}}"
+        # isConcurrencySafe 已声明，三候选可在同一轮并发调度
+
+      - id: implement
+        name: "单假设实现（LLM edit 单文件）"
+        type: manual
+        # 人/LLM 根据 fanout.best 的 value 执行 edit/write 单文件
+        # 规则：仅改一处，改前记录 rollbackPoints
+        outputs:
+          changedFile: changedFile
+
+      - id: verify
+        name: "Phase6 验证 — 截图 + 对比 + 守卫"
+        run:
+          - tool: anti_hack_scan
+            args: { domDump: "{{domDump}}", treeStats: "{{implementedTree.stats}}", reference: "{{blueprint}}" }
+            outputs:
+              hack: hack
+          - tool: browser_screenshot
+            args: { fullPage: true }
+          - tool: browser_dom_dump
+            args: {}
+          - tool: compare_screenshots
+            args: { reference: "{{blueprint.screenshot}}", current: ".ui-reverse/artifacts/current-desktop-1440.png" }
+          - tool: score_report
+            args: {}
+            outputs:
+              newScore: newScore
+          - tool: state_update
+            args:
+              patch:
+                scores: { current: "{{newScore}}" }
+                lastChanges: [{ file: "{{changedFile}}", what: "fanout rank1 {{bestValue}}" }]
+              historyNote: "round {{loop.round}} fanout {{bestValue}} Δ{{newScore.delta}}"
+
+      - id: self_correct
+        name: "自纠错 — 回滚判定"
+        # ΔS ≤ -0.02 或新增 P0 则回滚
+        condition: "{{newScore.delta}} <= -0.02 || {{hack.blocked}} == true"
+        run:
+          - tool: state_read
+            args: {}
+          # 回滚由 LLM 执行 git checkout / edit 逆向
+          - type: manual
+            name: "回滚并重验证（待实现）"
+
