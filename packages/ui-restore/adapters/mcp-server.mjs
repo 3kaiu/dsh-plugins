@@ -15,6 +15,7 @@
 //
 // 传输: stdio。启动: node adapters/mcp-server.mjs
 import fs from 'node:fs';
+import { makeGuard } from './path-guard.mjs';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -26,18 +27,14 @@ import {
 // 编排逻辑单一来源(审计 P2 收敛): analyze/verify/diff 全部薄转发到 pipeline
 import { analyzeDesign, buildBlueprint, verifyScreenshots, evaluateVerify, restoreAdvisor, MAX_ITERATIONS } from './pipeline.mjs';
 
-const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+// 路径越界防护（2026-08 接线）：守卫实现见 ./path-guard.mjs（可单测）。
+// 所有工具参数路径（读/写）解析后必须落在收容根内，防 ../ 逃逸与任意文件读写。
+const { confineUnder, confineTo } = makeGuard();
+const readJson = (p) => JSON.parse(fs.readFileSync(confineUnder(p), 'utf8'));
+const readBuf = (p) => fs.readFileSync(confineUnder(p));
+const optIn = (p) => (p ? confineUnder(p) : undefined);
 const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
 
-// 路径越界防护: 任何相对/绝对路径解析后必须落在 rootDir 内, 否则拒绝(防 ../ 逃逸 / 任意文件读写)
-const confineUnder = (rootDir, rel) => {
-  const abs = path.resolve(rootDir, rel);
-  const rel2 = path.relative(rootDir, abs);
-  if (rel2.startsWith('..') || path.isAbsolute(rel2)) throw new Error(`拒绝越界路径: ${rel}`);
-  return abs;
-};
-// 读取路径必须在 rootDir 内(默认 cwd), 防任意文件读取
-const safeRead = (rootDir, p) => confineUnder(rootDir || process.cwd(), p);
 // 维度钳制: 防止超大 canvas/width/height 触发大内存分配(DoS)
 const clampDim = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(100000, Math.floor(n))) : null; };
 
@@ -61,12 +58,13 @@ server.tool(
     render_blocks: z.string().optional().describe('渲染文本块清单 json(可选, 与 truth_blocks 成对; 区域附带 domHints 渲染侧交叉引用)'),
   },
   async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }) => {
-    const loadSession = () => (session_path && fs.existsSync(session_path) ? JSON.parse(fs.readFileSync(session_path, 'utf8')) : null);
+    const sessionAbs = session_path ? confineUnder(session_path) : null;
+    const loadSession = () => (sessionAbs && fs.existsSync(sessionAbs) ? JSON.parse(fs.readFileSync(sessionAbs, 'utf8')) : null);
     const saveSession = (patch) => {
-      if (!session_path) return null;
+      if (!sessionAbs) return null;
       const s = { ...(loadSession() || { createdAt: new Date().toISOString() }), ...patch, updatedAt: new Date().toISOString() };
-      fs.mkdirSync(path.dirname(path.resolve(session_path)), { recursive: true });
-      fs.writeFileSync(session_path, JSON.stringify(s, null, 1));
+      fs.mkdirSync(path.dirname(sessionAbs), { recursive: true });
+      fs.writeFileSync(sessionAbs, JSON.stringify(s, null, 1));
       return s;
     };
     const m = mode || (truth_png || render_png ? 'verify' : 'analyze');
@@ -77,8 +75,9 @@ server.tool(
       let s = loadSession();
       if (!s?.phases?.analyze) {
         if (!design_path) return text('mode=restore: 会话尚无 analyze 记录 —— 提供 design_path 即自动执行 analyze 后进入 implement');
-        const r = await analyzeDesign(design_path, { outDir: out_dir, scale, expectSections: expect_sections });
-        s = saveSession({ status: 'analyzed', source: { designPath: design_path }, phases: { ...(s?.phases || {}), analyze: r.summary }, artifacts: r.files });
+        const designAbs = optIn(design_path);
+        const r = await analyzeDesign(designAbs, { outDir: optIn(out_dir), scale, expectSections: expect_sections });
+        s = saveSession({ status: 'analyzed', source: { designPath: designAbs }, phases: { ...(s?.phases || {}), analyze: r.summary }, artifacts: r.files });
         const g = r.summary.gates;
         const lint = r.lint.checks.filter((c) => c.level !== 'INFO' && c.level !== 'PASS').map((c) => `! [${c.level}] ${c.check}: ${c.detail}`);
         const adv = restoreAdvisor(s);
@@ -93,7 +92,7 @@ server.tool(
       if (!truth_png || !render_png || !blueprint_path) return text('mode=verify 需要 truth_png + render_png + blueprint_path');
       // 统一走 pipeline.verifyScreenshots(审计收敛: 删除本地 walk/compare 拷贝;
       // 并补上块级层 —— 主入口此前反而拿不到 blockMatchRate, 而 AGENT 完成条件要求它=1)
-      const r = verifyScreenshots({ truthPng: truth_png, renderPng: render_png, bpPath: blueprint_path, blocksTruth: truth_blocks, blocksRender: render_blocks });
+      const r = verifyScreenshots({ truthPng: confineUnder(truth_png), renderPng: confineUnder(render_png), bpPath: confineUnder(blueprint_path), blocksTruth: optIn(truth_blocks), blocksRender: optIn(render_blocks) });
       const lines = [
         `diffRatio: ${r.pixel.diffRatio} (差异像素 ${r.pixel.diffPixels})`,
         r.blocks ? `块级层: ${JSON.stringify(r.blocks)}` : '',
@@ -117,9 +116,10 @@ server.tool(
       return text(lines.filter(Boolean).join('\n'));
     }
     if (!design_path) return text('mode=analyze 需要 design_path');
-    const r = await analyzeDesign(design_path, { outDir: out_dir, scale, expectSections: expect_sections });
+    const designAbs = confineUnder(design_path);
+    const r = await analyzeDesign(designAbs, { outDir: optIn(out_dir), scale, expectSections: expect_sections });
     if (session_path) {
-      saveSession({ status: 'analyzed', source: { designPath: design_path }, phases: { ...(loadSession()?.phases || {}), analyze: r.summary }, artifacts: r.files });
+      saveSession({ status: 'analyzed', source: { designPath: designAbs }, phases: { ...(loadSession()?.phases || {}), analyze: r.summary }, artifacts: r.files });
     }
     const g = r.summary.gates;
     const lines = [
@@ -142,9 +142,10 @@ server.tool(
   },
   async ({ design_path, out_dir, scale }) => {
     // 单一实现(审计收敛): 蓝图构建统一走 pipeline.buildBlueprint
-    const { bp, v } = await buildBlueprint(design_path, { scale: scale ?? undefined });
-    const dir = out_dir || path.dirname(design_path);
-    const base = path.basename(design_path).replace(/\.json$/, '');
+    const designAbs = confineUnder(design_path);
+    const { bp, v } = await buildBlueprint(designAbs, { scale: scale ?? undefined });
+    const dir = optIn(out_dir) || path.dirname(designAbs);
+    const base = path.basename(designAbs).replace(/\.json$/, '');
     fs.mkdirSync(dir, { recursive: true });
     const bpPath = path.join(dir, `${base}.blueprint.json`);
     fs.writeFileSync(bpPath, JSON.stringify(bp));
@@ -207,7 +208,7 @@ server.tool(
     canvas: z.string().optional().describe('WxH, 默认取真值图尺寸'),
   },
   async ({ truth_png, render_png, blueprint_path, truth_blocks, render_blocks, canvas }) => {
-    const pT = fs.readFileSync(truth_png), pR = fs.readFileSync(render_png);
+    const pT = readBuf(truth_png), pR = readBuf(render_png);
     const pixel = comparePng(pT, pR);
     const out = { pixel: { diffPixels: pixel.diffPixels, diffRatio: pixel.diffRatio } };
     if (truth_blocks && render_blocks) {
@@ -255,8 +256,9 @@ server.tool(
   },
   async ({ project_dir, out_path, styling, framework }) => {
     const { analyzeProject, saveProfile } = await import('../dist/index.js');
-    const r = analyzeProject(project_dir, { overrides: { styling: styling || undefined, framework: framework || undefined } });
-    const out = out_path || path.join(project_dir, 'restore.profile.json');
+    const projectAbs = confineUnder(project_dir);
+    const r = analyzeProject(projectAbs, { overrides: { styling: styling || undefined, framework: framework || undefined } });
+    const out = out_path ? confineUnder(out_path) : path.join(projectAbs, 'restore.profile.json');
     saveProfile(r.profile, out);
     return text({ profile: out, ...r.profile });
   }
@@ -277,10 +279,12 @@ server.tool(
   async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
     const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../dist/index.js');
     const bp = readJson(blueprint_path);
-    const profile = profile_path ? (await import('../dist/index.js')).loadProfile(profile_path) : (await import('../dist/index.js')).analyzeProject(project_dir).profile;
+    const projectAbs = confineUnder(project_dir);
+    const profile = profile_path ? (await import('../dist/index.js')).loadProfile(confineUnder(profile_path)) : (await import('../dist/index.js')).analyzeProject(projectAbs).profile;
     const plan = planGeneration(bp, profile);
-    const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: project_dir });
-    const outDir = path.join(project_dir, out_subdir || 'restore');
+    const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: projectAbs });
+    // out_subdir 为 LLM 可控相对路径，同样收容（防 .. 逃逸出 project_dir）
+    const outDir = confineTo(projectAbs, out_subdir || 'restore');
     await ensureBuiltins()
     const adapter = await resolveAdapterAsync(profile, serializer || undefined)
     const reactOut = adapter.emit(bp, plan, assets, profile, { baseName: base_name || 'Restore' })
@@ -288,7 +292,7 @@ server.tool(
     const htmlOut = emitPreviewHtml(bp, plan, assets, profile, {});
     fs.mkdirSync(outDir, { recursive: true });
     for (const f of [...reactOut.files, ...htmlOut.files]) {
-      const p = confineUnder(outDir, f.path); // 产物路径必须落在 outDir 内
+      const p = confineTo(outDir, f.path); // 产物相对路径必须落在 outDir 内
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, f.content);
     }
@@ -309,7 +313,7 @@ server.tool(
     pixel_only: z.boolean().optional(),
   },
   async ({ truth_png, render_png, blueprint_path, assets_path, pixel_only }) => {
-    const pT = fs.readFileSync(truth_png), pR = fs.readFileSync(render_png);
+    const pT = readBuf(truth_png), pR = readBuf(render_png);
     const pixel = comparePng(pT, pR);
     let regions = null, blueprint = null, contract = null, assets = null;
     if (blueprint_path) {
@@ -320,7 +324,7 @@ server.tool(
       regions = diffRegions(pT, pR, { nodes: leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds })) });
       contract = validateBlueprint(blueprint);
     }
-    if (assets_path && fs.existsSync(assets_path)) {
+    if (assets_path && fs.existsSync(confineUnder(assets_path))) {
       const raw = readJson(assets_path);
       const list = raw.vectors || raw.assets || [];
       assets = { summary: { missing: list.filter((v) => !v.svg && !v.path && !v.src).length, total: list.length } };
@@ -341,9 +345,10 @@ server.tool(
   },
   async ({ project_dir, from_dir, on_conflict }) => {
     const { mergeIntoProject, canMerge } = await import('../dist/index.js');
-    const srcDir = from_dir ? path.resolve(from_dir) : path.join(project_dir, 'restore');
+    const projectAbs = confineUnder(project_dir);
+    const srcDir = from_dir ? confineUnder(from_dir) : path.join(projectAbs, 'restore');
     if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);
-    const check = canMerge(project_dir);
+    const check = canMerge(projectAbs);
     const files = [];
     const walk = (dir, base = '') => {
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
@@ -354,7 +359,7 @@ server.tool(
       }
     };
     walk(srcDir);
-    const res = mergeIntoProject(project_dir, files, { onConflict: on_conflict || 'rename' });
+    const res = mergeIntoProject(projectAbs, files, { onConflict: on_conflict || 'rename' });
     return text({ ...res, check });
   }
 );
