@@ -300,14 +300,15 @@ server.tool(
 
 server.tool(
   'ui_restore_gate',
-  '组合验收：global diff + critical regions + geometry(契约/样式)三闸合一，任一 FAIL 即整体 FAIL（truth 软门禁）',
+  '组合验收：global diff + critical regions + geometry(契约/样式)三闸合一，任一 FAIL 即整体 FAIL（truth 软门禁）。缺 blueprint 时结构证据缺失默认 FAIL（fail-closed）；确要纯像素闸须显式传 pixel_only=true',
   {
     truth_png: z.string(),
     render_png: z.string(),
     blueprint_path: z.string().optional(),
     assets_path: z.string().optional(),
+    pixel_only: z.boolean().optional(),
   },
-  async ({ truth_png, render_png, blueprint_path, assets_path }) => {
+  async ({ truth_png, render_png, blueprint_path, assets_path, pixel_only }) => {
     const pT = fs.readFileSync(truth_png), pR = fs.readFileSync(render_png);
     const pixel = comparePng(pT, pR);
     let regions = null, blueprint = null, contract = null, assets = null;
@@ -324,7 +325,7 @@ server.tool(
       const list = raw.vectors || raw.assets || [];
       assets = { summary: { missing: list.filter((v) => !v.svg && !v.path && !v.src).length, total: list.length } };
     }
-    const gate = evaluateGate({ pixel, regions, blueprint, contract, assets });
+    const gate = evaluateGate({ pixel, regions, blueprint, contract, assets, allowMissingEvidence: pixel_only === true });
     const score = computeScore({ pixel, regions, blueprint, contract, assets });
     return text({ gate, score, pixel, regions: regions ? { clusterCount: regions.clusterCount, markedRatio: regions.markedRatio } : null });
   }

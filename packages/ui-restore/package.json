@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/layout-core.test.mjs"
+    "test": "node test/layout-core.test.mjs && node test/gate.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

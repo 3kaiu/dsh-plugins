@@ -234,7 +234,8 @@ async function main() {
   if (cmd === 'gate') {
     const [truthPng, renderPng] = args;
     const bpPath = flag('--bp');
-    if (!truthPng || !renderPng) { console.error('用法: ui-restore gate <truth.png> <render.png> [--bp <blueprint.json>] [--assets <assets.json>]'); process.exit(1); }
+    const pixelOnly = flag('--pixel-only');
+    if (!truthPng || !renderPng) { console.error('用法: ui-restore gate <truth.png> <render.png> [--bp <blueprint.json>] [--assets <assets.json>] [--pixel-only]'); process.exit(1); }
     const bp = bpPath ? JSON.parse(fs.readFileSync(bpPath,'utf8')) : null;
     const pixel = comparePng(fs.readFileSync(truthPng), fs.readFileSync(renderPng));
     let regions = null;
@@ -250,7 +251,7 @@ async function main() {
       const list = raw.vectors || raw.assets || [];
       assets = { summary: { missing: list.filter((v)=>!v.svg && !v.path && !v.src).length, total: list.length } };
     }
-    const gate = evaluateGate({ pixel, regions, blueprint: bp, contract, assets });
+    const gate = evaluateGate({ pixel, regions, blueprint: bp, contract, assets, allowMissingEvidence: Boolean(pixelOnly) });
     const score = computeScore({ pixel, regions, blueprint: bp, contract, assets });
     console.log(`gate: ${gate.verdict} | score: ${score.score}`);
     for (const r of gate.reasons) console.log(` ! ${r}`);

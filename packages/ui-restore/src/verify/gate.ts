@@ -36,6 +36,13 @@ export interface GateInput {
   contract?: { ok: boolean; errors?: string[] } | null
   assets?: { summary?: { missing: number; total: number } } | null
   thresholds?: Partial<GateThresholds>
+  /**
+   * 结构性证据(regions/contract/geometry·style verdict)缺失时的行为。
+   * 默认 false = fail-closed：缺证据即整体 FAIL —— 防止「只跑像素闸就宣布通过」的
+   * 结构性假阴性出口。仅显式声明 pixel-only 的调用方(明确放弃结构闸)才应传 true。
+   * blocks 缺失不在此列：纯图标稿天然无文本块, 缺失属合法输入。
+   */
+  allowMissingEvidence?: boolean
 }
 
 export interface GateDetail {
@@ -61,6 +68,7 @@ export interface GateResult {
  */
 export function evaluateGate(input: GateInput): GateResult {
   const th: GateThresholds = { ...DEFAULT_THRESHOLDS, ...(input.thresholds || {}) }
+  const allowMissing = input.allowMissingEvidence === true
   const reasons: string[] = []
   const failedGates: string[] = []
 
@@ -103,31 +111,42 @@ export function evaluateGate(input: GateInput): GateResult {
         : `regions fail: clusters ${rc}≤${th.maxClusters}?${clustersOk} markedRatio ${mr}<${th.markedRatio}?${markedOk} critical?${!criticalOk}`,
     }
     if (!regionsPass) { reasons.push(regionsDetail.detail); failedGates.push('regions') }
+  } else if (allowMissing) {
+    regionsDetail = { pass: true, actualClusters: 0, actualMarkedRatio: 0, threshold: th, hasCritical: false, detail: '无 regions 输入, 调用方已显式声明 pixel-only, 跳过结构闸' }
   } else {
-    regionsDetail = { pass: true, actualClusters: 0, actualMarkedRatio: 0, threshold: th, hasCritical: false, detail: '无 regions 输入，视为通过(调用方需补充 diffRegions)' }
+    regionsPass = false
+    regionsDetail = { pass: false, actualClusters: 0, actualMarkedRatio: 0, threshold: th, hasCritical: false, detail: '结构性证据缺失: 无 regions 输入(需提供 blueprint 运行 diffRegions); 确要 pixel-only 请显式传 allowMissingEvidence' }
+    reasons.push(regionsDetail.detail)
+    failedGates.push('regions')
   }
 
   // ---- geometry (contract + layout diff + style; truth 为软门禁, 仅经 score 惩罚, 不硬性阻断渲染验收)
   // 原因：truth 是 blueprint 推断 vs Yoga 标准求解的保真度，0.5px 级偏差不代表渲染错误；
   // 若 truth 硬性阻断，则 blueprint 自身轻微推断偏差会让所有渲染永远无法 PASS。
-  let geometryPass = true
-  const contractOk = input.contract ? input.contract.ok : true
+  // contract/verdict 缺失默认 fail-closed(见 GateInput.allowMissingEvidence)。
+  let geometryPass: boolean
+  const contractOk = input.contract ? input.contract.ok === true : allowMissing
   const geometryVerdict = input.blueprint?.diffReport?.verdict ?? null
   const styleVerdict = input.blueprint?.styleDiffReport?.verdict ?? null
   const truthVerdict = input.blueprint?.truthReport?.verdict ?? null
-  const geometryOk = !geometryVerdict || String(geometryVerdict).startsWith('PASS')
-  const styleOk = !styleVerdict || String(styleVerdict).startsWith('PASS')
+  const geometryOk = geometryVerdict ? String(geometryVerdict).startsWith('PASS') : allowMissing
+  const styleOk = styleVerdict ? String(styleVerdict).startsWith('PASS') : allowMissing
   // truth 软性：仅记录，不计入硬门禁；但失败时仍写入 reasons 供诊断（failedGates 记 `truth` 而非 `geometry`）
   const truthOk = !truthVerdict || String(truthVerdict).startsWith('PASS')
   geometryPass = contractOk && geometryOk && styleOk
+  const missingLabel = allowMissing ? 'SKIP(pixel-only)' : 'FAIL(缺失)'
+  const contractLabel = input.contract
+    ? (contractOk ? 'PASS' : `FAIL(${input.contract.errors?.slice(0, 2).join('; ') ?? ''})`)
+    : missingLabel
   const geometryDetail: GateDetail['geometry'] = {
     pass: geometryPass,
-    contract: contractOk ? 'PASS' : `FAIL(${input.contract?.errors?.slice(0, 2).join('; ')})`,
-    geometry: geometryVerdict,
-    style: styleVerdict,
+    contract: contractLabel,
+    geometry: geometryVerdict ?? (geometryOk ? null : 'MISSING'),
+    style: styleVerdict ?? (styleOk ? null : 'MISSING'),
     truth: truthVerdict,
-    detail: geometryPass ? `geometry ok: contract PASS, geometry ${geometryVerdict}, style ${styleVerdict}, truth ${truthVerdict}`
-      : `geometry fail: contract ${contractOk ? 'PASS' : 'FAIL'}, geometry ${geometryVerdict}, style ${styleVerdict}, truth ${truthVerdict}`,
+    detail: geometryPass
+      ? `geometry ok: contract ${contractLabel}, geometry ${geometryVerdict ?? 'n/a'}, style ${styleVerdict ?? 'n/a'}, truth ${truthVerdict ?? 'n/a'}`
+      : `geometry fail: contract ${contractLabel}, geometry ${geometryVerdict ?? missingLabel}, style ${styleVerdict ?? missingLabel}, truth ${truthVerdict ?? 'n/a'}`,
   }
   if (!geometryPass) { reasons.push(geometryDetail.detail); failedGates.push('geometry') }
   if (!truthOk) {
