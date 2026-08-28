@@ -11,6 +11,7 @@ export * from "./dom-to-layout.ts";
 export * from "./compare.ts";
 export * from "./geometry.ts";
 export * from "./typography.ts";
+export * from "./cjk.ts";
 export * from "./palette.ts";
 export * from "./pixel.ts";
 export * from "./score.ts";

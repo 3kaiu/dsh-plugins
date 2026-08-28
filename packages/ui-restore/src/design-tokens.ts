@@ -6,10 +6,10 @@
 //
 // 布局几何(层级/gap/padding/bounds)刻意不进 token 层: 那是蓝图的职责, token 只管可主题化样式。
 
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from './numeric.ts'
 
 function dim(n) {
-  return { value: round1(n), unit: "px" }
+  return { value: round2(n), unit: "px" }
 }
 
 class Collector {
@@ -37,13 +37,13 @@ function hexToRgbaStr(color, fallbackAlpha = 1) {
   if (v.length === 3) v = v.split("").map((ch) => ch + ch).join("")
   if (v.length === 6) {
     const r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b = parseInt(v.slice(4, 6), 16)
-    return `rgba(${r}, ${g}, ${b}, ${round1(fallbackAlpha)})`
+    return `rgba(${r}, ${g}, ${b}, ${round2(fallbackAlpha)})`
   }
   // #RRGGBBAA: alpha 内嵌于色值, 保真解析
   if (v.length === 8) {
     const r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b = parseInt(v.slice(4, 6), 16)
     const a = parseInt(v.slice(6, 8), 16) / 255
-    return `rgba(${r}, ${g}, ${b}, ${round1(a)})`
+    return `rgba(${r}, ${g}, ${b}, ${round2(a)})`
   }
   return null
 }
@@ -75,14 +75,14 @@ export function extractDesignTokens(blueprint, opts = {}) {
       aliases.push({ nodeId: node.id, property: isText ? "textColor" : "background", token: null, _col: col, _raw: node.color })
     }
     if (node.type === "TEXT") {
-      if (node.fontSize != null) { fontSizes.add(round1(node.fontSize)); aliases.push({ nodeId: node.id, property: "fontSize", token: null, _col: fontSizes, _raw: round1(node.fontSize) }) }
+      if (node.fontSize != null) { fontSizes.add(round2(node.fontSize)); aliases.push({ nodeId: node.id, property: "fontSize", token: null, _col: fontSizes, _raw: round2(node.fontSize) }) }
       if (node.fontWeight != null) { fontWeights.add(Number(node.fontWeight)); aliases.push({ nodeId: node.id, property: "fontWeight", token: null, _col: fontWeights, _raw: Number(node.fontWeight) }) }
-      if (node.lineHeight != null) { lineHeights.add(round1(node.lineHeight)); aliases.push({ nodeId: node.id, property: "lineHeight", token: null, _col: lineHeights, _raw: round1(node.lineHeight) }) }
+      if (node.lineHeight != null) { lineHeights.add(round2(node.lineHeight)); aliases.push({ nodeId: node.id, property: "lineHeight", token: null, _col: lineHeights, _raw: round2(node.lineHeight) }) }
     }
     const radius = ly.borderRadius
     if (radius != null) {
       const vals = Array.isArray(radius) ? [...new Set(radius.filter((r) => r > 0))] : [radius]
-      for (const r of vals) { radii.add(round1(r)); aliases.push({ nodeId: node.id, property: "borderRadius", token: null, _col: radii, _raw: round1(r) }) }
+      for (const r of vals) { radii.add(round2(r)); aliases.push({ nodeId: node.id, property: "borderRadius", token: null, _col: radii, _raw: round2(r) }) }
     }
     for (const eff of ly.effects || []) {
       if (eff.type !== "DROP_SHADOW") continue

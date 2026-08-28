@@ -8,8 +8,7 @@
 // 授权注意: 度量只在本地读取系统字体做计算, 不随产物分发字体文件。
 
 import fs from "node:fs"
-
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from "./numeric.ts"
 
 let _font = null
 let _fontSource = null
@@ -69,14 +68,14 @@ export function measureTextWidth(text, fontSize, letterSpacing = 0) {
   if (!str) return 0
   if (_font) {
     try {
-      return round1(_font.getAdvanceWidth(str, fontSize, { kerning: true }) + letterSpacing * Math.max(0, str.length - 1))
+      return round2(_font.getAdvanceWidth(str, fontSize, { kerning: true }) + letterSpacing * Math.max(0, str.length - 1))
     } catch {
       // 落入估算
     }
   }
   let w = 0
   for (const ch of str) w += /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F]/.test(ch) ? fontSize : fontSize * 0.52
-  return round1(w + letterSpacing * Math.max(0, [...str].length - 1))
+  return round2(w + letterSpacing * Math.max(0, [...str].length - 1))
 }
 
 /**

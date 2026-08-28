@@ -4,7 +4,7 @@
 // LLM 写码前读它拿到必须覆盖的全部事实(文本清单/组件组/矢量/位图/门禁基线),
 // 写码后逐项自检, 把"遗漏"从渲染后 diff 兜底提前到编码期拦截。
 
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from '../numeric.ts'
 
 /**
  * 还原合同提取 (restorationChecklist)
@@ -56,7 +56,7 @@ export function restorationChecklist(bp) {
       style: bp.styleDiffReport?.verdict ?? null,
       truth: bp.truthReport?.verdict ?? null,
     },
-    canvas: bp.canvas ? { width: round1(bp.canvas.width), height: round1(bp.canvas.height) } : null,
+    canvas: bp.canvas ? { width: round2(bp.canvas.width), height: round2(bp.canvas.height) } : null,
     scale: bp.canvas?.scale ?? null,
     texts,
     groups: (bp.componentGroups || []).map((g) => ({
@@ -64,8 +64,8 @@ export function restorationChecklist(bp) {
       count: g.count,
       axis: g.axis ?? null,
       gap: g.gap != null ? g.gap : null,
-      itemSize: [round1(g.itemWidth), round1(g.itemHeight)],
-      instances: g.instances.map((i) => ({ id: i.id, name: i.name || '', x: round1(i.x), y: round1(i.y) })),
+      itemSize: [round2(g.itemWidth), round2(g.itemHeight)],
+      instances: g.instances.map((i) => ({ id: i.id, name: i.name || '', x: round2(i.x), y: round2(i.y) })),
     })),
     vectors: [...vectorMap.entries()].map(([svgKey, { name, ids }]) => ({ svgKey, name, nodeIds: [...ids] })),
     images,
@@ -95,11 +95,11 @@ export function checklistToText(cl, opts = {}) {
     opts.contractOk != null ? `契约 ${opts.contractOk ? 'PASS' : 'FAIL'}` : null,
   ].filter(Boolean).join(' | ')
   lines.push(`# 还原合同(实现前必读 / 实现后逐项自检)`)
-  lines.push(`画布 ${cl.canvas ? `${round1(cl.canvas.width)}x${round1(cl.canvas.height)}` : '?'}${cl.scale ? `(原稿 ${cl.scale.factor}×已归一)` : ''} | ${gateStr}`)
+  lines.push(`画布 ${cl.canvas ? `${round2(cl.canvas.width)}x${round2(cl.canvas.height)}` : '?'}${cl.scale ? `(原稿 ${cl.scale.factor}×已归一)` : ''} | ${gateStr}`)
   lines.push('')
   lines.push(`## 必须出现的文本 (${cl.texts.length})`)
   for (const t of cl.texts) {
-    lines.push(`- "${t.text}" @(${round1(t.bounds.x)},${round1(t.bounds.y)}) ${t.fontSize ?? '?'}px${t.fontWeight ? ` w${t.fontWeight}` : ''}${t.softWrap ? '' : ' 单行'}${t.richRuns ? ` 混排x${t.richRuns}` : ''} [${t.id}]`)
+    lines.push(`- "${t.text}" @(${round2(t.bounds.x)},${round2(t.bounds.y)}) ${t.fontSize ?? '?'}px${t.fontWeight ? ` w${t.fontWeight}` : ''}${t.softWrap ? '' : ' 单行'}${t.richRuns ? ` 混排x${t.richRuns}` : ''} [${t.id}]`)
   }
   if (cl.groups.length) {
     lines.push('')

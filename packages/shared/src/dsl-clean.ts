@@ -18,18 +18,21 @@
  *           bbox 与输入 section 的 x/y/w/h 完全一致(容差 2px)。
  *
  * 纯函数, 无副作用。
+ *
+ * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本副本【冻结】—— v2 正本在
+ * packages/ui-restore/src/dsl-clean.ts(角色判定已演进为语言无关的纯几何
+ * 信号, 并增 repeat 折叠/system-chrome); 本副本服务 layout-infer/ura, 批3 归一。
  */
 
-import { inferLayout, round1 } from './layout-core.ts'
+import { inferLayout, TOL } from './layout-core.ts'
 import {
+  round1,
   isBackgroundRect as isBackgroundRectShared,
   isContainerCandidate as isContainerCandidateShared,
   clusterBandsAdaptive as clusterBandsAdaptiveShared,
   clusterCols as clusterColsShared,
   bandBBox as bandBBoxShared,
 } from './cluster.ts'
-
-const TOL = 2
 
 // 复用共享聚类内核（原地保留别名，保持调用方不变）
 const isBackgroundRect = isBackgroundRectShared

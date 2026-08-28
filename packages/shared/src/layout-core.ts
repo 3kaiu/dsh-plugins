@@ -13,10 +13,16 @@
  * 纯函数,无副作用。位于 @3kaiu/dsh-plugin-kit,供 dsh-layout-infer 等
  * 插件及 MasterGo 等外部工具通过 ESM import 复用
  * (不再污染 globalThis——宿主进程全局对象不属于插件)。
+ *
+ * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本副本【冻结】—— v2 正本在
+ * packages/ui-restore/src/layout-core.ts(功能超集: inferGridPattern/
+ * inferStaggeredDeck/system-chrome/CONTAINER_ABSORB_RATIO 等), 本副本
+ * 服务 layout-infer/ura。行为修改先评估正本是否同步; 批3 双向合并归一。
  */
 
 import {
   GRADIENT_RE,
+  round1,
   isBackgroundRect as isBackgroundRectShared,
   isContainerCandidate as isContainerCandidateShared,
   clusterBandsAdaptive as clusterBandsAdaptiveShared,
@@ -29,7 +35,7 @@ import {
   colSize as colSizeShared,
 } from './cluster.ts'
 
-const TOL = 2 // 像素容差(整数坐标设计稿)
+export const TOL = 2 // 像素容差(整数坐标设计稿)
 const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 
 // 兼容导出：原地保留常量与函数引用，便于外部按旧路径导入
@@ -72,10 +78,6 @@ function mode(values) {
     }
   }
   return bestCount >= 2 && unique ? best : null
-}
-
-function round1(v) {
-  return Math.round(v * 10) / 10
 }
 
 /**
@@ -737,7 +739,7 @@ function buildContainer(n, role) {
   }
 }
 
-export { inferLayout, mode, round1, simulateFlex, clusterByAxis, reconstructHierarchy, ROLES }
+export { inferLayout, mode, simulateFlex, clusterByAxis, reconstructHierarchy, ROLES }
 
 /** 网格推断: 规整行列矩阵 → flexWrap wrap */
 function inferGrid(children, tol) {

@@ -1,7 +1,9 @@
 'use strict'
 // cjk — CJK 排版（全角标点/字体回退/行断，doc14 §8 待办落地）
+// 字符判定收敛自 kit 正典(doc19 批2): CJK_WIDE_RE 为三处并集(补全角形式)。
 
-const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/
+import { CJK_WIDE_RE as CJK_RE } from '@3kaiu/dsh-plugin-kit'
+
 const FULLWIDTH_PUNCT = /[，。！？；：""''（）【】《》]/
 
 export function isCjk(text) { return CJK_RE.test(text) }

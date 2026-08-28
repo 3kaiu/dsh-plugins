@@ -18,13 +18,15 @@
  *           bbox 与输入 section 的 x/y/w/h 完全一致(容差 2px)。
  *
  * 纯函数, 无副作用。
+ *
+ * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本文件是 v2【正本】(语言无关的
+ * 纯几何角色判定 + repeat 折叠/system-chrome/CONTAINER_ABSORB_RATIO);
+ * kit 内共享副本已冻结(文本特征角色, 服务 layout-infer/ura), 批3 归一。
  */
 
-import { inferLayout, round1, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata, CONTAINER_ABSORB_RATIO } from './layout-core.ts'
+import { inferLayout, round1, TOL, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata, CONTAINER_ABSORB_RATIO } from './layout-core.ts'
 import { detectRepeatGroups } from './repeat.ts'
 import { systemChromeOf } from './system-chrome.ts'
-
-const TOL = 2
 
 // =====================================================================
 // 1. 归一化: section → 扁平节点(含页面绝对坐标 + 样式信号 + 原始 DSL)

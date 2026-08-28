@@ -4,7 +4,7 @@
 // 紧凑文本表征(缩进树 + 逐节点一行摘要), 亦是人类评审产物可读性的界面。
 // 两者同源生成, 永不冲突。
 
-const round1 = (n) => Math.round((n || 0) * 100) / 10 / 10
+import { round2 } from '../numeric.ts'
 
 /** 单节点一行摘要 */
 function nodeSummary(n) {
@@ -13,7 +13,7 @@ function nodeSummary(n) {
   const parts = []
   parts.push(`[${ly.role || 'box'}${ly.position === 'absolute' ? ':abs' : ''}]`)
   parts.push(n.name || n.type || 'node')
-  parts.push(`@(${round1(b.x)},${round1(b.y)} ${round1(b.width)}x${round1(b.height)})`)
+  parts.push(`@(${round2(b.x)},${round2(b.y)} ${round2(b.width)}x${round2(b.height)})`)
   if (n.color) parts.push(n.color)
   if (n.fill) {
     if (n.fill.type === 'gradient') parts.push(`渐变:${(n.fill.stops || []).map((s) => s.color).join('→')} ${n.fill.angle ?? ''}°`.trim())
@@ -25,14 +25,14 @@ function nodeSummary(n) {
   if (n.text != null && n.text !== '') parts.push(`"${String(n.text).slice(0, 24)}" ${n.fontSize ?? '?'}px${n.fontWeight ? ` w${n.fontWeight}` : ''}${n.softWrap === false ? ' 单行' : ''}${Array.isArray(n.textRuns) ? ` 混排x${n.textRuns.length}` : ''}${n.measured?.singleLineWidth != null ? ` 实测宽${n.measured.singleLineWidth}` : ''}`)
   if (n.svgKey) parts.push(`svg:${n.svgKey}${n.svgName ? `(${n.svgName})` : ''}`)
   else if (n.mergedVector) parts.push('合并矢量(待按id导出)')
-  if (n.contentClipped) parts.push(`内容被裁(实际${round1(n.contentClipped.width)}x${round1(n.contentClipped.height)})`)
-  if (typeof ly.gap === 'number' && ly.gap > 0) parts.push(`gap=${round1(ly.gap)}`)
-  if (Array.isArray(ly.gap)) parts.push(`gap[]=${ly.gap.map(round1).join(',')}`)
+  if (n.contentClipped) parts.push(`内容被裁(实际${round2(n.contentClipped.width)}x${round2(n.contentClipped.height)})`)
+  if (typeof ly.gap === 'number' && ly.gap > 0) parts.push(`gap=${round2(ly.gap)}`)
+  if (Array.isArray(ly.gap)) parts.push(`gap[]=${ly.gap.map(round2).join(',')}`)
   const pad = ly.padding
-  if (Array.isArray(pad) && pad.some(v => v > 0)) parts.push(`pad=${pad.map(round1).join(',')}`)
+  if (Array.isArray(pad) && pad.some(v => v > 0)) parts.push(`pad=${pad.map(round2).join(',')}`)
   if (ly.justifyContent && ly.justifyContent !== 'start') parts.push(`just=${ly.justifyContent}`)
   if (ly.alignItems && ly.alignItems !== 'start') parts.push(`align=${ly.alignItems}`)
-  if (ly.crossOffset) parts.push(`crossOff=${round1(ly.crossOffset)}`)
+  if (ly.crossOffset) parts.push(`crossOff=${round2(ly.crossOffset)}`)
   if (ly.borderRadius) parts.push(`r=${Array.isArray(ly.borderRadius) ? ly.borderRadius.join('/') : ly.borderRadius}`)
   if (ly.effects?.some((e) => e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW')) parts.push('阴影')
   if (ly.downgradeReason) parts.push(`(降级:${ly.downgradeReason})`)
@@ -75,7 +75,7 @@ export function restorationGuide(bp) {
     '- componentGroups: 同构兄弟组, 必须实现为单个组件的多个实例(禁止逐份拷贝)',
     '- styleDiffReport.verdict 必须为 PASS_STYLE_CONSERVED, 否则蓝图样式通道有丢失, 勿直接消费',
     `- canvas.scale 存在时: 原稿为 factor 倍画板(@2x/@3x), 蓝图全部数值已归一为逻辑像素; 缺省即原样坐标`,
-    `- 画布: ${round1(canvas.width)}x${round1(canvas.height)}; 产线实现请按目标技术栈做分辨率适配`,
+    `- 画布: ${round2(canvas.width)}x${round2(canvas.height)}; 产线实现请按目标技术栈做分辨率适配`,
   ].join('\n')
 }
 
@@ -137,7 +137,7 @@ export function blueprintToOutline(bp, opts = {}) {
     lines.push('  '.repeat(depth) + nodeSummary(n))
     for (const c of Array.isArray(n.children) ? n.children : []) walk(c, depth + 1)
   }
-  lines.push(`# UI 还原蓝图 outline (画布 ${round1(bp.canvas?.width)}x${round1(bp.canvas?.height)})`)
+  lines.push(`# UI 还原蓝图 outline (画布 ${round2(bp.canvas?.width)}x${round2(bp.canvas?.height)})`)
   for (const r of bp.tree || []) walk(r, 0)
   if ((bp.floatings || []).length > 0) {
     lines.push('# 悬浮层')
@@ -146,8 +146,8 @@ export function blueprintToOutline(bp, opts = {}) {
   if ((bp.componentGroups || []).length > 0) {
     lines.push('# 组件组(同构兄弟, 实现为单组件多实例)')
     for (const g of bp.componentGroups) {
-      const pos = g.instances.slice(0, 4).map((i) => `@${round1(i.x)},${round1(i.y)}`).join(' ')
-      lines.push(`${g.groupId}: ${g.count} 个实例 ${round1(g.itemWidth)}x${round1(g.itemHeight)} ${pos}${g.instances.length > 4 ? ' …' : ''}${g.axis ? ` 排布=${g.axis}${g.gap != null ? ` 间距=${round1(g.gap)}` : ''}` : ''} — ids: ${g.instances.map(i => i.id).join(', ')}`)
+      const pos = g.instances.slice(0, 4).map((i) => `@${round2(i.x)},${round2(i.y)}`).join(' ')
+      lines.push(`${g.groupId}: ${g.count} 个实例 ${round2(g.itemWidth)}x${round2(g.itemHeight)} ${pos}${g.instances.length > 4 ? ' …' : ''}${g.axis ? ` 排布=${g.axis}${g.gap != null ? ` 间距=${round2(g.gap)}` : ''}` : ''} — ids: ${g.instances.map(i => i.id).join(', ')}`)
     }
   }
   if (opts.includeGuide !== false) {

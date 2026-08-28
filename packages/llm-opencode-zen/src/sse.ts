@@ -154,8 +154,16 @@ function repairToolArguments(text) {
 }
 
 function isCjkChar(ch) {
+  // 区间与 @3kaiu/dsh-plugin-kit cjk.CJK_WIDE_RE 正典保持一致(llm 刻意不依赖 kit, 独立内联)。
+  // 2026-08-29 修复: 原 [3400-4DBF]+[4E00-9FFF] 漏假名(3040-30FF)/兼容表意(F900-FAFF)/
+  // 全角形式(FF00-FFEF)/CJK 标点(3000-303F), 中日韩混合文本的 token 估算系统性偏低。
   const code = ch.codePointAt(0);
-  return (code >= 0x3400 && code <= 0x4dbf) || (code >= 0x4e00 && code <= 0x9fff);
+  return (
+    (code >= 0x2e80 && code <= 0x9fff) ||
+    (code >= 0xf900 && code <= 0xfaff) ||
+    (code >= 0xff00 && code <= 0xffef) ||
+    (code >= 0x3000 && code <= 0x303f)
+  );
 }
 
 function estimateCharsToTokens(text) {

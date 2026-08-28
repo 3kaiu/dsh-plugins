@@ -7,7 +7,7 @@
 
 export const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
 
-function round1(v) {
+export function round1(v) {
   return Math.round(v * 10) / 10
 }
 

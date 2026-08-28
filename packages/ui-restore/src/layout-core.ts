@@ -16,12 +16,15 @@ import { resolveDesignScale, applyDesignScale } from "./scale.ts";
  * 与官方 DSL 的 flexContainerInfo 字段对齐:
  *   { flexDirection, alignItems, mainSizing, crossSizing, gap, padding }
  *
- * 纯函数,无副作用。位于 @3kaiu/dsh-plugin-kit,供 dsh-layout-infer 等
- * 插件及 MasterGo 等外部工具通过 ESM import 复用
+ * 纯函数,无副作用。自 @3kaiu/dsh-plugin-kit/layout-core 分叉后独立演进
  * (不再污染 globalThis——宿主进程全局对象不属于插件)。
+ *
+ * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本文件是 v2【正本】(功能超集:
+ * inferGridPattern/inferStaggeredDeck/system-chrome/CONTAINER_ABSORB_RATIO 等);
+ * kit 内共享版已冻结, 服务 layout-infer/ura。批3 将双向合并归一(kit 持正本)。
  */
 
-const TOL = 2 // 像素容差(整数坐标设计稿)
+export const TOL = 2 // 像素容差(整数坐标设计稿)
 const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 
 /** 机器命名检测: 设计工具自动生成的无语义名(编组 45/矩形 6509/容器 17/蒙版组 2/Frame 328…) */

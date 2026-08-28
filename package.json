@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && node scripts/check-fork-parity.mjs",
     "install:local": "pnpm build && node scripts/install-local.mjs"
   },
   "devDependencies": {

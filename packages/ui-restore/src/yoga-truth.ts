@@ -8,8 +8,7 @@
 // 两者一致 => 推断可信; 不一致 => 该容器的 flex 指令不应被下游信任。
 
 import Yoga, { FlexDirection, Justify, Align, Edge, Gutter, Direction, PositionType } from "yoga-layout";
-
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from "./numeric.ts"
 
 const JUSTIFY = {
   start: Justify.FlexStart,
@@ -35,8 +34,8 @@ function checkContainer(node, kids, tolerance) {
   const pb = node.bounds || {}
   const ly = node.layout || {}
   const rel = (cb) => ({
-    x: round1((cb.x ?? 0) - (pb.x ?? 0)),
-    y: round1((cb.y ?? 0) - (pb.y ?? 0)),
+    x: round2((cb.x ?? 0) - (pb.x ?? 0)),
+    y: round2((cb.y ?? 0) - (pb.y ?? 0)),
   })
 
   // 变间距/负间距无法用标准 gap 表达(蓝图语义为逐项偏移), 跳过求解
@@ -98,9 +97,9 @@ function checkContainer(node, kids, tolerance) {
   for (const e of entries) {
     if (e.ynode.getPositionType() === PositionType.Absolute) continue
     if (e.skipDelta) { unverifiable++; continue }
-    const solved = { x: round1(e.ynode.getComputedLeft()), y: round1(e.ynode.getComputedTop()) }
-    const dx = round1(Math.abs(solved.x - e.expected.x))
-    const dy = round1(Math.abs(solved.y - e.expected.y))
+    const solved = { x: round2(e.ynode.getComputedLeft()), y: round2(e.ynode.getComputedTop()) }
+    const dx = round2(Math.abs(solved.x - e.expected.x))
+    const dy = round2(Math.abs(solved.y - e.expected.y))
     const delta = Math.max(dx, dy)
     if (delta > maxDelta) maxDelta = delta
     if (delta > tolerance) {
@@ -110,7 +109,7 @@ function checkContainer(node, kids, tolerance) {
   }
   root.freeRecursive()
 
-  return { containerId: node.id, role: ly.role, skipped: false, childCount: entries.length, unverifiableCorrections: unverifiable, maxDelta: round1(maxDelta), offenders }
+  return { containerId: node.id, role: ly.role, skipped: false, childCount: entries.length, unverifiableCorrections: unverifiable, maxDelta: round2(maxDelta), offenders }
 }
 
 /**
@@ -142,7 +141,7 @@ export function verifyLayoutTruth(blueprint, opts = {}) {
   const childrenChecked = checked.reduce((s, r) => s + r.childCount, 0)
   const unverifiableCorrections = checked.reduce((s, r) => s + (r.unverifiableCorrections || 0), 0)
   const offenderTotal = checked.reduce((s, r) => s + r.offenders.length, 0)
-  const maxDelta = round1(checked.reduce((m, r) => Math.max(m, r.maxDelta), 0))
+  const maxDelta = round2(checked.reduce((m, r) => Math.max(m, r.maxDelta), 0))
   const worst = checked
     .flatMap((r) => r.offenders.map((o) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
     .sort((a, b) => b.delta - a.delta)
@@ -156,7 +155,7 @@ export function verifyLayoutTruth(blueprint, opts = {}) {
     childrenMatched: childrenChecked - offenderTotal,
     unverifiableCorrections,
     maxDelta,
-    pixelPerfectRatio: childrenChecked > 0 ? round1((childrenChecked - offenderTotal) / childrenChecked) : 1,
+    pixelPerfectRatio: childrenChecked > 0 ? round2((childrenChecked - offenderTotal) / childrenChecked) : 1,
     worst,
     verdict: maxDelta <= tolerance ? "PASS_TRUTH_PERFECT" : `FAIL_TRUTH_MAX_DELTA_${maxDelta}`,
   }

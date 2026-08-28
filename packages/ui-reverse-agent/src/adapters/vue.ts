@@ -6,14 +6,9 @@
 // （;{}\<>）再做属性转义，杜绝属性逃逸与声明注入；几何值经 Number
 // 钳制为有限数，非数值丢弃；原始 SVG 不内联（与 React 适配器同策略）。
 
-const num = (v) => {
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
-
-const escText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const escAttr = (s) => escText(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-const cssValue = (v) => escAttr(String(v).replace(/[;{}\\<>]/g, ' ').replace(/\s+/g, ' ').trim())
+// 共享件(doc19 批2d): num 钳制/tag 映射/HTML 转义与 React 侧同源;
+// 本文件的注入防护策略(文本 HTML 转义 + cssValue 结构字符剥离)保持独立。
+import { num, neutralTag as vueTag, escText, escAttr, cssValue } from './neutral-common.ts'
 
 export function neutralToVue(neutral) {
   const root = neutral.root || neutral
@@ -40,13 +35,6 @@ function vueNode(n) {
   const content = n.text ? escText(n.text) : children
   const extra = n.svg ? `<!-- svg -->` : ''
   return `<${tag} style="${style}">${content}${extra}</${tag}>`
-}
-
-function vueTag(n) {
-  if (n.kind === 'text') return 'span'
-  if (n.kind === 'icon') return 'i'
-  if (n.kind === 'image') return 'img'
-  return 'div'
 }
 
 function vueStyle(n) {

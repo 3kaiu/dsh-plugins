@@ -4,7 +4,7 @@
 // 到该契约的标准入口(此前该逻辑在三个驱动脚本中重复)。
 // 设计源适配(MasterGo/Figma/...)在 ingest 段接口化: 每源一个 normalize 函数。
 
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from '../numeric.ts'
 
 /** 防原型污染: 仅拷贝自有可枚举键, 跳过 __proto__/constructor/prototype 等危险键 */
 function safeAssignStyles(target, src) {
@@ -30,8 +30,8 @@ export function flattenDesignSections(raw) {
   const emit = (n, ox, oy, parentObj) => {
     if (!n || typeof n !== 'object') return
     const ls = n.layoutStyle || {}
-    const x = round1((ls.relativeX ?? 0) + ox)
-    const y = round1((ls.relativeY ?? 0) + oy)
+    const x = round2((ls.relativeX ?? 0) + ox)
+    const y = round2((ls.relativeY ?? 0) + oy)
     const w = ls.width ?? 0
     const h = ls.height ?? 0
     const self = {

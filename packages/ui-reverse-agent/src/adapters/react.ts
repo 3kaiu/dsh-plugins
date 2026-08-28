@@ -6,10 +6,9 @@
 // 字符串字面量，几何值一律经 Number 钳制为有限数（非数值直接丢弃），
 // 原始 SVG 不内联（与 Vue 适配器同策略，仅留注释占位）。
 
-const num = (v) => {
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
+// 共享件(doc19 批2d): num 钳制与 tag 映射与 Vue 侧同源; 本文件的注入防护策略
+// (字符串一律 JSON.stringify 字面量, 几何值 num 钳制, SVG 仅注释占位)保持独立。
+import { num, neutralTag as reactTag } from './neutral-common.ts'
 
 const str = (v, fallback) => JSON.stringify(typeof v === 'string' && v ? v : (fallback ?? ''))
 
@@ -35,13 +34,6 @@ function reactNode(n) {
   const content = n.text ? `{${JSON.stringify(String(n.text))}}` : children
   const extra = n.svg ? `{/* svg */}` : ''
   return `<${tag} style={${style}}>${content}${extra}</${tag}>`
-}
-
-function reactTag(n) {
-  if (n.kind === 'text') return 'span'
-  if (n.kind === 'icon') return 'i'
-  if (n.kind === 'image') return 'img'
-  return 'div'
 }
 
 function reactStyle(n) {

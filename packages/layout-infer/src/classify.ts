@@ -9,6 +9,8 @@
 //   2. 类型直读: TEXT / PATH / image-fill —— 决定 text/icon/image
 //   3. 语义命名: icon/logo/img/avatar 等设计规范约定
 //   4. 几何反推: gap/padding(无原生间距字段时复用 inferLayout)
+// ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本副本【冻结】, v2 正本在
+// packages/ui-restore/src/classify.ts(超集); 批3 归一。行为修改先评估正本是否同步。
 import { inferLayout } from '@3kaiu/dsh-plugin-kit'
 
 const round = (n) => Math.round((n || 0) * 100) / 100

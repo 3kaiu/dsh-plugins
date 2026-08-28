@@ -11,8 +11,7 @@
 
 import { PNG } from "pngjs"
 import pixelmatch from "pixelmatch"
-
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from "./numeric.ts"
 
 // 位置相似度封顶尺度(px): 偏移达此值记 0 分。与画布尺寸解耦 —— 旧式"除以画布宽高"
 // 在长页上会稀释绝对偏差(500px 错位仍≈0.97), 跨稿不可比(审计修订)。
@@ -50,7 +49,7 @@ export function comparePng(bufA, bufB, opts = {}) {
     width,
     height,
     diffPixels,
-    diffRatio: round1(diffPixels / (width * height)),
+    diffRatio: round2(diffPixels / (width * height)),
     diffPng: PNG.sync.write(diff),
   }
 }
@@ -171,7 +170,7 @@ export function diffRegions(bufA, bufB, opts = {}) {
     width,
     height,
     markedPixels: totalMarked,
-    markedRatio: round1(totalMarked / (width * height)),
+    markedRatio: round2(totalMarked / (width * height)),
     clusterCount: clusters.length,
     regions,
   }
@@ -218,7 +217,7 @@ function regionAvgColor(img, width, blk) {
 function colorSim(c1, c2) {
   if (!c1 || !c2) return null
   const d = Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2 + (c1[2] - c2[2]) ** 2) / Math.sqrt(3 * 255 * 255)
-  return round1(1 - d)
+  return round2(1 - d)
 }
 
 /**
@@ -250,8 +249,8 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
     // 位置相似度: 绝对 px 偏移相对 POS_SIM_CAP_PX 线性衰减, 与画布尺寸彻底解耦 ——
     // 长页不再把大错位稀释成高分, 小卡片与整页同一把尺(POS_SIM_CAP_PX 定义见文件头)
     const offPx = Math.max(Math.abs(p.d.x - p.r.x), Math.abs(p.d.y - p.r.y))
-    const posSim = round1(Math.max(0, 1 - offPx / POS_SIM_CAP_PX))
-    matched.push({ design: p.d.text, render: p.r.text, textSim: round1(p.ts), posSim, _d: p.d, _r: p.r })
+    const posSim = round2(Math.max(0, 1 - offPx / POS_SIM_CAP_PX))
+    matched.push({ design: p.d.text, render: p.r.text, textSim: round2(p.ts), posSim, _d: p.d, _r: p.r })
   }
 
   // Block-Match: 匹配面积的 precision/recall 调和均值(同时惩罚漏检与幻觉块)。
@@ -264,9 +263,9 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
   const recallP = designArea > 0 ? matchedDesignArea / designArea : 1
   const precisionP = renderArea > 0 ? matchedRenderArea / renderArea : 1
   // 无配对 → 块匹配率为 0(设计有文本块但渲染什么都没匹配上时, 不得判为满分)
-  const blockMatchRate = matched.length === 0 ? 0 : round1((2 * recallP * precisionP) / (recallP + precisionP))
+  const blockMatchRate = matched.length === 0 ? 0 : round2((2 * recallP * precisionP) / (recallP + precisionP))
 
-  const positionSimilarity = matched.length ? round1(matched.reduce((s, m) => s + m.posSim, 0) / matched.length) : null
+  const positionSimilarity = matched.length ? round2(matched.reduce((s, m) => s + m.posSim, 0) / matched.length) : null
 
   let colorSimilarity = null
   if (ctx.designImg && ctx.renderImg) {
@@ -275,7 +274,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
       const cs = colorSim(regionAvgColor(ctx.designImg, ctx.designImg.width, m._d), regionAvgColor(ctx.renderImg, ctx.renderImg.width, m._r))
       if (cs != null) sims.push(cs)
     }
-    if (sims.length) colorSimilarity = round1(sims.reduce((a, b) => a + b, 0) / sims.length)
+    if (sims.length) colorSimilarity = round2(sims.reduce((a, b) => a + b, 0) / sims.length)
   }
 
   return {
@@ -283,7 +282,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
     matchedPairs: matched.length,
     positionSimilarity,
     colorSimilarity,
-    avgTextSimilarity: matched.length ? round1(matched.reduce((s, m) => s + m.textSim, 0) / matched.length) : null,
+    avgTextSimilarity: matched.length ? round2(matched.reduce((s, m) => s + m.textSim, 0) / matched.length) : null,
     unmatchedDesign: designBlocks.filter((b) => !usedD.has(b)).map((b) => b.text),
     unmatchedRender: renderBlocks.filter((b) => !usedR.has(b)).map((b) => b.text),
     detail: matched.map(({ _d, _r, ...rest }) => rest),

@@ -12,9 +12,9 @@
 //   元数据溯源          蓝图 canvas.scale = {factor, source: declared|inferred|explicit,
 //                      confidence?} —— 只记事实, 不改字段语义; 未归一时不输出该字段。
 
-const round1 = (n) => Math.round((n || 0) * 100) / 100
+import { round2 } from './numeric.ts'
 /** 长度字段缩放器(绑定因子; 非数值如 "auto" 原样透传) */
-const dimBy = (f) => (v) => (typeof v === 'number' && isFinite(v) ? round1(v * f) : v)
+const dimBy = (f) => (v) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
 
 /** 长度/数组长度缩放(radius 等单值或四角数组) */
 function scaleLength(v, dim) {
@@ -104,7 +104,7 @@ export function detectDesignScale(input = {}) {
       const score = 0.6 * (1 - err / Math.max(ratio, 0.01))
       // 同倍率取最高分(多个逻辑宽命中时)
       scoreBy.set(f, Math.max(scoreBy.get(f) || 0, score))
-      evidence.push(`画布宽 ${w} ≈ 逻辑宽 ${lw} × ${f}(误差 ${round1(err * 100) / 100})`)
+      evidence.push(`画布宽 ${w} ≈ 逻辑宽 ${lw} × ${f}(误差 ${round2(err * 100) / 100})`)
     }
   }
 
@@ -118,7 +118,7 @@ export function detectDesignScale(input = {}) {
         // 带内居中程度给分(越靠近带中心越可信)
         const centerBias = 1 - Math.abs(med - (lo + hi) / 2) / ((hi - lo) / 2)
         scoreBy.set(f, (scoreBy.get(f) || 0) + 0.4 * (0.5 + centerBias / 2))
-        evidence.push(`中位字号 ${round1(med)}px 落在 ${f}× 正文带[${round1(lo)},${round1(hi)}](样本 ${sizes.length})`)
+        evidence.push(`中位字号 ${round2(med)}px 落在 ${f}× 正文带[${round2(lo)},${round2(hi)}](样本 ${sizes.length})`)
       }
     }
   } else {
@@ -142,9 +142,9 @@ export function detectDesignScale(input = {}) {
   if (!(usedWidth && usedFont)) confidence = Math.min(confidence, 0.55)
   return {
     scale: bestScale,
-    confidence: round1(Math.min(1, confidence)),
+    confidence: round2(Math.min(1, confidence)),
     evidence,
-    alternatives: rest.map(([scale, score]) => ({ scale, score: round1(score) })),
+    alternatives: rest.map(([scale, score]) => ({ scale, score: round2(score) })),
   }
 }
 
