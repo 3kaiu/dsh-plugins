@@ -121,7 +121,7 @@ function checkContainer(node, kids, tolerance) {
  * @returns {{engine, containersChecked, containersSkipped, childrenChecked, childrenMatched,
  *            maxDelta, pixelPerfectRatio, worst: Array, verdict}}
  */
-export function verifyLayoutTruth(blueprint, opts = {}) {
+export function verifyLayoutTruth(blueprint, opts: Record<string, any> = {}) {
   const tolerance = opts.tolerance != null ? opts.tolerance : 0.04
   if (!blueprint) return null
   const results = []

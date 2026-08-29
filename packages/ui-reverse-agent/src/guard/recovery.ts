@@ -35,7 +35,7 @@ export function recoveryPlan(error, attempt = 0) {
   }
 }
 
-export async function withRetry(fn, { kind = 'network', maxRetries, delayMs } = {}) {
+export async function withRetry(fn, { kind = 'network', maxRetries, delayMs }: Record<string, any> = {}) {
   const policy = RECOVERY_POLICY[kind] || { retries: 2, delayMs: 800 }
   const retries = maxRetries ?? policy.retries
   const delay = delayMs ?? policy.delayMs

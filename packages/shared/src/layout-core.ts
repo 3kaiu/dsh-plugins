@@ -93,7 +93,7 @@ function mode(values) {
  * @param {{width:number,height:number}} opts.container
  * @param {Array<{id:string,x:number,y:number,width:number,height:number,rotation?:number}>} opts.children
  */
-function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
+function inferLayout({ container, children, tolerance = null, absolutesWhitelist = null }) {
   const TOL_LOCAL = tolerance != null ? tolerance : TOL
   const cw = container.width
   const ch = container.height
@@ -550,9 +550,9 @@ function inferViewportMetadata(canvas) {
  * 通用 1:1 视觉样式属性直读与提取 (extractExactStyles)
  * 严格按照 MasterGo DSL 原始数据映射，禁止任何主观臆测与偏离
  */
-function extractExactStyles(node, styles = {}) {
+function extractExactStyles(node, styles: Record<string, any> = {}) {
   if (!node) return {};
-  const out = {};
+  const out: Record<string, any> = {};
 
   // 1. 尺寸与位置 (绝对/相对精度保留两位)
   const ls = node.layoutStyle || {};
@@ -729,7 +729,7 @@ function richTextRuns(node, styles) {
 
 /** styles 表字体值 → 归一化样式字段(fontValToStyle) */
 function fontValToStyle(v) {
-  const out = {}
+  const out: Record<string, any> = {}
   if (v.size != null) out.fontSize = round1(Number(v.size))
   if (v.weight != null && !isNaN(Number(v.weight))) out.fontWeight = Number(v.weight)
   if (v.lineHeight != null && !isNaN(Number(v.lineHeight))) out.lineHeight = round1(Number(v.lineHeight))
@@ -749,7 +749,7 @@ function resolveFontRef(node, styles) {
   const def = styles[ref];
   const v = def && typeof def === 'object' ? (def.value || def) : null;
   if (!v || typeof v !== 'object') return null;
-  const out = {};
+  const out: Record<string, any> = {};
   if (v.size != null) out.fontSize = v.size;
   if (v.weight != null) out.fontWeight = v.weight;
   if (v.family != null) out.fontFamily = v.family;

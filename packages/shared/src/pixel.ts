@@ -59,7 +59,7 @@ function ensureDir(p) {
   try { fs.mkdirSync(path.dirname(p), { recursive: true }) } catch {}
 }
 
-export function compareScreenshots({ reference, current, mode = 'strict', regions, viewport, heatmapPath } = {}) {
+export function compareScreenshots({ reference, current, mode = 'strict', regions, viewport, heatmapPath }: Record<string, any> = {}) {
   if (!reference || !current) {
     return { error: 'missing reference/current path', aligned: false, ssim: 0, pixelDiffRatio: 1, meanAbsDiff: 255, heatmap: null, regionScores: [] }
   }

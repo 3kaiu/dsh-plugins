@@ -82,9 +82,9 @@ export function scoreReport({
   // 额外
   containerSize,
   completeThreshold,
-} = {}) {
+}: Record<string, any> = {}) {
   // 归一化层分数（显式传入优先，否则从工具输出推导）
-  const layers = {}
+  const layers: Record<string, any> = {}
   layers.struct = typeof struct === 'number' ? struct : structScoreFromCompare(compareLayouts)
   layers.geom = typeof geom === 'number' ? geom : geomScoreFromGeometry(compareGeometry, containerSize)
   layers.pixel = typeof pixel === 'number' ? pixel : pixelScoreFromScreenshots(compareScreenshots)
@@ -92,7 +92,7 @@ export function scoreReport({
   layers.color = typeof color === 'number' ? color : colorScoreFromPalette(comparePalette)
 
   // 缺失层按 1 处理（不参与惩罚）？改为按已有层归一，避免无该层数据时总分被拉低
-  const present = Object.entries(layers).filter(([,v]) => typeof v === 'number')
+  const present = Object.entries(layers).filter(([,v]) => typeof v === 'number') as [string, number][]
   let total
   if (blocked) {
     total = -1

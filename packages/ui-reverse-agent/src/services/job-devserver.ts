@@ -19,7 +19,13 @@ function detectTerminal(ctx) {
 }
 
 export class JobDevServer {
-  constructor({ command, cwd, port, env } = {}, ctx = null) {
+  // JS 动态字段风格: 构造器内赋值
+  opts;
+  ctx;
+  inner;
+  jobId = null;
+  mode = 'raw';
+  constructor({ command, cwd, port, env }: Record<string, any> = {}, ctx = null) {
     this.opts = { command, cwd, port, env }
     this.ctx = ctx
     this.inner = new DevServer(this.opts)
@@ -27,7 +33,7 @@ export class JobDevServer {
     this.mode = 'raw' // 'job' | 'raw'
   }
 
-  async start({ timeoutMs = 30000 } = {}) {
+  async start({ timeoutMs = 30000 }: Record<string, any> = {}) {
     const { available, jobs } = detectJobs(this.ctx)
     if (!available) {
       this.mode = 'raw'

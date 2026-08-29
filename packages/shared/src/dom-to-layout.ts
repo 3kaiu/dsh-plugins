@@ -143,7 +143,7 @@ function buildTree(domDump, tolerance) {
 }
 
 // 对外：输入 domDump，输出与 annotate_layout 同构的标注树
-export function domToLayout(domDump, opts = {}) {
+export function domToLayout(domDump, opts: Record<string, any> = {}) {
   const tolerance = opts.tolerance ?? 2
   const result = buildTree(domDump, tolerance)
   // 转换为 annotate 风格的输出：每节点 {id,name,type,layout,suggestedName,children}

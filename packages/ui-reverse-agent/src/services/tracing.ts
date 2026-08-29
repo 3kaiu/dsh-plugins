@@ -6,10 +6,10 @@ export function createTracer(traceId = `ui-${Date.now().toString(36)}`) {
   const spans = []
   return {
     traceId,
-    start(name, attrs = {}) {
+    start(name, attrs: Record<string, any> = {}) {
       const start = Date.now()
       return {
-        end(endAttrs = {}) {
+        end(endAttrs: Record<string, any> = {}) {
           const end = Date.now()
           spans.push({ name, start, end, dur: end - start, attrs: { ...attrs, ...endAttrs } })
         }

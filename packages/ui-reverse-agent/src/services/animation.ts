@@ -17,7 +17,7 @@ export function extractAnimations(tree) {
 
 export function compareAnimations(refAnims, implAnims, toleranceMs = 50) {
   const mismatches = []
-  const refMap = new Map(refAnims.map(a => [a.id, a]))
+  const refMap = new Map<any, any>(refAnims.map((a: any) => [a.id, a]))
   for (const impl of implAnims) {
     const ref = refMap.get(impl.id)
     if (!ref) continue

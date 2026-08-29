@@ -9,7 +9,7 @@ import { applyCleanTool } from "./clean.ts";
 
 const name = "dsh-layout-infer";
 
-const renderJson = (args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }];
+const renderJson = (args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 
 function apply(ctx) {
   ctx.tools.register(
@@ -74,7 +74,7 @@ function apply(ctx) {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => {
+      execute: async (args) => {
         const stats = { total: 0, containers: 0, flex: 0, absolute: 0 };
         const tree = annotate(Array.isArray(args.nodes) ? args.nodes : [], stats);
         return { stats, tree };

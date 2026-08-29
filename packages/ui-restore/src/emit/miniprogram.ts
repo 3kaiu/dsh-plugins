@@ -63,13 +63,13 @@ export function emitMiniProgram(bp:any, plan:any, assets:any, profile:any, opts:
       // 小程序 <image> 不支持内联 SVG: 引用已落盘矢量文件(asset-resolver 已写盘),
       // 缺失时退回占位并标记 assetMissing(gate 计违约), 严禁空 src 或形状近似替代
       const a = ctx.assetByNode.get(el.nodeId)
-      const src = a?.file ? a.file : ''
+      const src = (a as any)?.file ? (a as any).file : ''
       if(src) wxmlLines.push(`${pad}  <image mode="aspectFit" style="width:100%;height:100%" src="${src}" />`)
       else { wxmlLines.push(`${pad}  <view class="svg-placeholder" style="width:100%;height:100%">SVG</view>`); el.assetMissing = el.assetMissing || el.nodeId }
     }
     if(el.textRuns?.length){
       for(const r of el.textRuns){
-        const rs = styleToWxss(r.style||{})
+        const rs = styleToWxss(r.style||{}, 2)
         const cls2 = `run-${el.nodeId}-${Math.random().toString(36).slice(2,6)}`
         if(rs) wxssLines.push(`.${cls2}{${rs}}`)
         wxmlLines.push(`${pad}  <text class="${cls2}">${esc(r.text)}</text>`)

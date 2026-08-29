@@ -7,6 +7,7 @@
 
 export class Semaphore {
   max;
+  errorFactory;
   active = 0;
   waiters = [];
 

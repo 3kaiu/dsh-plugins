@@ -4,7 +4,14 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 
 export class DevServer {
-  constructor({ command, cwd, port, env } = {}) {
+  // JS 动态字段风格: 构造器内赋值, 显式声明供 tsc 识别
+  command;
+  cwd;
+  port;
+  env;
+  proc = null;
+  url = null;
+  constructor({ command, cwd, port, env }: Record<string, any> = {}) {
     this.command = command // e.g. "pnpm dev" or "npm run dev"
     this.cwd = cwd || process.cwd()
     this.port = port
@@ -13,7 +20,7 @@ export class DevServer {
     this.url = null
   }
 
-  async start({ timeoutMs = 30000, signal } = {}) {
+  async start({ timeoutMs = 30000, signal }: Record<string, any> = {}) {
     if (signal?.aborted) throw new Error('devserver start aborted before dispatch')
     if (!this.command) {
       // 尝试推断
@@ -79,7 +86,7 @@ export class DevServer {
     // 超时不抛错，仅警告（调用方决定）
   }
 
-  async stop({ timeoutMs = 5000 } = {}) {
+  async stop({ timeoutMs = 5000 }: Record<string, any> = {}) {
     const proc = this.proc
     if (!proc) return { stopped: true }
     this.proc = null

@@ -122,7 +122,7 @@ function collectColorsFromNode(n, out) {
     if (c.fill) candidates.push(c.fill)
   }
   if (n.styles) {
-    for (const v of Object.values(n.styles)) {
+    for (const v of Object.values(n.styles) as any[]) {
       if (v && typeof v.value === 'string' && v.value.startsWith('#')) candidates.push(v.value)
       if (Array.isArray(v?.value) && typeof v.value[0] === 'string' && v.value[0].startsWith('#')) candidates.push(v.value[0])
     }

@@ -80,7 +80,7 @@ function connectCdp(wsUrl, deadlineMs) {
       for (const resolve of events.get(msg.method).splice(0)) resolve(msg.params);
     }
   });
-  const call = (method, params = {}) => new Promise((resolve, reject) => {
+  const call = (method, params: Record<string, any> = {}) => new Promise((resolve, reject) => {
     const id = ++seq;
     pending.set(id, { resolve, reject });
     ws.send(JSON.stringify({ id, method, params }));
@@ -187,7 +187,7 @@ async function probeWithPlaywright(target, outBlocks, opts) {
  * @param {string} outBlocks 块清单输出 json(裸数组契约)
  * @param {object} [opts] {png?, width=375, height=812, engine='auto'|'cdp'|'playwright', waitMs=500, timeoutMs}
  */
-export async function probe(target, outBlocks, opts = {}) {
+export async function probe(target, outBlocks, opts: Record<string, any> = {}) {
   const engine = opts.engine ?? 'auto';
   if (engine === 'playwright') return probeWithPlaywright(target, outBlocks, opts);
   if (engine === 'cdp' || engine === 'auto') {

@@ -27,7 +27,7 @@ export function decodePng(buf) {
  * 像素级对比 (comparePng)
  * @returns {{width,height,diffPixels,diffRatio,diffPng:Buffer}}
  */
-export function comparePng(bufA, bufB, opts = {}) {
+export function comparePng(bufA, bufB, opts: Record<string, any> = {}) {
   const threshold = opts.threshold != null ? opts.threshold : 0.1
   const a = decodePng(bufA)
   const b = decodePng(bufB)
@@ -78,7 +78,7 @@ function cropTo(png, width, height) {
  *   allowCrop: 尺寸不一致时允许裁剪到公共区(默认 false, 硬失败防止静默漏检)
  * @returns {{width,height,markedPixels,markedRatio,clusterCount,regions:Array}}
  */
-export function diffRegions(bufA, bufB, opts = {}) {
+export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
   const threshold = opts.threshold ?? 24
   const grid = opts.grid ?? 24
   const minPixels = opts.minPixels ?? 48
@@ -229,7 +229,7 @@ function colorSim(c1, c2) {
  *   canvasWidth/canvasHeight 已废弃(位置相似度改为尺寸无关的 px 制, 入参仅为兼容保留)
  * @returns {{blockMatchRate, matchedPairs, positionSimilarity, colorSimilarity, unmatchedDesign, unmatchedRender}}
  */
-export function blockMetrics(designBlocks, renderBlocks, ctx = {}) {
+export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any> = {}) {
   // 贪心全局配对: 按 文本相似度 desc -> 中心距 asc
   const pairs = []
   for (const d of designBlocks) {
@@ -346,7 +346,7 @@ export function diffToCorrections(bp, diff) {
  * @param {object} [opts] {scale=1, background='#FFFFFF'}
  * @returns {{png:Buffer, width:number, height:number}}
  */
-export function renderGeometrySnapshot(bp, opts = {}) {
+export function renderGeometrySnapshot(bp, opts: Record<string, any> = {}) {
   const scale = opts.scale ?? 1
   const W = Math.round((bp?.canvas?.width ?? 375) * scale)
   const H = Math.round((bp?.canvas?.height ?? 812) * scale)

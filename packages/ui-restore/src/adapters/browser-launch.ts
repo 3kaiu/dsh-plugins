@@ -100,7 +100,7 @@ async function captureWithPlaywright(target, outPng, opts) {
  *   --full    → 仅 playwright 支持; chrome 显式拒绝、auto 自动切 playwright。
  * 引擎选择(--engine): auto=系统Chrome优先(无 --full 时),缺则/需整页则 Playwright。
  */
-export async function captureScreenshot(target, outPng, opts = {}) {
+export async function captureScreenshot(target, outPng, opts: Record<string, any> = {}) {
   const engine = opts.engine ?? flag(args, 'engine') ?? 'auto';
   const wantsFullPage = !!(opts.fullPage ?? hasFlag(args, 'full'));
   if (engine === 'chrome') {

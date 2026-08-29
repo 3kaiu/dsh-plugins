@@ -69,7 +69,7 @@ export interface GenerationPlan {
 const FLEX_MIN_CONFIDENCE = 0.7
 
 /** 蓝图(子树) + Target Profile → Generation Plan */
-export function planGeneration(bp, profile, opts = {}) {
+export function planGeneration(bp, profile, opts: Record<string, any> = {}) {
   const items = []
   const fontMap = new Map()
   const unresolvedAssets = []

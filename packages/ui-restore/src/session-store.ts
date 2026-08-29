@@ -9,7 +9,7 @@ import path from 'node:path'
 /**
  * 读会话。缺文件时: create=true 则写入初始骨架并返回(restore CLI 语义), 否则返回 null(MCP 语义)。
  */
-export function loadSession(p, { create = false } = {}) {
+export function loadSession(p, { create = false }: Record<string, any> = {}) {
   if (!p) return null
   if (!fs.existsSync(p)) {
     if (!create) return null

@@ -46,7 +46,7 @@ import { evaluateRestoration } from "./testing/evaluation.ts";
 import { generateApiDocs, exampleSnippet } from "./services/typedoc.ts";
 
 const name = "dsh-ui-reverse-agent";
-const renderJson = (_args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }];
+const renderJson = (_args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 
 let devServerInstance = null;
 
@@ -176,15 +176,15 @@ function apply(ctx, config) {
     output: {
       schema: { type: "json" },
       render: renderJson,
-      presentationMeta: (_args, value) => (value && value.path ? { path: value.path, fullPage: value.fullPage } : undefined),
+      presentationMeta: (_args, value: any) => (value && value.path ? { path: value.path, fullPage: value.fullPage } : undefined),
     },
-    presentCall: (args) => ({
+    presentCall: (args: any) => ({
       card: "generic",
       kind: "other",
       title: args.selector ? `截图元素 ${args.selector}` : args.fullPage === false ? "视口截图" : "全页截图",
       ...(args.path ? { locations: [{ path: args.path }] } : {}),
     }),
-    presentResult: (_args, result) => (result && !result.isError && result.meta?.path ? { card: "generic", title: `截图完成 → ${result.meta.path}` } : undefined),
+    presentResult: (_args, result: any) => (result && !result.isError && result.meta?.path ? { card: "generic", title: `截图完成 → ${result.meta.path}` } : undefined),
     execute: async (args, exec) => browser.browserScreenshot({ path: args.path, fullPage: args.fullPage, selector: args.selector, signal: exec?.signal }),
   }));
 
@@ -197,7 +197,7 @@ function apply(ctx, config) {
       includeComputed: { type: "boolean", description: "是否包含 computed，默认 true" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    presentCall: (args) => ({ card: "generic", kind: "read", title: `DOM dump ${args.selector || "body"}` }),
+    presentCall: (args: any) => ({ card: "generic", kind: "read", title: `DOM dump ${args.selector || "body"}` }),
     execute: async (args, exec) => browser.browserDomDump({ selector: args.selector, includeComputed: args.includeComputed !== false, signal: exec?.signal }),
   }));
 
@@ -239,7 +239,7 @@ function apply(ctx, config) {
       tolerance: { type: "number", description: "容差 px，默认 2" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => compareGeometry({ referenceTree: args.referenceTree, implementedTree: args.implementedTree, tolerance: args.tolerance }),
+    execute: async (args: any) => compareGeometry({ referenceTree: args.referenceTree, implementedTree: args.implementedTree, tolerance: args.tolerance }),
   }));
 
   ctx.tools.register(defineTool({
@@ -250,7 +250,7 @@ function apply(ctx, config) {
       implementedTree: { type: "json", required: true, description: "实现树" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => compareTypography({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
+    execute: async (args: any) => compareTypography({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
   }));
 
   ctx.tools.register(defineTool({
@@ -264,7 +264,7 @@ function apply(ctx, config) {
       deltaEThreshold: { type: "number", description: "ΔE 阈值，默认 3" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => comparePalette({ referencePalette: args.referencePalette, implementedPalette: args.implementedPalette, referenceTree: args.referenceTree, implementedTree: args.implementedTree, deltaEThreshold: args.deltaEThreshold }),
+    execute: async (args: any) => comparePalette({ referencePalette: args.referencePalette, implementedPalette: args.implementedPalette, referenceTree: args.referenceTree, implementedTree: args.implementedTree, deltaEThreshold: args.deltaEThreshold }),
   }));
 
   // ── Compare: pixel + score ──────────────────────────────────────
@@ -281,16 +281,16 @@ function apply(ctx, config) {
       schema: { type: "json" },
       render: renderJson,
       // 官方卡片契约：meta 投影持久化进 session log，presentResult 从 result.meta 读回
-      presentationMeta: (_args, value) => (value && !value.error ? { ssim: value.ssim, pixelDiffRatio: value.pixelDiffRatio, heatmap: value.heatmap, aligned: value.aligned } : undefined),
+      presentationMeta: (_args, value: any) => (value && !value.error ? { ssim: value.ssim, pixelDiffRatio: value.pixelDiffRatio, heatmap: value.heatmap, aligned: value.aligned } : undefined),
     },
-    presentCall: (args) => ({ card: "generic", kind: "other", title: `截图对比(${args.mode || "strict"})`, rawInput: { reference: args.reference, current: args.current } }),
-    presentResult: (_args, result) => {
+    presentCall: (args: any) => ({ card: "generic", kind: "other", title: `截图对比(${args.mode || "strict"})`, rawInput: { reference: args.reference, current: args.current } }),
+    presentResult: (_args, result: any) => {
       if (!result || result.isError) return undefined;
       const m = result.meta || {};
       if (m.ssim == null) return undefined;
       return { card: "generic", title: `相似度 ${Number(m.ssim).toFixed(3)} ｜ 像素差 ${(Number(m.pixelDiffRatio ?? 0) * 100).toFixed(1)}%${m.heatmap ? ` ｜ 热图 ${m.heatmap}` : ""}` };
     },
-    execute: (args) => compareScreenshots({ reference: args.reference, current: args.current, mode: args.mode }),
+    execute: async (args: any) => compareScreenshots({ reference: args.reference, current: args.current, mode: args.mode }),
   }));
 
   ctx.tools.register(defineTool({
@@ -306,7 +306,7 @@ function apply(ctx, config) {
       blocked: { type: "boolean", description: "是否被 anti_hack_scan 阻断" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => scoreReport({ struct: args.struct, geom: args.geom, pixel: args.pixel, type: args.type, color: args.color, previousTotal: args.previousTotal, blocked: args.blocked }),
+    execute: async (args: any) => scoreReport({ struct: args.struct, geom: args.geom, pixel: args.pixel, type: args.type, color: args.color, previousTotal: args.previousTotal, blocked: args.blocked }),
   }));
 
   // ── Guard: fanout_evaluate（Phase5 扇出，纯测量，可并行） ──────────
@@ -325,7 +325,7 @@ function apply(ctx, config) {
     },
     output: { schema: { type: "json" }, render: renderJson },
     isConcurrencySafe: () => true,
-    execute: (args) => fanoutEvaluate({
+    execute: async (args: any): Promise<any> => fanoutEvaluate({
       mismatch: args.mismatch,
       candidates: args.candidates,
       referenceTree: args.referenceTree,
@@ -347,7 +347,7 @@ function apply(ctx, config) {
       codeStats: { type: "json", description: "可选的仓库静态扫描结果（inlineStyleCount 等）" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => antiHackScan({ domDump: args.domDump, treeStats: args.treeStats, reference: args.reference, codeStats: args.codeStats }),
+    execute: async (args: any) => antiHackScan({ domDump: args.domDump, treeStats: args.treeStats, reference: args.reference, codeStats: args.codeStats }),
   }));
 
   // ── Memory: state_read / state_update ───────────────────────────
@@ -356,7 +356,7 @@ function apply(ctx, config) {
     description: "读取 UI Reconstruction State（.ui-reverse/state.json）",
     parameters: { statePath: { type: "string", description: "state.json 路径，默认 .ui-reverse/state.json" } },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => stateRead({ statePath: args.statePath }),
+    execute: async (args: any) => stateRead({ statePath: args.statePath }),
   }));
 
   ctx.tools.register(defineTool({
@@ -407,7 +407,7 @@ function apply(ctx, config) {
     },
     output: { schema: { type: "json" }, render: renderJson },
     isConcurrencySafe: () => true,
-    execute: (args) => verifyNeutral(args),
+    execute: async (args: any) => verifyNeutral(args),
   }));
 
   // ── Viewport/State 矩阵（doc13 §5.1） ─────────────────────────────────
@@ -420,7 +420,7 @@ function apply(ctx, config) {
       results: { type: "json", description: "可选：已有的逐项分数 [{key,viewport,state,score:{total}}]，传入则直接聚合" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => {
+    execute: async (args: any) => {
       const matrix = expandMatrix({ viewports: args.viewports, states: args.states })
       if (args.results) {
         const agg = aggregateMatrixScores(args.results)
@@ -442,7 +442,7 @@ function apply(ctx, config) {
       projectPalette: { type: "json", description: "项目已有色板 [hex]" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => {
+    execute: async (args: any) => {
       const typo = args.typographyProfile ? mapTypographyTokens(args.typographyProfile, args.projectTypography || []) : []
       const pal = args.palette ? mapPaletteTokens(args.palette, args.projectPalette || []) : []
       return { typography: typo, palette: pal, summary: { typoReuse: typo.filter(t=>t.action==='reuse').length, palReuse: pal.filter(p=>p.action==='reuse').length } }
@@ -460,7 +460,7 @@ function apply(ctx, config) {
       constraints: { type: "json", description: "{spacingScale:[], colorPalette:[], typographyScale:{sizes,weights,families}, borderRadiusScale:[]}" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => checkDesignConstraints({ prop: args.prop, value: args.value, path: args.path }, args.constraints || {}),
+    execute: async (args: any) => checkDesignConstraints({ prop: args.prop, value: args.value, path: args.path }, args.constraints || {}),
   }));
 
   // ── Guard: a11y（可访问性） ───────────────────────────────────────
@@ -472,7 +472,7 @@ function apply(ctx, config) {
       domDump: { type: "json", description: "browser_dom_dump 输出（二选一）" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => checkA11y(args),
+    execute: async (args: any) => checkA11y(args),
   }));
 
   // ── Recovery / CI ──────────────────────────────────────────────────
@@ -484,7 +484,7 @@ function apply(ctx, config) {
       attempt: { type: "number", description: "已重试次数，默认 0" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => recoveryPlan(args.error, args.attempt || 0),
+    execute: async (args: any) => recoveryPlan(args.error, args.attempt || 0),
   }));
 
   ctx.tools.register(defineTool({
@@ -496,7 +496,7 @@ function apply(ctx, config) {
       outDir: { type: "string", description: "输出目录，默认 .ui-reverse/ci" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => {
+    execute: async (args: any) => {
       const report = buildCiReport({ state: args.state, artifacts: args.artifacts || [] })
       const files = writeCiArtifacts(report, { outDir: args.outDir || '.ui-reverse/ci' })
       const gate = ciGate(report)
@@ -512,7 +512,7 @@ function apply(ctx, config) {
       dsl: { type: "json", required: true, description: "MasterGo DSL 或中立树对象" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => checkDslSecurity(args.dsl),
+    execute: async (args: any) => checkDslSecurity(args.dsl),
   }));
 
   ctx.tools.register(defineTool({
@@ -523,7 +523,7 @@ function apply(ctx, config) {
       iteration: { type: "number", description: "当前迭代轮次" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => ensureRollbackPoint({ iteration: args.iteration ?? 0 }, args.cwd || process.cwd()),
+    execute: async (args: any) => ensureRollbackPoint({ iteration: args.iteration ?? 0 }, args.cwd || process.cwd()),
   }));
 
   // ── Metrics / Feedback ─────────────────────────────────────────────
@@ -537,7 +537,7 @@ function apply(ctx, config) {
       hasBrowser: { type: "boolean", description: "是否含浏览器截图" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => estimateLoopCost({ sections: args.sections, viewports: args.viewports || 3, states: args.states || 1, hasBrowser: args.hasBrowser !== false }),
+    execute: async (args: any) => estimateLoopCost({ sections: args.sections, viewports: args.viewports || 3, states: args.states || 1, hasBrowser: args.hasBrowser !== false }),
   }));
 
   ctx.tools.register(defineTool({
@@ -553,7 +553,7 @@ function apply(ctx, config) {
       iteration: { type: "number", description: "轮次" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => captureFeedback(args),
+    execute: async (args: any) => captureFeedback(args),
   }));
 
   // ── Design Critique / System ───────────────────────────────────────
@@ -564,7 +564,7 @@ function apply(ctx, config) {
       blueprint: { type: "json", required: true, description: "blueprint 对象" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => critiqueDesign(args),
+    execute: async (args: any) => critiqueDesign(args),
   }));
 
   ctx.tools.register(defineTool({
@@ -574,7 +574,7 @@ function apply(ctx, config) {
       blueprint: { type: "json", required: true, description: "blueprint 对象" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => generateDesignSystem(args.blueprint),
+    execute: async (args: any) => generateDesignSystem(args.blueprint),
   }));
 
   // ── Orchestration / Handoff ─────────────────────────────────────────
@@ -585,7 +585,7 @@ function apply(ctx, config) {
       mismatches: { type: "json", required: true, description: "mismatches 数组，来自 compare_geometry/compare_layouts" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => planParallelExperts(args.mismatches),
+    execute: async (args: any) => planParallelExperts(args.mismatches),
   }));
 
   ctx.tools.register(defineTool({
@@ -597,7 +597,7 @@ function apply(ctx, config) {
       score: { type: "json", description: "score_report 输出" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: (args) => ({ markdown: generateHandoff(args) }),
+    execute: async (args: any) => ({ markdown: generateHandoff(args) }),
   }));
 
   // ── 生命周期：浏览器 / dev server 随插件 fiber 走 ──

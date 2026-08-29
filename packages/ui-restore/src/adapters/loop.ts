@@ -109,7 +109,7 @@ export function locateRegions(opts) {
  * 定位结果 + 错误分类 → PatchRequest 列表
  * 默认按文件聚类：同一文件的节点合并为一个 request（减 LLM 调用次数）
  */
-export function buildPatchRequests(locateResult, classifyErrors, opts = {}) {
+export function buildPatchRequests(locateResult, classifyErrors, opts: Record<string, any> = {}) {
   const iteration = opts.iteration ?? 0
   const gateFailed = opts.gateFailed ?? []
   // 按 file 分组
@@ -328,7 +328,7 @@ export async function runConvergeLoop(opts) {
     try { fileContents.set(e.file, fs.readFileSync(p, 'utf8')) } catch { /* 缺失 */ }
   }
 
-  let state = { best: null, history: [], regressed: false, shouldStop: false, reason: '' }
+  let state: any = { best: null, history: [], regressed: false, shouldStop: false, reason: '' }
   // bestSnap: 当前已知最优的代码快照(文件内容 + 评分)，用于回归时回滚，保证单调收敛
   let bestSnap = null
   let curTruth = opts.truthPng

@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-export function captureFeedback({ iteration, path: p, prop, expected, actual, userCorrection, reason }, { feedbackPath = '.ui-reverse/feedback.json' } = {}) {
+export function captureFeedback({ iteration, path: p, prop, expected, actual, userCorrection, reason }, { feedbackPath = '.ui-reverse/feedback.json' }: Record<string, any> = {}) {
   const entry = { iteration, path: p, prop, expected, actual, userCorrection, reason, at: new Date().toISOString() }
   try {
     fs.mkdirSync(path.dirname(feedbackPath), { recursive: true })

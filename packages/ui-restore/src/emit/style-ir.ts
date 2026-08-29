@@ -95,7 +95,7 @@ function backgroundWithOpacity(n, opacity) {
 }
 
 function typographyStyle(n, fontStack) {
-  const s = {}
+  const s: Record<string, any> = {}
   if (n.fontSize != null) s.fontSize = num(n.fontSize)
   if (n.fontWeight != null) s.fontWeight = n.fontWeight
   s.lineHeight = n.lineHeight != null ? num(n.lineHeight) : num((n.fontSize ?? 14) * 1.4)
@@ -152,7 +152,7 @@ export function buildElementTree(bp, ctx) {
     const c = ctx.contractById.get(n.id) || {}
     const b = n.bounds || { x: 0, y: 0, width: 0, height: 0 }
     const ly = n.layout || {}
-    const style = {}
+    const style: Record<string, any> = {}
     const children = []
 
     // ---- 定位策略(唯一决策点: contract.layout.strategy) ----
@@ -227,7 +227,7 @@ export function buildElementTree(bp, ctx) {
     }
     if (n.rotation) style.transform = `rotate(${num(n.rotation)}deg)`
 
-    const el = {
+    const el: Record<string, any> = {
       tag: 'div',
       nodeId: n.id,
       name: n.name,

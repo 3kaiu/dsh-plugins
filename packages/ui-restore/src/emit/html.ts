@@ -12,7 +12,7 @@ import { esc } from './escape.ts'
  * 生成 preview.html(自包含单文件, 无网络依赖)。
  * @returns {{files:{path,content}[], map}} map 与 react 版同构(selector 一致)
  */
-export function emitPreviewHtml(bp, plan, assets, profile, opts = {}) {
+export function emitPreviewHtml(bp, plan, assets, profile, opts: Record<string, any> = {}) {
   const ctx = {
     contractById: plan.byId,
     assetByNode: new Map((assets?.assets || []).filter((a) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),

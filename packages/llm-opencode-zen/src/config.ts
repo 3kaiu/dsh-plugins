@@ -46,7 +46,7 @@ export function assertSafeBaseURL(value) {
 }
 
 const DEFAULT_RETRY_POLICY = {
-  mode: "normal",
+  mode: "normal" as const,
   maxRetries: 2,
   retryableCodes: ["RATE_LIMITED", QUOTA_EXCEEDED_CODE, "TIMEOUT", "TRANSPORT", "STREAM_CLOSED", EMPTY_RESPONSE_CODE],
   backoff: {
