@@ -11,10 +11,27 @@
 //   verify   几何守恒 + 像素/块级对比(layout-core.autoHealing / visual-diff)
 //   target   项目理解(Analyzer/Resolver) + 生成契约 + 资产解析 + 受限 Patch(target/)
 export * from "./path-guard.ts";
-export * from "./dsl-clean.ts";
-export * from "./layout-core.ts";
-export * from "./repeat.ts";
-export * from "./system-chrome.ts";
+// 引擎正本已归一 @3kaiu/dsh-plugin-kit(doc19 §2.2 批3): dsl-clean/layout-core/repeat/
+// system-chrome/classify 五个模块的实现并入 kit, 此处按兼容面精确再导出
+// (不 export * 整个 kit —— 避免 semaphore/test-utils 等无关能力进入本包公共 API)
+export {
+  // dsl-clean
+  normalize, clusterBandsAdaptive, semanticName, bandRole, flexInfo, describeStructure, cleanToStandardDsl,
+  // layout-core(纯引擎)
+  TOL, CONTAINER_ABSORB_RATIO, mode, round1, inferLayout, simulateFlex, clusterByAxis,
+  inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata,
+  extractExactStyles, parseNeutralFill, reconstructHierarchy, ROLES,
+  // repeat
+  structureFingerprint, detectRepeatGroups, detectSharedComponents, detectSiblingComponentGroups,
+  // system-chrome
+  systemChromeOf,
+  // classify
+  classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf,
+} from "@3kaiu/dsh-plugin-kit";
+// 蓝图构建层(依赖 design-tokens/text-metrics/yoga-truth/scale 增强层, 批3 分层切割后留在本包)
+export {
+  reverseInferSemanticLayout, sanitizeDslNodes, generateCodeBlueprint, verifyStyleConservation, autoHealingLayoutDiff,
+} from "./blueprint-engine.ts";
 export * from "./yoga-truth.ts";
 export * from "./design-tokens.ts";
 export * from "./text-metrics.ts";
@@ -24,8 +41,7 @@ export * from "./ir/schema.ts";
 export * from "./ir/outline.ts";
 export * from "./ir/ingest.ts";
 export * from "./ir/checklist.ts";
-// 还原决策分类(kind/sizing/position/spacing): 自 layout-infer 壳包归位 core(壳只留工具注册面)
-export * from "./classify.ts";
+// 还原决策分类(kind/sizing/position/spacing): 正本已入 kit(批3), 见上方再导出块
 // Target 层(v4): 项目理解 → Target Profile → 生成契约 → 资产解析 → 受限 Patch + 库映射
 export * from "./target/types.ts";
 export * from "./target/detect.ts";

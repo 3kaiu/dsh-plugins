@@ -78,11 +78,12 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 4. ura react/vue 适配器抽公共 `neutralToDom` walker（num/tag 映射/walk 骨架单份，只留 per-framework style 序列化差异）。
 
 **第 3 批 — 引擎归一专项（D1 甲，需整段时间）**
-1. 双向合并 layout-core 超集进 kit（保留 `tolerance/absolutesWhitelist`）。
-2. classify/dsl-clean 超集同理（dsl-clean 以 ui-restore 几何版为基）。
-3. ui-restore 加 `@3kaiu/dsh-plugin-kit` 依赖，删本地三份，修正失实头注释。
-4. layout-infer 改为薄 re-export（壳包定性已在 doc16 落笔）。
-5. 门禁：全仓 build+test + layout-infer 测试 + ui-restore 引擎测试 + benchmark 2 案例数值比对（diffRatio/块级指标不得回归）。
+实施记录(2026-08-29): 已完成, 采取了"分层切割"而非整文件吸收 ——
+1. v2 layout-core 依赖 design-tokens/text-metrics/yoga-truth/scale 四个增强层(opentype/yoga 重运行时依赖), 整文件进 kit 会把重依赖拖给所有 bundle kit 的插件。故按依赖线切割: **kit 持纯引擎切片**(inferLayout+tolerance/simulateFlex/cluster/grid 几何/样式解析 + reconstructHierarchy/ROLES 附录), ui-restore 留 `blueprint-engine.ts`(reverseInfer→sanitize→generate→自愈/守恒, 引擎函数全部自 kit 导入)。
+2. kit 吸收 v2 的 dsl-clean(几何角色)/classify/repeat/system-chrome; layout-infer classify 改为 kit 再导出(壳包定性落地); kit 版本 0.1.0→0.2.0。
+3. ui-restore 删除本地 5 份引擎文件, index 按兼容面精确再导出(不 export * 整个 kit, 防 semaphore/test-utils 等进入公共 API), kit 以 devDependency 进构建期 bundle(与 ura/layout-infer 同模式, 运行时零新依赖)。
+4. 两项语义裁决随归一定型(双侧测试同步): (a) kit 基底的 inferGrid wrap 回退被 v2 裁决移除(伪 wrap 破坏几何守恒, "抖动网格"用例双侧同语义); (b) v2 spacing 语义下不等间距容器凭 per-pair spacing 通过守恒转正 flex(layout-infer fixture flex 16→19)。
+5. 门禁: 全仓 build+test 全绿(含 fork-parity 哨兵, 分叉归一后自动退化为同一性校验), benchmark 2 案例数值与基线逐项一致。
 
 **第 4 批 — 脚本去重（P2）**
 1. layout-infer verify 四连 → `scripts/verify-lib.mjs` + 四份配置。

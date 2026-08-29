@@ -140,7 +140,9 @@ const jitterGrid = [
   { id: "f", x: 50.2, y: 80.6, width: 40, height: 30 },
 ];
 const jitterResult = inferLayout({ container: { width: 120, height: 120 }, children: jitterGrid });
-check("抖动网格 → flex wrap", jitterResult.position === "flex" && jitterResult.flexWrap === "wrap", true);
+// v2 裁决(doc19 批3 引擎归一): 抖动网格不做伪 wrap —— 伪 wrap 的 flex 指令过不了
+// 几何守恒回验, 与 ui-restore 侧同名用例同语义(降级 absolute, 无 flexWrap 字段)。
+check("抖动网格 → 几何守恒降级(无伪 wrap)", [jitterResult.position, jitterResult.flexWrap], ["absolute", undefined]);
 // 不规则布局 → 不应误判网格
 const irregular = inferLayout({
   container: { width: 200, height: 200 },
@@ -214,7 +216,9 @@ const singleGap = inferLayout({
   ],
 });
 check("两元素单 gap → gap = 20", singleGap.gap, 20);
-// 三元素不等 gap → 无均匀 gap、无 space-between 信号,flex 无法表达 → 视觉验证降级 absolute
+// 三元素不等 gap → v2 spacing 语义(doc19 批3 引擎归一的既定演进):
+// simulateFlex 按 per-pair spacing 逐对复现, 视觉验证零偏差, 不再降级 absolute;
+// spacing 数组(相邻对, 主轴排序)随结果透传供下游按需渲染。
 const noModeGap = inferLayout({
   container: { width: 300, height: 50 },
   children: [
@@ -223,7 +227,7 @@ const noModeGap = inferLayout({
     { id: "c", x: 150, y: 5, width: 40, height: 40 },
   ],
 });
-check("三元素不等 gap → 视觉验证降级 absolute", noModeGap.position, "absolute");
+check("三元素不等 gap → flex + spacing 逐对透传", JSON.stringify([noModeGap.position, noModeGap.spacing]), JSON.stringify(["flex", [20, 40]]));
 // round1 精度
 check("round1 保留 1 位小数", round1(3.14159), 3.1);
 //#endregion

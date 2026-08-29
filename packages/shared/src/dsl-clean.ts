@@ -19,27 +19,14 @@
  *
  * 纯函数, 无副作用。
  *
- * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本副本【冻结】—— v2 正本在
- * packages/ui-restore/src/dsl-clean.ts(角色判定已演进为语言无关的纯几何
- * 信号, 并增 repeat 折叠/system-chrome); 本副本服务 layout-infer/ura, 批3 归一。
+ * ⚠️ 正本归一(doc19 §2.2 批3, 2026-08-29): 本文件已由 v2 正本整体替换并作为
+ * kit 唯一 dsl-clean 实现 —— 角色判定为语言无关的纯几何信号, 增 repeat 折叠/
+ * system-chrome; 原"文本特征角色"冻结副本退役(ui-restore 本地副本同步删除)。
  */
 
-import { inferLayout, TOL } from './layout-core.ts'
-import {
-  round1,
-  isBackgroundRect as isBackgroundRectShared,
-  isContainerCandidate as isContainerCandidateShared,
-  clusterBandsAdaptive as clusterBandsAdaptiveShared,
-  clusterCols as clusterColsShared,
-  bandBBox as bandBBoxShared,
-} from './cluster.ts'
-
-// 复用共享聚类内核（原地保留别名，保持调用方不变）
-const isBackgroundRect = isBackgroundRectShared
-const isContainerCandidate = isContainerCandidateShared
-const clusterBandsAdaptive = clusterBandsAdaptiveShared
-const clusterCols = clusterColsShared
-const bandBBox = bandBBoxShared
+import { inferLayout, round1, TOL, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata, CONTAINER_ABSORB_RATIO } from './layout-core.ts'
+import { detectRepeatGroups } from './repeat.ts'
+import { systemChromeOf } from './system-chrome.ts'
 
 // =====================================================================
 // 1. 归一化: section → 扁平节点(含页面绝对坐标 + 样式信号 + 原始 DSL)
@@ -82,6 +69,73 @@ function normalize({ canvas, sections }) {
 // 2. 分类 + 容器吸收 + 带状聚类(语义角色)
 // =====================================================================
 
+const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
+
+function isBackgroundRect(n, canvas) {
+  if (n._width < canvas.width * 0.8) return false
+  if (Math.abs(n._rotation) > 0.5) return false
+  const isBottomStrip = n._y + n._height >= canvas.height - 10 && n._height <= 100
+  if (isBottomStrip) return false
+  const fill = typeof n._color === 'string' ? n._color : ''
+  if (GRADIENT_RE.test(fill)) return true
+  if (n._effect && /blur|backdrop/i.test(String(n._effect))) return true
+  return false
+}
+
+function isContainerCandidate(n) {
+  if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
+  if (Math.abs(n._rotation) > 0.5) return false
+  return true
+}
+
+/** y 轴自适应聚类(与 layout-core 语义一致): 全宽条独立; gap 断裂 */
+function clusterBandsAdaptive(items, canvas, tol = 2) {
+  const sorted = [...items].sort((a, b) => a._y - b._y)
+  const bands = []
+  for (const n of sorted) {
+    const isFullWidthStrip = n._width >= canvas.width * 0.9 && n._height <= 60
+    const end = n._y + n._height
+    const last = bands[bands.length - 1]
+    const gap = last ? n._y - last.maxEnd : 0
+    if (isFullWidthStrip) {
+      bands.push({ items: [n], maxEnd: end, fullWidth: true })
+      continue
+    }
+    if (last && !last.fullWidth && gap <= 12) {
+      last.items.push(n)
+      last.maxEnd = Math.max(last.maxEnd, end)
+    } else {
+      bands.push({ items: [n], maxEnd: end, fullWidth: false })
+    }
+  }
+  return bands
+}
+
+/** 带内 x 聚类成列 */
+function clusterCols(items, tol = 12) {
+  const sorted = [...items].sort((a, b) => a._x - b._x)
+  const cols = []
+  for (const n of sorted) {
+    const end = n._x + n._width
+    const last = cols[cols.length - 1]
+    if (last && n._x - last.maxEnd <= tol) {
+      last.items.push(n)
+      last.maxEnd = Math.max(last.maxEnd, end)
+    } else {
+      cols.push({ items: [n], maxEnd: end })
+    }
+  }
+  return cols
+}
+
+function bandBBox(band) {
+  const minX = Math.min(...band.items.map((n) => n._x))
+  const minY = Math.min(...band.items.map((n) => n._y))
+  const maxX = Math.max(...band.items.map((n) => n._x + n._width))
+  const maxY = Math.max(...band.items.map((n) => n._y + n._height))
+  return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
+}
+
 // =====================================================================
 // 3. 语义命名
 // =====================================================================
@@ -96,24 +150,24 @@ function firstText(n) {
 
 /** 语义命名: 角色 + 内容启发式 */
 function semanticName(n, role, canvas) {
+  const t = firstText(n)
+  if (role === 'floating-capsule') return t ? 'floating-capsule-' + t : 'floating-capsule'
+  if (role === 'grid-row') return 'grid-row'
+  if (role === 'card-deck') return 'card-deck'
   if (role === 'background') return 'hero-background'
   if (role === 'status-bar') return 'status-bar'
   if (role === 'tab-bar') return 'tab-bar'
-  if (role === 'tab-item') return firstText(n) ? 'tab-item-' + firstText(n) : 'tab-item'
-  if (role === 'sticker') return 'sticker-' + (firstText(n) || n.name)
+  if (role === 'tab-item') return t ? 'tab-item-' + t : 'tab-item'
+  if (role === 'sticker') return 'sticker-' + (t || n.name)
   if (role === 'off-canvas') return 'floating-text'
-  if (role === 'nav-bar') {
-    const t = firstText(n)
-    return t ? 'nav-bar-' + t : 'nav-bar'
-  }
-  if (role === 'learn-card') return 'learn-card'
+  if (role === 'nav-bar') return t ? 'nav-bar-' + t : 'nav-bar'
+  if (role === 'feature-card') return 'feature-card'
   if (role === 'sticker-card') return 'sticker-card'
   if (role === 'stats-row') return 'stats-row'
-  if (role === 'content-tabs') return 'content-tabs'
+  if (role === 'segmented-bar') return 'segmented-bar'
   if (role === 'hero') return 'hero'
   if (role === 'column-group') return 'column-group'
   if (role === 'row-group') return 'row-group'
-  const t = firstText(n)
   return t ? 'item-' + t : n.name
 }
 
@@ -121,6 +175,21 @@ function semanticName(n, role, canvas) {
 function bandRole(band, canvas) {
   const first = band.items[0]
   const texts = band.items.map(firstText).filter(Boolean)
+  
+  // 几何特征 1: 悬浮胶囊 / 底部浮层 (通用几何)
+  if (band.items.length === 1 && isFloatingCapsule(first, canvas)) {
+    return 'floating-capsule'
+  }
+
+  // 几何特征 2: 多列重复网格 (Pad/大屏双列/多列卡片)
+  if (band.items.length >= 2) {
+    const gridInfo = inferGridPattern(band.items.map((n) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
+    if (gridInfo) return 'grid-row'
+    
+    // 几何特征 3: 错位层叠卡片组 (扇形重叠)
+    const deckInfo = inferStaggeredDeck(band.items.map((n) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
+    if (deckInfo) return 'card-deck'
+  }
   // 全宽条
   if (band.fullWidth) {
     if (first._y <= 30) return 'status-bar'
@@ -129,23 +198,24 @@ function bandRole(band, canvas) {
   }
   // 大数字 hero: 高 ≥40 的纯数字文本
   if (band.items.some((n) => /^\d+$/.test(firstText(n) || '') && n._height >= 40)) return 'hero'
-  // 贴纸卡: 内含"贴纸组"(有旋转子层) 且文本含英文贴纸词
+  // 贴纸卡: 内含"贴纸组"(有旋转子层)
   if (band.items.length === 1) {
     const n = band.items[0]
     const t = firstText(n) || ''
     if (band.items.some((x) => x._radius)) return 'card'
     if (/^[a-zA-Z\s]+$/.test(t) && n.type === 'GROUP') return 'sticker'
     if (n._effect && /shadow/i.test(String(n._effect))) {
-      if (t === 'mines' || n.children?.some((c) => c._rotation)) return 'sticker-card'
+      if (n.children?.some((c) => c._rotation)) return 'sticker-card'
+      // 分段切换条: 矮带阴影 + 多段文本 (几何信号: 高≤48 且 rowTexts≥2)
+      const rowTexts = (n._dsl && n._dsl.rowTexts) || []
+      if (n._height <= 48 && rowTexts.length >= 2) return 'segmented-bar'
+      // 特性内容卡: 大面积带阴影容器 (几何信号: 宽≥画布80% 且 高≥80)
+      if (n._width >= canvas.width * 0.8 && n._height >= 80) return 'feature-card'
       return 'card'
     }
   }
-  // 内容 tabs: 文本含"课程/直播/词书"且容器有阴影
-  if (band.items.length === 1 && /课程|直播/.test(texts.join(''))) return 'content-tabs'
-  // 学习卡: 文本含"学单词"
-  if (band.items.length === 1 && /学单词|复习|新词/.test(texts.join(''))) return 'learn-card'
-  // 统计行: 文本含"今日/近7日"等
-  if (/今日|近7日|学会/.test(texts.join(''))) return 'stats-row'
+  // 统计行: 文本含数字(语言无关的量化信号)
+  if (texts.some((t) => /\d/.test(t))) return 'stats-row'
   // 多节点带
   if (band.items.length === 1) {
     if (Math.abs(first._rotation) > 0.5) return 'sticker'
@@ -182,7 +252,7 @@ function leafToDsl(n, origin) {
   if (Math.abs(n._rotation) > 0.5) out.layoutStyle.rotate = round1(n._rotation)
   // 透传原始渲染字段(全部)
   if (dslRoot) {
-    for (const k of ['fill', '_color', 'effect', 'borderRadius', 'strokeColor', 'strokeType', 'strokeAlign', 'strokeWidth', 'opacity', 'text', 'rowTexts', 'textColor', 'textAlign', 'textMode', 'font', 'svgKey', 'svgShortKey', 'svgName', 'path', 'rotate', 'componentInfo', 'componentId', '_mergedVector', 'flexShrink', 'flexGrow']) {
+    for (const k of ['fill', '_color', 'effect', 'borderRadius', 'strokeColor', 'strokeType', 'strokeAlign', 'strokeWidth', 'opacity', 'text', 'rowTexts', 'textColor', 'textAlign', 'textMode', 'font', 'svgKey', 'svgShortKey', 'svgName', 'path', 'rotate', 'componentInfo', 'componentId', '_mergedVector', 'flexShrink', 'flexGrow', 'mask']) {
       if (dslRoot[k] !== undefined) out[k] = dslRoot[k]
     }
     // 内部子节点树原样保留(相对该节点自身的相对坐标)
@@ -238,6 +308,10 @@ function flexInfo(layout) {
     const g = Math.round(layout.gap)
     info.gap = { row: g, column: g }
   }
+  // 不等间距: 透传 per-pair 间距数组(相邻对,主轴排序),供下游按需展开
+  if (Array.isArray(layout.spacing) && layout.spacing.length) {
+    info.spacing = layout.spacing.map((v) => round1(v))
+  }
   if (layout.padding && layout.padding.some((p) => p > 0.01)) {
     // [top, right, bottom, left] — 与框架无关的数字序列
     info.padding = layout.padding.map((v) => Math.round(v))
@@ -268,8 +342,7 @@ export function describeStructure(dsl) {
   const canvas = dsl.meta && dsl.meta.canvas ? dsl.meta.canvas : null
   const lines = []
   if (canvas) lines.push(`画布 ${canvas.width}x${canvas.height}`)
-  const walk = (node, depth, origin) => {
-    const ls = node.layoutStyle || {}
+  const walk = (node, depth, origin) => {    const ls = node.layoutStyle || {}
     const x = origin.x + (ls.relativeX || 0)
     const y = origin.y + (ls.relativeY || 0)
     const pad = '  '.repeat(depth)
@@ -295,13 +368,9 @@ export function describeStructure(dsl) {
     if (node.effect) signals.push('效果:' + (typeof node.effect === 'string' ? node.effect : JSON.stringify(node.effect)))
     if (node.borderRadius) signals.push('圆角:' + node.borderRadius)
     if (node.role) signals.push('角色:' + node.role)
-    if (node.svgShortKey || node.svgName) {
-      const namePart = node.svgName ? node.svgName : ''
-      const keyPart = node.svgShortKey ? node.svgShortKey : ''
-      if (namePart && keyPart) signals.push(`图标:${namePart}(${keyPart})`)
-      else if (namePart) signals.push(`图标:${namePart}`)
-      else signals.push(`图标:${keyPart}`)
-    }
+    if (node.svgShortKey) signals.push('图标:' + node.svgShortKey)
+    if (node.svgName) signals.push('图标名:' + node.svgName)
+    if (systemChromeOf(node, y)) signals.push('系统元素(安全区/状态栏),生成代码时应剔除')
     // 文本内容(短文本直接内联, 长文本保留占位符)
     const texts = []
     if (typeof node.text === 'string') texts.push(node.text)
@@ -309,8 +378,30 @@ export function describeStructure(dsl) {
     const unique = [...new Set(texts.filter(Boolean))]
     if (unique.length) signals.push('文本:"' + unique.join(' / ') + '"')
     const suffix = signals.length ? ' [' + signals.join(' | ') + ']' : ''
-    lines.push(`${pad}${node.name}${dim}${pos}${rot}${layout}${suffix}`)
-    if (node.children) for (const c of node.children) walk(c, depth + 1, { x, y })
+    const repeatTag = node._repeatGroup ? ` 重复项x${node._repeatGroup.count}(列表循环,单项${Math.round(node._repeatGroup.itemWidth)}x${Math.round(node._repeatGroup.itemHeight)}${node._repeatGroup.gap != null ? `,间距${Math.round(node._repeatGroup.gap)}` : ''})` : ''
+    lines.push(`${pad}${node.name}${dim}${pos}${rot}${layout}${suffix}${repeatTag}`)
+    if (node.children) {
+      // 重复组压缩: 首项完整展开并标注 _repeatGroup, 其余项折叠为一行
+      const groups = detectRepeatGroups(node.children)
+      const folded = new Set()
+      const groupAt = new Map()
+      for (const g of groups) {
+        groupAt.set(g.startIndex, g)
+        for (let k = 1; k < g.count; k++) folded.add(g.startIndex + k)
+      }
+      node.children.forEach((c, idx) => {
+        const g = groupAt.get(idx)
+        if (g) {
+          c = Object.assign({}, c) // 不改原节点,仅描述层附加标记
+          c._repeatGroup = g
+          walk(c, depth + 1, { x, y })
+        } else if (folded.has(idx)) {
+          lines.push(`${'  '.repeat(depth + 1)}${c.name} (重复项,结构同上一项)`)
+        } else {
+          walk(c, depth + 1, { x, y })
+        }
+      })
+    }
   }
   walk(root, 0, { x: 0, y: 0 })
   return lines.join('\n')
@@ -356,7 +447,9 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
       if (n === c || assigned.has(n.id) || absorbedContainers.has(n.id) || standaloneContainers.has(n.id)) return false
       const inside = n._x >= c._x - 2 && n._y >= c._y - 2 && n._x + n._width <= c._x + c._width + 2 && n._y + n._height <= c._y + c._height + 2
       if (!inside) return false
-      return n._width * n._height < c._width * c._height * 0.9
+      // 吸收比统一引用 CONTAINER_ABSORB_RATIO(=0.95, 与蓝图代 reverseInferSemanticLayout 单一来源)。
+      // 历史: 本模块曾为 0.9(更保守), 两代管线同输入会产出不同容器树, 已归一。
+      return n._width * n._height < c._width * c._height * CONTAINER_ABSORB_RATIO
     })
     if (kids.length > 0) {
       absorbed.set(c.id, kids)
@@ -532,6 +625,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
       canvas: { width: canvas.width, height: canvas.height },
       rootName: rootMeta && rootMeta.name ? rootMeta.name : 'root',
       source: rootMeta && rootMeta.source ? rootMeta.source : '',
+      viewport: inferViewportMetadata(canvas),
     },
     styles,
     root,
@@ -547,10 +641,13 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
 function detectContainerRole(c, kids) {
   const texts = [...kids.map(firstText), ...(c._dsl && c._dsl.rowTexts ? c._dsl.rowTexts.map((t) => (typeof t === 'string' ? t : t.text)) : [])].filter(Boolean)
   const t = texts.join('')
-  if (c._effect && /shadow/i.test(String(c._effect)) && /学单词|新词|复习/.test(t)) return 'learn-card'
   if (kids.some((k) => Math.abs(k._rotation) > 0.5)) return 'sticker-card'
-  if (/学单词|新词|复习/.test(t)) return 'learn-card'
-  if (/课程|直播/.test(t)) return 'content-tabs'
+  if (c._effect && /shadow/i.test(String(c._effect))) {
+    // 矮条带阴影 -> 分段切换条; 高体量阴影容器 -> 特性卡; 其余 -> 普通卡 (纯几何, 不依赖文本内容)
+    if (c._height <= 48) return 'segmented-bar'
+    if (c._height >= 80) return 'feature-card'
+    return 'card'
+  }
   if (/^[a-zA-Z\s]+$/.test(t) && kids.length) return 'sticker-card'
   return 'card'
 }

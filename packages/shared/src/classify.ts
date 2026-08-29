@@ -1,9 +1,8 @@
 
 import { extractExactStyles } from './layout-core.ts';
 
-// ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本文件是 v2【正本】(超集: 增
-// renderDecisionOf/suggestAssetFileName/buildRepeatMap); layout-infer 壳包内
-// 同名副本已冻结(其 import 指向 kit 引擎), 批3 归一。
+// ⚠️ 正本归一(doc19 §2.2 批3, 2026-08-29): 本文件已入 kit 正典, layout-infer
+// 壳包改为自 kit 再导出; 原 294 行冻结副本退役。
 // classify.js — 还原决策分类层(Step 1)
 // 输入: MasterGo DSL({styles, nodes, components}) 或纯几何节点树
 // 输出: 每节点 {kind, sizing, position, spacing} 语义决策,均带 confidence + reason;

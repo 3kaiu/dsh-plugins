@@ -1,6 +1,6 @@
 {
   "name": "@3kaiu/dsh-plugin-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared building blocks for DeepSeek Harness plugins: quota tracking, concurrency semaphore, layout inference core, test utilities.",
   "type": "module",
   "main": "dist/index.js",

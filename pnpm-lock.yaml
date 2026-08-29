@@ -93,6 +93,10 @@ importers:
       zod:
         specifier: ^4.4.0
         version: 4.4.3
+    devDependencies:
+      '@3kaiu/dsh-plugin-kit':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/ui-reverse-agent:
     dependencies:

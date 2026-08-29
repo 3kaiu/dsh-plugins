@@ -20,7 +20,9 @@
   "bin": {
     "ui-restore": "./dist/cli.js"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@3kaiu/dsh-plugin-kit": "workspace:*"
+  },
   "files": [
     "dist"
   ]

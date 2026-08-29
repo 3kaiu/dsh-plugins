@@ -3,8 +3,8 @@
 // 验证 cleanToStandardDsl:
 //   1) 输出标准 DSL 形态(语义容器树 / relativeX/Y / flexContainerInfo)
 //   2) 清洗后重新渲染(absolute + flex), 每个节点的页面绝对 bbox 与输入一致(≤2.5px)
-//   3) 语义命名: hero-background/status-bar/nav-bar/learn-card/sticker-card/
-//      stats-row/content-tabs/tab-bar/tab-item-* 全部出现
+//   3) 语义命名: hero-background/status-bar/nav-bar/feature-card/sticker-card/
+//      stats-row/segmented-bar/tab-bar/tab-item-* 全部出现(v2 几何角色, doc19 批3)
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -145,7 +145,10 @@ const walkNames = (ns) => {
   }
 };
 walkNames(result.root.children);
-const mustHave = ["hero-background", "status-bar", "nav-bar", "learn-card", "sticker-card", "stats-row", "content-tabs", "tab-bar"];
+// v2 几何角色语义(doc19 批3 引擎归一): 语言绑定的 learn-card/content-tabs
+// (靠"学单词/课程"文本特征)退役, 由语言无关的纯几何角色 feature-card(大面
+// 积阴影容器)/segmented-bar(矮带阴影多段) 取代。
+const mustHave = ["hero-background", "status-bar", "nav-bar", "feature-card", "sticker-card", "stats-row", "segmented-bar", "tab-bar"];
 for (const m of mustHave) assert([...names].some((n) => n.startsWith(m)), "缺少语义容器 " + m + ", 实际: " + [...names].join(","));
 const wantTabs = ["tab-item-首页", "tab-item-对话", "tab-item-学习", "tab-item-场景", "tab-item-我的"];
 for (const t of wantTabs) assert([...names].includes(t), "缺少 " + t);

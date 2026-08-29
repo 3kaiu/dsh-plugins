@@ -1,5 +1,6 @@
 'use strict'
 
+
 /**
  * layout-infer: 从绝对坐标反推 flex 布局语义(布局反推内核)
  *
@@ -10,46 +11,53 @@
  * 与官方 DSL 的 flexContainerInfo 字段对齐:
  *   { flexDirection, alignItems, mainSizing, crossSizing, gap, padding }
  *
- * 纯函数,无副作用。位于 @3kaiu/dsh-plugin-kit,供 dsh-layout-infer 等
- * 插件及 MasterGo 等外部工具通过 ESM import 复用
+ * 纯函数,无副作用。自 @3kaiu/dsh-plugin-kit/layout-core 分叉后独立演进
  * (不再污染 globalThis——宿主进程全局对象不属于插件)。
  *
- * ⚠️ 分叉声明(doc19 §2.2 批2, 2026-08-29): 本副本【冻结】—— v2 正本在
- * packages/ui-restore/src/layout-core.ts(功能超集: inferGridPattern/
- * inferStaggeredDeck/system-chrome/CONTAINER_ABSORB_RATIO 等), 本副本
- * 服务 layout-infer/ura。行为修改先评估正本是否同步; 批3 双向合并归一。
+ * ⚠️ 正本归一(doc19 §2.2 批3, 2026-08-29): v2 引擎已整体并入 kit 作为唯一实现,
+ * 并吸收 kit 基底的 tolerance/absolutesWhitelist 参数(默认行为与 v2 一致);
+ * kit 基底的 inferGrid wrap 回退被 v2 裁决移除(伪 wrap 破坏几何守恒)。
+ * 本文件是【纯引擎切片】: 只含几何推断与样式解析, 不依赖任何运行时增强
+ * (opentype/yoga 留在 ui-restore 的蓝图构建层, 避免所有 bundle kit 的插件被拖入重依赖)。
  */
 
-import {
-  GRADIENT_RE,
-  round1,
-  isBackgroundRect as isBackgroundRectShared,
-  isContainerCandidate as isContainerCandidateShared,
-  clusterBandsAdaptive as clusterBandsAdaptiveShared,
-  clusterCols as clusterColsShared,
-  bandBBox as bandBBoxShared,
-  bandSize as bandSizeShared,
-  bandMinX as bandMinXShared,
-  bandMinY as bandMinYShared,
-  colBBox as colBBoxShared,
-  colSize as colSizeShared,
-} from './cluster.ts'
+import { isBackgroundRect, isContainerCandidate, clusterBandsAdaptive, clusterCols, bandBBox, bandSize, bandMinX, bandMinY, colBBox, colSize, round1 } from './cluster.ts'
 
 export const TOL = 2 // 像素容差(整数坐标设计稿)
 const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 
-// 兼容导出：原地保留常量与函数引用，便于外部按旧路径导入
-const GRADIENT_RE_ALIAS = GRADIENT_RE
-const isBackgroundRect = isBackgroundRectShared
-const isContainerCandidate = isContainerCandidateShared
-const clusterBandsAdaptive = clusterBandsAdaptiveShared
-const clusterCols = clusterColsShared
-const bandBBox = bandBBoxShared
-const bandSize = bandSizeShared
-const bandMinX = bandMinXShared
-const bandMinY = bandMinYShared
-const colBBox = colBBoxShared
-const colSize = colSizeShared
+/** 机器命名检测: 设计工具自动生成的无语义名(编组 45/矩形 6509/容器 17/蒙版组 2/Frame 328…) */
+const MACHINE_NAME_RE = /^(编组|组|组合|矩形|矩形组|椭圆|直线|路径|蒙版|蒙版组|遮罩|容器|组件|框架|切片|帧|图层|形状|画板|页面|frame|group|rect(?:angle)?|oval|line|path|vector|layer|mask|slice|shape|ellipse|instance|component|section|artboard|canvas)[\s_#\-]*\d*(\s*copy\d*)*$/i
+
+function firstDescendantText(node, depth = 0) {
+  if (!node || depth > 3) return null
+  // text 双形态兼容: 字符串直读; runs 数组拼接(MasterGo 常态)
+  const t = typeof node.text === 'string' ? node.text
+    : Array.isArray(node.text) ? node.text.map((r) => (r && r.text) || '').join('')
+    : null
+  if (t && t.trim()) return t.trim()
+  for (const c of Array.isArray(node.children) ? node.children : []) {
+    const t2 = firstDescendantText(c, depth + 1)
+    if (t2) return t2
+  }
+  return null
+}
+
+/**
+ * 语义命名净化 (semanticNodeName): 名字只服务 LLM 理解, 不参与几何/样式/指纹。
+ * 设计者命名原样保留; 机器名/空名合成为可读标签:
+ * 首个后代文本 > 图标名(svgName) > 类型序号 —— 消除产物名字里 ~40% 的纯噪声。
+ */
+function semanticNodeName(node, rawNode, seq) {
+  const raw = String(rawNode?.name ?? node?.name ?? '').trim()
+  if (raw && !MACHINE_NAME_RE.test(raw)) return raw
+  const t = firstDescendantText(node)
+  if (t) return `${node.type || 'NODE'}:${t.slice(0, 16)}`
+  const icon = rawNode?.svgName || node?.svgName
+  if (icon) return `${node.type || 'NODE'}:${String(icon).slice(0, 24)}`
+  // 机器名/空名且无可派生语义: 统一为 类型#序号(短、一致、无伪语义)
+  return `${node.type || 'NODE'}#${seq}`
+}
 
 /** 众数: 出现次数最多的值;无唯一众数返回 null
  *
@@ -84,8 +92,6 @@ function mode(values) {
  * @param {object} opts
  * @param {{width:number,height:number}} opts.container
  * @param {Array<{id:string,x:number,y:number,width:number,height:number,rotation?:number}>} opts.children
- * @param {number} [opts.tolerance] 像素容差，默认 TOL=2；DOM 严格模式可传 1
- * @param {Array<string>} [opts.absolutesWhitelist] 参考本身即 absolute 的白名单 id，不计入违规
  */
 function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   const TOL_LOCAL = tolerance != null ? tolerance : TOL
@@ -94,7 +100,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   const kids = children || []
 
   if (kids.length === 0) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [], reason: '无子节点' }
   }
 
   // 旋转节点永远不参与 flex 推断(贴纸/装饰)
@@ -103,7 +109,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   const absolutes = rotated.map((k) => k.id)
 
   if (stable.length === 0) {
-    return { position: 'absolute', confidence: 0.5, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.5, absolutes: [...absolutes], reason: '全部子节点带旋转' }
   }
 
   const centersX = stable.map((k) => k.x + k.width / 2)
@@ -131,7 +137,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
 
     // 子元素溢出容器(flex 无法表达负 padding) → 放弃反写
     if (pL < -0.5 || pT < -0.5 || pR < -0.5 || pB < -0.5) {
-      return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes] }
+      return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes], reason: '子元素溢出容器' }
     }
 
     // 水平居中: alignItems center,只保留垂直方向的显式 padding
@@ -147,6 +153,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
         position: 'flex',
         confidence: 0.75,
         absolutes,
+        reason: '单子节点水平居中',
       }, cw, ch, stable, absolutes, TOL_LOCAL)
     }
     // 垂直居中: justifyContent center,水平位置由 padding 决定
@@ -162,9 +169,10 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
         position: 'flex',
         confidence: 0.7,
         absolutes,
+        reason: '单子节点垂直居中',
       }, cw, ch, stable, absolutes, TOL_LOCAL)
     }
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: '单子节点无对齐信号' }
   }
 
   // 行/列判定: 支持「边缘对齐」「中心对齐」两种信号
@@ -192,23 +200,24 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   }
 
   if (!isRow && !isColumn) {
-    // 行列都不成立 → 尝试网格(wrap)
-    const grid = inferGrid(stable, TOL_LOCAL)
-    if (grid) {
-      return { ...grid, position: 'flex', confidence: 0.8, absolutes }
-    }
-    // 混合布局: 返回 absolute,把每个子单独标记
-    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k) => k.id)] }
+    // 行列都不成立 → absolute(stack 语义), 几何由 bounds 差值守恒。
+    // 注意(批3 归一裁决): kit 基底曾有 inferGrid wrap 回退, v2 正本刻意移除 ——
+    // 抖动网格被伪判 wrap 后几何守恒失败("无伪 wrap"), 以 v2 语义为准。
+    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k) => k.id)], reason: '无行列对齐信号' }
   }
 
   const main = isRow ? 'row' : 'column'
   // 主轴排序
   const sorted = [...stable].sort((a, b) => (main === 'row' ? a.x - b.x : a.y - b.y))
+  // gapsAll: 相邻对(按主轴排序)的全部间距,含负值(重叠);spacing 数组的语义来源
+  // gaps(仅≥0)保留给 mode/space-between 判定
+  const gapsAll = []
   const gaps = []
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1]
     const cur = sorted[i]
     const gap = main === 'row' ? cur.x - (prev.x + prev.width) : cur.y - (prev.y + prev.height)
+    gapsAll.push(round1(gap))
     if (gap >= 0) gaps.push(round1(gap))
   }
   let gap = mode(gaps)
@@ -243,7 +252,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
       }
     }
   }
-  const hasUniformGap = gap !== null && gaps.filter((g) => Math.abs(g - gap) <= 0.6).length >= gaps.length - 1
+  const hasUniformGap = gap !== null && !gapsAll.some((g) => g < -0.01) && gaps.filter((g) => Math.abs(g - gap) <= 0.6).length >= gaps.length - 1
 
   // alignItems: 交叉轴对齐
   let alignItems = inferCrossAlign(stable, isRow, TOL_LOCAL)
@@ -256,7 +265,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   const padding = [padTop, padRight, padBottom, padLeft]
   // 负 padding = 子元素溢出容器(flex 无法表达),放弃反写保证视觉不变
   if (padding.some((p) => p < -0.5)) {
-    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes], reason: '子元素溢出容器(负边距)' }
   }
 
   // sizing: 容器主轴/交叉轴是否被内容撑起
@@ -273,17 +282,26 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
   if (alignItems === 'center') confidence += 0.05
   if (Math.abs(padLeft - padRight) > 0.01 && Math.abs(padTop - padBottom) > 0.01) confidence -= 0.1
 
+  // 判定依据摘要: 主轴信号来源(+等间距), 随蓝图输出供 LLM 评估推理可信度
+  const mainSig = main === 'row'
+    ? (topAligned ? '顶对齐' : centerYAligned ? '中心对齐' : '底对齐')
+    : (leftAligned ? '左对齐' : centerXAligned ? '中心对齐' : '右对齐')
+  const reason = `${main}(${mainSig})${hasUniformGap ? '+等间距' : ''}`
+
   const result = {
     flexDirection: main,
     alignItems,
     justifyContent,
     gap: hasUniformGap ? gap : null,
+    // 不等间距/负间距时携带 per-pair 间距数组(相邻对,按主轴排序),供下游 spacing 渲染
+    spacing: hasUniformGap || justifyContent === 'space-between' ? undefined : gapsAll.slice(),
     padding,
     mainSizing,
     crossSizing,
     position: 'flex',
     confidence: round1(Math.min(confidence, 1)),
     absolutes,
+    reason,
   }
 
   // 视觉保真验证: 模拟反写后的子元素位置,偏差超阈值 → 降级 absolute(视觉不变优先)
@@ -297,7 +315,7 @@ function inferLayout({ container, children, tolerance, absolutesWhitelist }) {
     if (d > maxDelta) maxDelta = d
   }
   if (maxDelta > TOL_LOCAL) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: 'flex模拟偏差>2px,降级保真' }
   }
   return result
 }
@@ -314,7 +332,7 @@ function maybeDowngrade(result, cw, ch, stable, absolutes, tolerance = TOL) {
     if (d > maxDelta) maxDelta = d
   }
   if (maxDelta > tolerance) {
-    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes] }
+    return { position: 'absolute', confidence: 0.4, absolutes: [...absolutes], reason: 'flex模拟偏差>2px,降级保真' }
   }
   return result
 }
@@ -327,7 +345,10 @@ function maybeDowngrade(result, cw, ch, stable, absolutes, tolerance = TOL) {
 function simulateFlex(container, inferred, kids) {
   const dir = inferred.flexDirection === 'row' ? 'row' : 'column'
   const pad = inferred.padding || [0, 0, 0, 0]
+  // 不等间距: spacing 数组按相邻对(主轴排序)给出 per-pair gap;否则用统一 gap
+  const spacing = Array.isArray(inferred.spacing) ? inferred.spacing : null
   const gap = inferred.gap || 0
+  const gapAt = (i) => (spacing ? (i > 0 && i - 1 < spacing.length ? spacing[i - 1] : 0) : gap)
   const mainSize = dir === 'row' ? container.width : container.height
   const crossSize = dir === 'row' ? container.height : container.width
   const mainDim = dir === 'row' ? 'width' : 'height'
@@ -350,14 +371,16 @@ function simulateFlex(container, inferred, kids) {
     })
   }
 
-  const content = sorted.reduce((s, k) => s + (k[mainDim] || 0), 0) + gap * (sorted.length - 1)
+  let content = sorted.reduce((s, k) => s + (k[mainDim] || 0), 0)
+  for (let i = 1; i < sorted.length; i++) content += gapAt(i)
   let offset = padMainStart
   if (inferred.justifyContent === 'center') offset = padMainStart + (mainContent - content) / 2
   const res = []
   let cursor = offset
-  for (const k of sorted) {
+  for (let i = 0; i < sorted.length; i++) {
+    const k = sorted[i]
     res.push(placeIn(dir, k, cursor, crossContent, padCrossStart, inferred))
-    cursor += (k[mainDim] || 0) + gap
+    cursor += (k[mainDim] || 0) + gapAt(i + 1)
   }
   return res
 }
@@ -418,25 +441,339 @@ function clusterByAxis(items, posOf, sizeOf, tol) {
   return clusters
 }
 
+/** 多列网格规律推导: 识别等宽/等高、均匀水平间隙的 N 列排列 (通用几何推导) */
+function inferGridPattern(children, tol = TOL) {
+  if (!children || children.length < 2) return null;
+  const rows = clusterByAxis(children, (k) => k.y, (k) => k.height, tol);
+  if (rows.length === 0) return null;
+  const firstRow = rows[0].items;
+  if (firstRow.length >= 2) {
+    const widths = firstRow.map((k) => k.width);
+    const heights = firstRow.map((k) => k.height);
+    const isUniformW = Math.max(...widths) - Math.min(...widths) <= tol;
+    const isUniformH = Math.max(...heights) - Math.min(...heights) <= tol;
+    if (isUniformW && isUniformH) {
+      const sorted = [...firstRow].sort((a, b) => a.x - b.x);
+      const gaps = [];
+      for (let i = 1; i < sorted.length; i++) {
+        gaps.push(round1(sorted[i].x - (sorted[i - 1].x + sorted[i - 1].width)));
+      }
+      const colGap = mode(gaps) ?? gaps[0] ?? 0;
+      return {
+        isGrid: true,
+        columns: firstRow.length,
+        columnGap: colGap,
+        itemWidth: round1(widths[0]),
+        itemHeight: round1(heights[0]),
+        rowsCount: rows.length,
+      };
+    }
+  }
+  return null;
+}
+
+/** 错位/扇形层叠卡片推导: 识别局部重叠的一组尺寸相近卡片 (通用几何推导) */
+function inferStaggeredDeck(children, tol = TOL) {
+  if (!children || children.length < 2) return null;
+  const sorted = [...children].sort((a, b) => a.x - b.x);
+  const widths = sorted.map((k) => k.width);
+  const heights = sorted.map((k) => k.height);
+  const maxW = Math.max(...widths);
+  const minW = Math.min(...widths);
+  const maxH = Math.max(...heights);
+  const minH = Math.min(...heights);
+  // 容差: 尺寸差异在 25% 以内即视为同级错位卡片
+  const isSimilarW = (maxW - minW) / maxW <= 0.25 || (maxW - minW) <= 24;
+  const isSimilarH = (maxH - minH) / maxH <= 0.25 || (maxH - minH) <= 24;
+  if (!isSimilarW || !isSimilarH) return null;
+  let isContinuous = true;
+  const offsets = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    const gap = cur.x - (prev.x + prev.width);
+    if (gap < -prev.width * 0.95 || gap > 24) {
+      isContinuous = false;
+      break;
+    }
+    offsets.push(round1(cur.x - prev.x));
+  }
+  if (isContinuous && offsets.length > 0) {
+    return {
+      isDeck: true,
+      count: sorted.length,
+      stepOffset: mode(offsets) ?? offsets[0],
+      itemWidth: round1(widths[0]),
+      itemHeight: round1(heights[0]),
+    };
+  }
+  return null;
+}
+
+/** 悬浮胶囊/浮层判定: 水平居中 + 距底部有间隙 + 紧凑尺寸 (通用几何推导) */
+function isFloatingCapsule(n, canvas) {
+  if (!n || !canvas) return false;
+  const w = n._width ?? n.width ?? 0;
+  const h = n._height ?? n.height ?? 0;
+  const x = n._x ?? n.x ?? 0;
+  const y = n._y ?? n.y ?? 0;
+  if (w < 80 || w > canvas.width * 0.85) return false;
+  if (h > 65 || h < 24) return false;
+  const centerX = x + w / 2;
+  if (Math.abs(centerX - canvas.width / 2) > 24) return false;
+  const bottomClearance = canvas.height - (y + h);
+  if (bottomClearance < 10 || bottomClearance > 220) return false;
+  return true;
+}
+
+/** 视口断点自适应推导: 画布规格 -> 设备断点与基准画板尺寸 (通用几何推导) */
+function inferViewportMetadata(canvas) {
+  const w = canvas?.width || 375;
+  const h = canvas?.height || 812;
+  const isCompact = w < 600;
+  const isMedium = w >= 600 && w <= 1024;
+  const isExpanded = w > 1024;
+  const deviceType = isCompact ? 'phone' : isMedium ? 'tablet' : 'desktop';
+  const standardDesignWidth = isCompact ? 375 : isMedium ? 820 : 1440;
+  return {
+    canvas: { width: w, height: h },
+    deviceType,
+    standardDesignWidth,
+    isCompact,
+    isMedium,
+    isExpanded,
+    aspectRatio: round1(w / h),
+  };
+}
+
+/**
+ * 通用 1:1 视觉样式属性直读与提取 (extractExactStyles)
+ * 严格按照 MasterGo DSL 原始数据映射，禁止任何主观臆测与偏离
+ */
+function extractExactStyles(node, styles = {}) {
+  if (!node) return {};
+  const out = {};
+
+  // 1. 尺寸与位置 (绝对/相对精度保留两位)
+  const ls = node.layoutStyle || {};
+  if (ls.width != null) out.width = round1(ls.width);
+  if (ls.height != null) out.height = round1(ls.height);
+  if (ls.relativeX != null) out.x = round1(ls.relativeX);
+  if (ls.relativeY != null) out.y = round1(ls.relativeY);
+  if (ls.rotate != null && Math.abs(ls.rotate) > 0.01) out.rotation = round1(ls.rotate);
+
+  // 2. 圆角提取 (支持单值或四角独立值)
+  if (node.borderRadius != null) {
+    if (Array.isArray(node.borderRadius)) {
+      out.borderRadius = node.borderRadius.map(round1);
+    } else {
+      out.borderRadius = round1(node.borderRadius);
+    }
+  } else if (node.rectangleCornerRadii != null) {
+    out.borderRadius = node.rectangleCornerRadii.map(round1);
+  }
+
+  // 3. 不透明度
+  if (node.opacity != null && node.opacity < 1) {
+    out.opacity = round1(node.opacity);
+  }
+
+  // 4. 阴影与滤镜 (Effects: DROP_SHADOW, INNER_SHADOW, BACKGROUND_BLUR)
+  const rawEffects = node.effects || node.styles?.effects || [];
+  const effects = [];
+  for (const eff of rawEffects) {
+    if (eff.type === 'DROP_SHADOW' || eff.type === 'INNER_SHADOW') {
+      effects.push({
+        type: eff.type,
+        offsetX: round1(eff.offset?.x ?? 0),
+        offsetY: round1(eff.offset?.y ?? 0),
+        blur: round1(eff.radius ?? eff.blur ?? 0),
+        spread: round1(eff.spread ?? 0),
+        color: eff.color || eff.colorHex || 'rgba(0,0,0,0.1)',
+      });
+    } else if (eff.type === 'BACKGROUND_BLUR' || eff.type === 'LAYER_BLUR') {
+      effects.push({
+        type: eff.type,
+        blur: round1(eff.radius ?? eff.blur ?? 0),
+      });
+    }
+  }
+  if (effects.length > 0) out.effects = effects;
+
+  // 4.5 填充直读与结构化: 纯色→color; 渐变/位图→fill 结构; paint_xxx 引用经 styles 表解析
+  const fillRaw = resolveFillValue(node, styles)
+  if (fillRaw) {
+    const parsed = parseNeutralFill(fillRaw)
+    if (parsed.type === 'solid') out.color = parsed.value
+    else out.fill = parsed
+  }
+
+  // 4.6 描边 (MasterGo 平铺字段 strokeColor/strokeWidth/strokeAlign/strokeType; 颜色支持 paint 引用)
+  const sw = Number(node.strokeWidth ?? 0)
+  const strokeColor = resolvePaintRef(node.strokeColor, styles)
+  if (sw > 0 || strokeColor) {
+    out.stroke = {}
+    if (strokeColor) out.stroke.color = strokeColor
+    if (sw > 0) out.stroke.width = round1(sw)
+    if (node.strokeAlign) out.stroke.align = String(node.strokeAlign).toLowerCase()
+    if (node.strokeType) out.stroke.style = String(node.strokeType).toLowerCase()
+  }
+
+  // 5. 文本样式 (内联 textStyle 优先; 缺失时解析 dsl.styles 字体引用表)
+  if (node.type === 'TEXT') {
+    const ts = { ...(resolveFontRef(node, styles) || {}), ...(node.textStyle || {}) };
+    if (ts.fontSize != null) out.fontSize = round1(Number(ts.fontSize));
+    if (ts.fontWeight != null) {
+      const w = Number(ts.fontWeight);
+      if (!isNaN(w)) out.fontWeight = w;
+    }
+    if (ts.fontFamily != null) out.fontFamily = ts.fontFamily;
+    // lineHeight 仅接受数值(auto/-1 等表示字体默认, 不臆造)
+    const lh = Number(ts.lineHeight);
+    if (ts.lineHeight != null && !isNaN(lh)) out.lineHeight = round1(lh);
+    // letterSpacing: 数值直读; "2%" 百分比字串按字号换算为 px
+    if (ts.letterSpacing != null) {
+      let lsSp = Number(ts.letterSpacing);
+      if (isNaN(lsSp) && typeof ts.letterSpacing === 'string' && ts.letterSpacing.trim().endsWith('%')) {
+        lsSp = (parseFloat(ts.letterSpacing) / 100) * (out.fontSize || 14);
+      }
+      if (!isNaN(lsSp)) out.letterSpacing = round1(lsSp);
+    }
+    if (ts.textAlign != null) out.textAlign = ts.textAlign;
+  }
+
+  return out;
+}
+
+/** paint 引用解析: "paint_xxx" → styles 表值(数组取首个); 支持 {url} 图片对象形态; 其余字符串原样返回 */
+function resolvePaintRef(ref, styles) {
+  if (ref == null || ref === '') return null
+  if (typeof ref === 'string' && /^paint_/.test(ref)) {
+    const def = styles && typeof styles === 'object' ? styles[ref] : null
+    const v = def && typeof def === 'object' ? (def.value ?? null) : def ?? null
+    const first = Array.isArray(v) ? v[0] : v
+    if (first && typeof first === 'object') {
+      // 图片型 paint: {url, filters?} — 返回 url, 由 parseNeutralFill 归一为 image fill
+      if (typeof first.url === 'string' && first.url) return first.url
+      return null
+    }
+    return typeof first === 'string' ? first : null
+  }
+  return typeof ref === 'string' ? ref : null
+}
+
+/** 节点填充取值: _color 优先, 其次字面量 fill(paint 引用解析); 无则 null */
+function resolveFillValue(node, styles) {
+  if (typeof node._color === 'string' && node._color) return node._color
+  if (typeof node.fill === 'string' && node.fill) return resolvePaintRef(node.fill, styles)
+  return null
+}
+
+/**
+ * 中立填充解析 (parseNeutralFill): 填充字符串 → 结构化事实, 不绑定任何技术栈。
+ * - url(...) → {type:'image', src}                      位图/资源引用
+ * - linear-gradient(angle, stops...) →
+ *     {type:'gradient', kind:'linear', angle, stops:[{color, position(%)}]}
+ *     颜色支持 #RGB/#RRGGBB/#RRGGBBAA/rgb()/rgba(); stop 缺省按序均布补齐
+ * - 其余 → {type:'solid', value}
+ */
+function parseNeutralFill(str) {
+  const s = String(str ?? '').trim()
+  if (!s) return null
+  if (/^url\(/i.test(s)) return { type: 'image', src: s }
+  // 纯 http(s) 资源 URL(图片型 paint 引用解析产物) → image
+  if (/^https?:\/\/\S+$/i.test(s)) return { type: 'image', src: s }
+  const lg = s.match(/^linear-gradient\(\s*([^,]+?)\s*,([\s\S]+)\)$/i)
+  if (lg) {
+    const stops = []
+    const stopRe = /(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\b[a-zA-Z]+\b)\s*([0-9.]+%)?/g
+    for (const m of lg[2].matchAll(stopRe)) {
+      stops.push({ color: m[1], ...(m[2] != null ? { position: parseFloat(m[2]) } : {}) })
+    }
+    if (stops.length >= 2) {
+      stops.forEach((st, i) => { if (st.position == null) st.position = round1((i / (stops.length - 1)) * 100) })
+      return { type: 'gradient', kind: 'linear', angle: parseGradientAngle(lg[1]), stops }
+    }
+  }
+  return { type: 'solid', value: s }
+}
+
+/** 渐变方向词/角度 → 统一角度(度, 顺时针, 0=向上) */
+function parseGradientAngle(str) {
+  const t = String(str).trim().toLowerCase()
+  const deg = t.match(/^(-?[0-9.]+)deg$/)
+  if (deg) return round1(Number(deg[1]))
+  const dir = { 'to top': 0, 'to right': 90, 'to bottom': 180, 'to left': 270, 'to top right': 45, 'to bottom right': 135, 'to bottom left': 225, 'to top left': 315 }
+  return dir[t] != null ? dir[t] : 180
+}
+
+/**
+ * 富文本逐 run 样式 (richTextRuns): text 为多段且各段字体参数不同质时返回
+ * [{text, fontSize?, fontWeight?, lineHeight?, letterSpacing?}], 否则 null
+ * (同质混排只留整串字段, 防冗余数据污染下游)。
+ */
+function richTextRuns(node, styles) {
+  if (!Array.isArray(node.text) || node.text.length < 2) return null
+  const runs = []
+  for (const t of node.text) {
+    if (!t || typeof t.text !== 'string') continue
+    const def = t.font && styles && typeof styles === 'object' ? styles[t.font] : null
+    const v = def && typeof def === 'object' ? (def.value || def) : null
+    const s = v && typeof v === 'object' ? fontValToStyle(v) : {}
+    runs.push({ text: t.text, ...s })
+  }
+  if (runs.length < 2) return null
+  const sig = (r) => JSON.stringify([r.fontSize, r.fontWeight, r.lineHeight, r.letterSpacing])
+  return new Set(runs.map(sig)).size > 1 ? runs : null
+}
+
+/** styles 表字体值 → 归一化样式字段(fontValToStyle) */
+function fontValToStyle(v) {
+  const out = {}
+  if (v.size != null) out.fontSize = round1(Number(v.size))
+  if (v.weight != null && !isNaN(Number(v.weight))) out.fontWeight = Number(v.weight)
+  if (v.lineHeight != null && !isNaN(Number(v.lineHeight))) out.lineHeight = round1(Number(v.lineHeight))
+  if (v.letterSpacing != null && !isNaN(Number(v.letterSpacing))) out.letterSpacing = round1(Number(v.letterSpacing))
+  return out
+}
+
+/**
+ * 解析 MasterGo dsl.styles 字体引用表: TEXT 节点经 text[].font 引用
+ * {font_xxx: {value: {size, weight, lineHeight, letterSpacing, family}}}。
+ * 返回归一化 textStyle 形状({fontSize,fontWeight,lineHeight,letterSpacing,fontFamily}),
+ * 无引用或表缺失时返回 null。
+ */
+function resolveFontRef(node, styles) {
+  const ref = Array.isArray(node.text) ? node.text.find((t) => t && t.font)?.font : null;
+  if (!ref || !styles || typeof styles !== 'object') return null;
+  const def = styles[ref];
+  const v = def && typeof def === 'object' ? (def.value || def) : null;
+  if (!v || typeof v !== 'object') return null;
+  const out = {};
+  if (v.size != null) out.fontSize = v.size;
+  if (v.weight != null) out.fontWeight = v.weight;
+  if (v.family != null) out.fontFamily = v.family;
+  if (v.lineHeight != null) out.lineHeight = v.lineHeight;
+  if (v.letterSpacing != null) out.letterSpacing = v.letterSpacing;
+  return Object.keys(out).length ? out : null;
+}
+
+/** 容器吸收面积比: 子项面积须严格小于父项 × 此值才算可吸收子节点(dsl-clean 与 reverse 推理共用, 单一来源) */
+export const CONTAINER_ABSORB_RATIO = 0.95
+
+/**
+ * 通用纯堆叠 DSL 反向推理真实布局架构 (reverseInferSemanticLayout)
+ * 纯几何拓扑驱动: 无业务假设，从绝对坐标扁平堆叠图元中推导出生产级组件树与 Flex/Grid 嵌套结构
+ *
+ * 核心拓扑阶段:
+ * 1. 视口与层级切片 (Z-Order Stratification): 提取底层背景与顶层悬浮覆盖层 (Overlay/Floating)
+ * 2. 空间包含递归聚类 (Recursive Spatial Containment): 从小面积到大面积构建多级嵌套容器
+ * 3. 容器内轴向投影解构 (Intra-Container Axis Projection): 自动聚合垂直文本列 (Column) 与水平图文槽位 (Row)
+ * 4. 多列网格规整化 (Grid Matrix Regularization): 自动将同构多卡片提升为 Grid / Wrap
+ */
+
 // =====================================================================
-// 层级重建内核 (hierarchy reconstruction)
-// ---------------------------------------------------------------------
-// 输入: 画布尺寸 + 一组兄弟节点(绝对坐标)。这些节点可能来自:
-//   - 拍平稿(无 flexContainerInfo, 全部根级兄弟) —— 需要恢复容器树
-//   - 任意 DSL 的某一层
-// 输出: 重建后的语义树: 每节点带 role(语义角色)、bbox、layout(inferLayout
-//   语义, 与官方 flexContainerInfo 对齐)、children(嵌套容器)。
-//
-// 管线(从开源方案提炼, imgcook 的 Y 轴重叠分组 / Locofy 的分组递归 /
-// Allen 区间代数 / Gestalt 预聚类):
-//   0. 分类: 越界元素(off-canvas) / 背景装饰层(background) / 旋转贴纸(sticker)
-//   1. 容器吸收: 视觉容器候选(FRAME/GROUP/INSTANCE, 大尺寸/有特征)吸收
-//      bbox 完全包含的其他节点
-//   2. 带状聚类: 剩余顶层节点按 y 聚类成带(全宽条独立成带; gap 断裂;
-//      y 重叠合并)
-//   3. 带内分组: 每带内按 x 聚类成列
-//   4. 语义角色: status-bar / nav-bar / tab-bar / card / section / row ...
-//   5. 递归: 每个容器 inferLayout 反推 flex 语义
+// kit 基底独有(批3 合并保留): reconstructHierarchy/ROLES 重建层。inferGrid wrap 回退未保留 —— v2 裁决见 inferLayout 内注释
 // =====================================================================
 
 const ROLES = {
@@ -739,28 +1076,5 @@ function buildContainer(n, role) {
   }
 }
 
-export { inferLayout, mode, simulateFlex, clusterByAxis, reconstructHierarchy, ROLES }
 
-/** 网格推断: 规整行列矩阵 → flexWrap wrap */
-function inferGrid(children, tol) {
-  const rows = clusterByAxis(children, (k) => k.y, (k) => k.height, tol)
-  const cols = clusterByAxis(children, (k) => k.x, (k) => k.width, tol)
-  if (rows.length < 2 || cols.length < 2) return null
-  // 所有行高一致 & 所有列宽一致
-  const heights = rows.map((r) => Math.max(...r.items.map((k) => k.height)))
-  const widths = cols.map((c) => Math.max(...c.items.map((k) => k.width)))
-  if (Math.max(...heights) - Math.min(...heights) > tol) return null
-  if (Math.max(...widths) - Math.min(...widths) > tol) return null
-  // 每个 cell 单节点
-  const expected = rows.length * cols.length
-  if (children.length !== expected) return null
-  return {
-    flexDirection: 'row',
-    alignItems: 'start',
-    flexWrap: 'wrap',
-    gap: null,
-    padding: null,
-    mainSizing: 'auto',
-    crossSizing: 'auto',
-  }
-}
+export { round1, mode, inferLayout, simulateFlex, clusterByAxis, inferGridPattern, inferStaggeredDeck, isFloatingCapsule, inferViewportMetadata, extractExactStyles, parseNeutralFill, reconstructHierarchy, ROLES, MACHINE_NAME_RE, semanticNodeName, richTextRuns };
