@@ -13,6 +13,7 @@ function dim(n) {
 }
 
 class Collector {
+  map: Map<any, number>;
   constructor() {
     this.map = new Map() // value -> count
   }
@@ -56,7 +57,7 @@ function hexToRgbaStr(color, fallbackAlpha = 1) {
  *   蓝图内嵌时传 false 防止产物膨胀 —— token 定义本身已含全部信息)
  * @returns {{tokens: object, aliases: Array<{nodeId, property, token}>, stats: object}}
  */
-export function extractDesignTokens(blueprint, opts = {}) {
+export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
   if (!blueprint) return null
   const includeAliases = opts.includeAliases !== false
   const textColor = new Collector(), bgColor = new Collector()

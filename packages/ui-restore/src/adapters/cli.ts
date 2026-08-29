@@ -14,7 +14,7 @@ import path from 'node:path';
 import {
   validateBlueprint, blueprintRegion,
   blueprintToOutline, verifyLayoutTruth, comparePng, blockMetrics, decodePng, diffRegions,
-  evaluateGate, computeScore,
+  evaluateGate, computeScore, lintDesignExport,
 } from '../index.ts';
 // 编排逻辑单一来源(审计 P2 收敛): 蓝图构建/产物包/叶子遍历统一走 adapters/pipeline.ts
 import { buildBlueprint, writeArtifactBundle, collectLeaves } from './pipeline.ts';
@@ -138,7 +138,7 @@ async function main() {
     const idsFlag = flag(args, '--ids');
     if (!designPath || (!rectFlag && !idsFlag)) { console.error('用法: ui-restore region <design.json> --rect x,y,width,height | --ids id1,id2 [--dir <outDir>]'); process.exit(1); }
     const { bp } = await runBlueprint(designPath);
-    const sel = rectFlag
+    const sel: any = rectFlag
       ? (() => { const [x, y, width, height] = rectFlag.split(',').map(Number); return { x, y, width, height }; })()
       : { ids: idsFlag.split(',').map((s) => s.trim()) };
     const region = blueprintRegion(bp, sel);

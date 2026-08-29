@@ -49,7 +49,7 @@ function push(list, name, confidence, evidence) {
 export function detectProjectFacts(projectDir) {
   const facts = {
     framework: [], language: [], styling: [], build: [], componentLibraries: [],
-    entry: {}, notes: [],
+    entry: {} as Record<string, any>, notes: [],
   }
   const pkg = readJson(path.join(projectDir, 'package.json'))
   const deps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) }

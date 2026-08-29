@@ -261,10 +261,10 @@ function sanitizeDslNodes(nodes = [], canvas = { width: 375, height: 812 }) {
  * - justifyContent/alignItems 缺省=start; gap 缺省=0; padding 缺省=[0,0,0,0], 非缺省才输出
  * - 尺寸唯一真值是 bounds; layout 不重复携带 width/height
  */
-function neutralLayoutOf(layoutInfo = {}, exactStyles = {}) {
+function neutralLayoutOf(layoutInfo: Record<string, any> = {}, exactStyles: Record<string, any> = {}) {
   const li = layoutInfo || {};
   const normEnd = (v) => (v === 'flex-end' ? 'end' : v === 'flex-start' ? 'start' : v);
-  const out = {
+  const out: Record<string, any> = {
     role: li.position === 'absolute' ? 'stack'
       : li.flexDirection === 'row' ? 'row'
       : li.flexDirection === 'column' ? 'column' : 'box',
@@ -374,7 +374,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
     const cleanName = semanticNodeName(node, rawNode, nameSeq);
     if (cleanName !== rawName) semanticRenames++;
 
-    const bp = {
+    const bp: Record<string, any> = {
       id: node.id,
       name: cleanName,
       type: node.type,
@@ -517,7 +517,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   const { tree: blueprintTreeOut, pageShell } = buildPageShell(blueprintTree);
 
   // 4. 全局回验门禁: 蓝图树 vs 清洗后原节点逐 id 比对绝对几何
-  let diffReport = autoHealingLayoutDiff(cleanNodes, [...blueprintTree, ...floatingsBlueprint]);
+  let diffReport: any = autoHealingLayoutDiff(cleanNodes, [...blueprintTree, ...floatingsBlueprint]);
 
   // 4.5 回验驱动降级: delta>2px 的子树不再信任其 flex 指令,
   // 责任容器(position 漂移)降级 absolute/Stack,尺寸漂移保持 directive 但标注供下游警惕
@@ -541,7 +541,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   // 5. 布局真值自愈: Yoga 标准求解器回验 flex 推断(启发式公式之外的第二道独立门禁)。
   //    主轴失配的均匀 gap 容器 -> 精确化为逐对 spacing 数组(与设计几何逐项对齐), 复验收敛。
   //    纯中立机制: 只改写蓝图的数值字段, 不引入任何技术栈语义。
-  let truthReport = verifyLayoutTruth({ tree: blueprintTree, floatings: floatingsBlueprint });
+  let truthReport: any = verifyLayoutTruth({ tree: blueprintTree, floatings: floatingsBlueprint });
   let truthRefinedContainers = 0;
   if (truthReport && truthReport.worst.length > 0) {
     const badIds = new Set(truthReport.worst.map((w) => w.containerId));
@@ -645,7 +645,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
  * @param {object} styles dsl.styles 引用表
  * @param {Set} exemptIds 不参与比对的 id(如背景层, 蓝图中单独输出)
  */
-function verifyStyleConservation(originalNodes = [], roots = [], styles = {}, exemptIds = new Set()) {
+function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<string, any> = {}, exemptIds = new Set()) {
   const origMap = new Map();
   for (const n of originalNodes) if (n && n.id) origMap.set(n.id, n);
   const bpMap = new Map();

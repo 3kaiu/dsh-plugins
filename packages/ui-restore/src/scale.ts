@@ -61,7 +61,7 @@ function nearestFactor(ratio) {
 }
 
 /** 收集观测字号: 内联 textStyle 优先, 其次 dsl.styles 字体引用表 */
-function collectFontSizes(nodes = [], styles = {}) {
+function collectFontSizes(nodes = [], styles: Record<string, any> = {}) {
   const sizes = []
   for (const n of nodes) {
     if (!n || n.type !== 'TEXT') continue
@@ -87,7 +87,7 @@ function median(nums) {
  * @returns {{scale:number, confidence:number, evidence:string[], alternatives:Array}|null}
  *   scale=建议除数(原稿为 scale 倍画板); 无画布信息返回 null。
  */
-export function detectDesignScale(input = {}) {
+export function detectDesignScale(input: Record<string, any> = {}) {
   const w = input?.canvas?.width || 0
   if (!w) return null
   const nodes = Array.isArray(input.nodes) ? input.nodes : []
@@ -156,7 +156,7 @@ export function detectDesignScale(input = {}) {
  *
  * @returns {{nodes:Array, styles:object}}
  */
-export function applyDesignScale(nodes = [], styles = {}, factor = 1) {
+export function applyDesignScale(nodes = [], styles: Record<string, any> = {}, factor = 1) {
   if (!isFinite(factor) || factor <= 0 || factor === 1) return { nodes, styles }
   const dim = dimBy(factor)
   const walkNode = (n) => {
@@ -226,7 +226,7 @@ function scaleTextStyle(ts, f) {
  * - 'auto': 启发式检测(source='inferred', 低置信不采纳回退 1)
  * - 其余/null: 不归一, 返回 null(蓝图不带 scale 字段)
  */
-export function resolveDesignScale(scale, detectInput = {}) {
+export function resolveDesignScale(scale, detectInput: Record<string, any> = {}) {
   if (scale == null || scale === '' || scale === 1 || scale === '1') return null
   if (scale === 'auto') {
     const d = detectDesignScale(detectInput)

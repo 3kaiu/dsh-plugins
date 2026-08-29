@@ -25,7 +25,7 @@ export function confineOrNull(rootDir, rel) {
 }
 
 /** 按收容根实例化一个单参守卫（工具 handler 内统一用它包路径参数）。 */
-export function makeGuard({ root } = {}) {
+export function makeGuard({ root }: Record<string, any> = {}) {
   const ROOT = root || guardRoot();
   return {
     ROOT,

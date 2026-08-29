@@ -31,7 +31,7 @@ const FONT_CANDIDATES = [
  * 尝试加载可用字体; 成功后蓝图 TEXT 节点会带 measured 字段。
  * 异步: 需在调用 generateCodeBlueprint 前 await 本函数(可选步骤)。
  */
-export async function initTextMetrics(opts = {}) {
+export async function initTextMetrics(opts: Record<string, any> = {}) {
   if (_loadAttempted && !opts.force) return measurerInfo()
   _loadAttempted = true
   const paths = opts.fontPath ? [opts.fontPath, ...FONT_CANDIDATES] : FONT_CANDIDATES

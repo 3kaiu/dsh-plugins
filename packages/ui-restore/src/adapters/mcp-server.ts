@@ -31,7 +31,8 @@ import { loadSession as loadSessionFile, saveSession as saveSessionFile } from '
 
 // 路径越界防护（2026-08 接线）：守卫实现见 ./path-guard.mjs（可单测）。
 // 所有工具参数路径（读/写）解析后必须落在收容根内，防 ../ 逃逸与任意文件读写。
-const { confineUnder, confineTo } = makeGuard();
+const { confineUnder } = makeGuard();
+import { confineTo } from '../path-guard.ts'; // makeGuard 不返回 confineTo —— 原解构得到 undefined, ui_restore_generate 会运行时崩溃(真 bug)
 const readJson = (p) => readJsonStrict(confineUnder(p));
 const readBuf = (p) => fs.readFileSync(confineUnder(p));
 const optIn = (p) => (p ? confineUnder(p) : undefined);
@@ -40,7 +41,7 @@ const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string'
 // 维度钳制: 防止超大 canvas/width/height 触发大内存分配(DoS)
 const clampDim = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(100000, Math.floor(n))) : null; };
 
-const server = new McpServer({ name: 'ui-restore', version: '1.0.0' });
+const server: any = new McpServer({ name: 'ui-restore', version: '1.0.0' }); // any: SDK 泛型重载对动态工具面(zod schema 对象)过严, 运行时以运行期校验为准
 
 // 主入口 workflow tool(d2c: 普通情况下 Agent 只需要这一个)。确定性 pipeline, 非第二层 LLM。
 server.tool(
@@ -206,7 +207,7 @@ server.tool(
   async ({ truth_png, render_png, blueprint_path, truth_blocks, render_blocks, canvas }) => {
     const pT = readBuf(truth_png), pR = readBuf(render_png);
     const pixel = comparePng(pT, pR);
-    const out = { pixel: { diffPixels: pixel.diffPixels, diffRatio: pixel.diffRatio } };
+    const out: Record<string, any> = { pixel: { diffPixels: pixel.diffPixels, diffRatio: pixel.diffRatio } };
     if (truth_blocks && render_blocks) {
       const [W, H] = canvas ? canvas.split('x').map(Number) : [pixel.width, pixel.height];
       const cw = clampDim(W) ?? pixel.width, ch = clampDim(H) ?? pixel.height;

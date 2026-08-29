@@ -10,7 +10,7 @@ import type { ProjectFacts, TargetProfile, Candidate, Decision } from './types.t
 
 const UNKNOWN = 'unknown'
 
-function pick(list, opts = {}) {
+function pick(list, opts: Record<string, any> = {}) {
   // 显式覆盖优先(用户输入 > 探测), 溯源标记 explicit
   if (opts.overrides != null && opts.overrides !== '') {
     return { chosen: opts.overrides, decision: { chosen: opts.overrides, because: '显式指定', confidence: 1 } }
@@ -27,7 +27,7 @@ function pick(list, opts = {}) {
  * @param {ProjectFacts} facts
  * @param {object} [opts] overrides: 显式指定某维(用户输入优先于探测); assetDir 覆盖
  */
-export function resolveProfile(facts, opts = {}) {
+export function resolveProfile(facts, opts: Record<string, any> = {}) {
   const o = opts.overrides || {}
   const framework = pick(facts.framework, { overrides: o.framework })
   const language = pick(facts.language, { unknown: 'javascript', overrides: o.language }) // js 是任意构建器都可跑的安全底
@@ -64,7 +64,7 @@ export function resolveProfile(facts, opts = {}) {
 }
 
 /** 便捷入口: 项目目录 → (facts, profile)。Analyzer 结果一并返回供审计。 */
-export function analyzeProject(projectDir, opts = {}) {
+export function analyzeProject(projectDir, opts: Record<string, any> = {}) {
   const facts = detectProjectFacts(projectDir)
   const profile = resolveProfile(facts, opts)
   return { facts, profile }

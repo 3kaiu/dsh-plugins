@@ -125,7 +125,7 @@ const LINT_MACHINE_NAME_RE = /(编组|矩形|椭圆|蒙版|路径|组 \d)|^(fram
  * @param {object} [opts] expectSections: 预期 section 数(MCP 枚举时已知)
  * @returns {{ok:boolean, checks:Array<{level:'PASS'|'WARN'|'FAIL'|'INFO', check:string, detail:string}>}}
  */
-export function lintDesignExport(input, opts = {}) {
+export function lintDesignExport(input, opts: Record<string, any> = {}) {
   const rawSections = Array.isArray(input) ? input : (input?.sections || [])
   const flat = ingestDesignExport(input)
   const checks = []
