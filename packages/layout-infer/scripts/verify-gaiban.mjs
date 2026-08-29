@@ -1,24 +1,17 @@
 // verify-gaiban.mjs — 《改版》首页 DSL 还原质量自检
 // 用法:node verify-gaiban.mjs [fixtureDir]
+// 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛)
 import fs from "node:fs";
-import { createRequire } from "node:module";
-const require = createRequire("/tmp/pw/package.json");
-const { chromium } = require("playwright-core");
+import { launchProbe } from "./verify-lib.mjs";
 
 const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban";
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 
-const browser = await chromium.launch({
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true, args: ["--disable-gpu", "--no-first-run"],
-});
-const page = await browser.newPage({ viewport: { width: 500, height: draft.canvas.height + 60 }, deviceScaleFactor: 2 });
-await page.goto(`file://${DIR}/demo.html`, { waitUntil: "networkidle" });
-await page.waitForTimeout(800);
-
-const origin = await page.evaluate(() => {
-  const r = document.getElementById("canvas").getBoundingClientRect();
-  return { x: r.x, y: r.y };
+const { page, origin, screenshotTo, close } = await launchProbe({
+  url: `file://${DIR}/demo.html`,
+  viewport: { width: 500, height: draft.canvas.height + 60 },
+  deviceScaleFactor: 2,
+  waitMs: 800,
 });
 
 // 1) 画布背景
@@ -135,6 +128,6 @@ console.log(`7. 头部图标 svg 平移(源码): ${aligned ? "translate(12.00,7.
 
 console.log(`5. 文本溢出: ${overflow}`);
 
-await page.screenshot({ path: `${DIR}/demo-full.png`, fullPage: true });
+await screenshotTo(`${DIR}/demo-full.png`);
 console.log("截图: demo-full.png");
-await browser.close();
+await close();

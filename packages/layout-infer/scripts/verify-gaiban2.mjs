@@ -1,8 +1,7 @@
 // 《改版·课程》稿(819×1178)验证:几何/状态栏/位图/组件 —— 期望值全部来自 sections 列表坐标链
-import { createRequire } from "node:module";
+// 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛)
 import { readFileSync } from "node:fs";
-const require = createRequire("/tmp/pw/package.json");
-const { chromium } = require("playwright-core");
+import { launchProbe } from "./verify-lib.mjs";
 
 const URL = "file:///Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo.html";
 const checks = [
@@ -23,17 +22,7 @@ const checks = [
   ["tab 学习", "学习", 498, 1125, 28, 47],
   ["tab 我的", "我的", 701, 1125, 28, 47],
 ];
-const browser = await chromium.launch({
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true, args: ["--disable-gpu", "--no-first-run"],
-});
-const page = await browser.newPage({ viewport: { width: 900, height: 1300 }, deviceScaleFactor: 1 });
-await page.goto(URL, { waitUntil: "networkidle" });
-await page.waitForTimeout(2500);
-const origin = await page.evaluate(() => {
-  const r = document.getElementById("canvas").getBoundingClientRect();
-  return { x: r.x, y: r.y };
-});
+const { page, origin, screenshotTo, close } = await launchProbe({ url: URL, viewport: { width: 900, height: 1300 }, deviceScaleFactor: 1, waitMs: 2500 });
 let pass = 0;
 for (const [name, needle, ex, ey] of checks) {
   const hit = await page.evaluate(({ needle, ex, ey, ox, oy }) => {
@@ -104,6 +93,6 @@ if (slice && Math.abs(slice.x - 140) <= 2 && Math.abs(slice.y - 237.76) <= 2 && 
   console.log(`统计区切图: 0/1 通过`);
 }
 
-await page.screenshot({ path: "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo-full.png", fullPage: true });
+await screenshotTo("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo-full.png");
 console.log("截图: demo-full.png");
-await browser.close();
+await close();

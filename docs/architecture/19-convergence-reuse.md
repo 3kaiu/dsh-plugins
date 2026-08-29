@@ -86,9 +86,10 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 5. 门禁: 全仓 build+test 全绿(含 fork-parity 哨兵, 分叉归一后自动退化为同一性校验), benchmark 2 案例数值与基线逐项一致。
 
 **第 4 批 — 脚本去重（P2）**
-1. layout-infer verify 四连 → `scripts/verify-lib.mjs` + 四份配置。
-2. install-local `--release` 与 install-remote 去重；run-visual-loop 双子去重。
-3. `shared/test/verify-clean.ts` 同模式复用 verify-lib 思路。
+实施记录(2026-08-29):
+1. 已做: layout-infer 浏览器族 verify 三连(gaiban/gaiban2/demo)抽 `scripts/verify-lib.mjs` —— Chrome 探测(修掉 3 处硬编码 macOS 路径, 换机器/CI 即失效的典型拷贝漂移)/启动/网络空闲/canvas 原点/截图/关会话单点维护; 文本探针等 fixture 专属断言留在各脚本(强行合一只有间接成本)。verify-neutral 是纯 JSON 中立性扫描, 与浏览器族不同族, 保持独立。注: /tmp/pw(playwright-core dev 安装)不在时浏览器探针不可运行, 改动经语法校验 + 机械映射评审。
+2. 暂缓(决策记录): install-local `--release` 与 install-remote 去重、run-visual-loop 双子去重 —— 两者是部署关键路径, 本环境无法端到端验证 dsh 宿主安装流; 收益(~55 行)低于引入回归的风险, 留待下次需要改这两个脚本时顺路抽取。
+3. shared/test/verify-clean.ts 与四连脚本同模式但属测试断言(有独立容差语义), 不强行共用 verify-lib。
 
 ### 2.3 验收口径
 

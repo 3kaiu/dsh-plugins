@@ -1,27 +1,18 @@
 // verify-demo.mjs — DSL 还原质量自检(模型无读图能力时的确定性替代)
 // 用法:node verify-demo.mjs [fixtureDir]
 // 断言项:section 几何 ±2px、内部关键节点几何 ±3px、文本溢出、真实重叠、字体加载、样式探针
-// 注:playwright-core 为 dev 验证工具依赖,安装在 /tmp/pw(独立 npm 目录,仓库不引入 workspace 冲突)
+// 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛); playwright-core 仍在 /tmp/pw
 import fs from "node:fs";
-import { createRequire } from "node:module";
-const require = createRequire("/tmp/pw/package.json");
-const { chromium } = require("playwright-core");
+import { launchProbe } from "./verify-lib.mjs";
 
 const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 const htmlPath = `${DIR}/demo.html`;
 
-const browser = await chromium.launch({
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  headless: true, args: ["--disable-gpu", "--no-first-run"],
-});
-const page = await browser.newPage({ viewport: { width: 1500, height: draft.canvas.height + 40 } });
-await page.goto(`file://${htmlPath}`, { waitUntil: "networkidle" });
-await page.waitForTimeout(800);
-
-const origin = await page.evaluate(() => {
-  const r = document.getElementById("canvas").getBoundingClientRect();
-  return { x: r.x, y: r.y };
+const { page, origin, close } = await launchProbe({
+  url: `file://${htmlPath}`,
+  viewport: { width: 1500, height: draft.canvas.height + 40 },
+  waitMs: 800,
 });
 
 // ---------- 1) section 几何(排除 ambient 光晕,它们是越界装饰) ----------
@@ -153,4 +144,4 @@ const probe = await page.evaluate(() => {
 });
 console.log(`5. 探针: Inter=${probe.inter} | hero=${probe.gradient} | bubble=${probe.bubbleStroke} | sender行高=${probe.senderLineHeight}`);
 
-await browser.close();
+await close();
