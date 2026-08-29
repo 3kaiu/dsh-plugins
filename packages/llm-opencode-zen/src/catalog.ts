@@ -41,7 +41,7 @@ async function fetchFreeModels(baseURL, apiKey) {
     fetchJson(MODELS_DEV_URL, {}),
   ]);
   const servedIds = new Set((live?.data ?? []).map((entry) => entry?.id).filter(Boolean));
-  const metas = meta?.[MODELS_DEV_PROVIDER]?.models ?? {};
+  const metas: Record<string, any> = meta?.[MODELS_DEV_PROVIDER]?.models ?? {};
   const models = Object.entries(metas)
     .filter(([id, m]) => servedIds.has(id) && Number(m?.cost?.input) === 0 && Number(m?.cost?.output) === 0)
     .map(([id, m]) => toCatalogEntry(id, m));

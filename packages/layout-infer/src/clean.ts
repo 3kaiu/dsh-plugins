@@ -9,7 +9,7 @@
 import { cleanToStandardDsl, describeStructure } from "@3kaiu/dsh-plugin-kit";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
-const renderJson = (args, value) => [{ type: "text", text: JSON.stringify(value, null, 2) }];
+const renderJson = (args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 
 const SECTIONS_DESCRIPTION =
   "拍平稿的扁平 section 列表。每个 section 是一个独立的页面碎片(单文本/单图标/单容器/单贴纸),用页面绝对坐标定位。每项: {id?, name?, type?, x, y, width, height, dsl?}。dsl 可选, 是 MasterGo mcp__getDsl/getDesignSections 返回的该 section 完整 DSL(含 styles 表与节点树), 提供文本/图标/填充等渲染细节; 仅传几何信息也能清洗, 但视觉细节会缺失。";
@@ -59,7 +59,7 @@ export function applyCleanTool(ctx) {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => {
+      execute: async (args) => {
         const result = cleanToStandardDsl({
           canvas: args.canvas,
           sections: args.sections || [],

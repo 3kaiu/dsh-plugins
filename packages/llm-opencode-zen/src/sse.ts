@@ -175,7 +175,7 @@ function estimateCharsToTokens(text) {
 }
 
 function estimateUsage(inputText, outputText, reasoningText) {
-  const usage = {
+  const usage: { inputTokens: number; outputTokens: number; reasoningTokens?: number } = {
     inputTokens: estimateCharsToTokens(inputText),
     outputTokens: estimateCharsToTokens(outputText),
   };
@@ -197,7 +197,8 @@ function closeBlock(block) {
   }
 }
 
-async function* translate(events, context = {}) {
+// estimateInput 是惰性估算闭包(() => number), 由 requestStream 传 `() => estimateInputText(messages)`
+async function* translate(events, context: { estimateInput?: (() => number) | null } = {}) {
   const { estimateInput = null } = context;
   let nextIndex = 0;
   let textBlock;

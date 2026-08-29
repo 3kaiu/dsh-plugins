@@ -151,7 +151,7 @@ function modelInfo(provider, model) {
     id: model.id,
     name: model.name ?? model.id,
     ...model.description === void 0 ? {} : { description: model.description },
-    inputModalities: ["text"]
+    inputModalities: ["text" as const]
   };
 }
 
@@ -224,7 +224,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
         provider,
         id: model,
         name: model,
-        inputModalities: ["text"]
+        inputModalities: ["text" as const]
       } : modelInfo(provider, configured),
       context: { contextWindow },
       defaultMaxTokens: configured?.maxTokens ?? connection.maxTokens,
@@ -326,7 +326,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
     const pacingMs = quota.pacingDelayMs(options.sessionId);
     if (pacingMs > 0) {
       // 等待可被 abort 中断:调用方取消时不用干等满 pacing(≤15s)
-      await new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         const onAbort = () => { clearTimeout(timer); finish(); };
         function finish() { options.signal?.removeEventListener("abort", onAbort); resolve(); }
         const timer = setTimeout(finish, pacingMs);
