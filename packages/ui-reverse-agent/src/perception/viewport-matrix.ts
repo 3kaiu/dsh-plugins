@@ -18,7 +18,7 @@ export const DEFAULT_STATES = ['default', 'hover', 'active', 'disabled']
  * @param states ['default','hover']
  * @returns [{viewport, state, key}]
  */
-export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_STATES } = {}) {
+export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_STATES }: Record<string, any> = {}) {
   const vps = viewports.map(v => typeof v === 'string' ? { name: v, ...(VIEWPORTS[v] || VIEWPORTS.desktop), nameStr: v } : v)
   const out = []
   for (const vp of vps) {
@@ -34,7 +34,7 @@ export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_S
  * @param results [{key, viewport, state, score:{total, layers}}]
  * @param opts.weights {desktop:1, tablet:0.8, mobile:0.6} 视口权重
  */
-export function aggregateMatrixScores(results, { weights = { desktop: 1, tablet: 0.8, mobile: 0.6 } } = {}) {
+export function aggregateMatrixScores(results, { weights = { desktop: 1, tablet: 0.8, mobile: 0.6 } }: Record<string, any> = {}) {
   if (!results.length) return { aggregate: 0, byViewport: {}, worst: null, best: null }
   const byViewport = {}
   let weightedSum = 0, weightSum = 0

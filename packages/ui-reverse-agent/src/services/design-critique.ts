@@ -2,9 +2,9 @@
 // design-critique — 设计批判（不一致检测与建议，超越像素还原的设计质量）
 // 输入：blueprint（typographyProfile/palette/regions/tree），输出：批判报告
 
-export function critiqueDesign({ blueprint, tree } = {}) {
+export function critiqueDesign({ blueprint, tree }: Record<string, any> = {}) {
   const t = tree || blueprint?.tree || []
-  const profile = blueprint?.typographyProfile || {}
+  const profile: Record<string, any> = blueprint?.typographyProfile || {}
   const palette = blueprint?.palette || []
   const issues = []
   const suggestions = []
@@ -31,7 +31,7 @@ export function critiqueDesign({ blueprint, tree } = {}) {
   }
 
   // 3. 字体种类：是否过多字体族
-  const families = new Set(Object.values(profile).map(p => p.family).filter(Boolean))
+  const families = new Set(Object.values(profile as Record<string, any>).map(p => p.family).filter(Boolean))
   if (families.size > 3) {
     issues.push({ type: 'typography', severity: 'warning', count: families.size, families: [...families], reason: `字体族 ${families.size} 种（${[...families].join(',')}）过多` })
     suggestions.push('收敛到 1-2 字体族（标题/正文）')

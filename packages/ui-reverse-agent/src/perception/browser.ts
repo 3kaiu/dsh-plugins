@@ -34,7 +34,7 @@ function raceAbort(promise, signal) {
   })
 }
 
-export async function browserStart({ url, headless = true, viewport, signal } = {}) {
+export async function browserStart({ url, headless = true, viewport, signal }: Record<string, any> = {}) {
   if (signal?.aborted) return { error: 'aborted', mock: true }
   const pw = await getPlaywright()
   if (!pw) return { error: 'playwright not installed', url: url || 'http://localhost:3000', mock: true }
@@ -55,7 +55,7 @@ export async function browserStart({ url, headless = true, viewport, signal } = 
   return { url: 'about:blank', viewport: viewport || { width: 1440, height: 900 }, launched: true }
 }
 
-export async function browserViewport({ width, height, dpr } = {}) {
+export async function browserViewport({ width, height, dpr }: Record<string, any> = {}) {
   const vp = { width: width || 1440, height: height || 900, dpr: dpr || 2 }
   if (pageInstance) {
     try { await pageInstance.setViewportSize({ width: vp.width, height: vp.height }) } catch {}
@@ -81,7 +81,7 @@ export async function browserNavigate({ url, signal }) {
   }
 }
 
-export async function browserScreenshot({ path: outPath, fullPage = true, selector, signal } = {}) {
+export async function browserScreenshot({ path: outPath, fullPage = true, selector, signal }: Record<string, any> = {}) {
   if (!pageInstance) return { error: 'browser not started', path: outPath || null, mock: true }
   const p = outPath || `.ui-reverse/artifacts/current-${Date.now()}.png`
   try {
@@ -97,7 +97,7 @@ export async function browserScreenshot({ path: outPath, fullPage = true, select
   }
 }
 
-export async function browserDomDump({ selector = 'body', includeComputed = true, signal } = {}) {
+export async function browserDomDump({ selector = 'body', includeComputed = true, signal }: Record<string, any> = {}) {
   if (!pageInstance) return { error: 'browser not started', viewport: { width: 1440, height: 900, dpr: 2 }, tree: [], mock: true }
 
   // 在页面内执行结构化 dump
@@ -163,7 +163,7 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
   }
 }
 
-export async function browserStateTrigger({ state, selector, signal } = {}) {
+export async function browserStateTrigger({ state, selector, signal }: Record<string, any> = {}) {
   // state: hover | active | focus | disabled | checked
   if (!pageInstance) return { error: 'browser not started', mock: true }
   try {

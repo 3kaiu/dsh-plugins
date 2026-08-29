@@ -9,7 +9,7 @@ export function createMetrics() {
       marks.push({ name, start, end, dur: end - start })
     },
     report() {
-      const byName = {}
+      const byName: Record<string, any> = {}
       for (const m of marks) {
         if (!byName[m.name]) byName[m.name] = { count: 0, total: 0, max: 0, min: Infinity }
         byName[m.name].count++

@@ -3,13 +3,13 @@
 
 export function generateToolDocs(tools) {
   const lines = ['# UI Reverse Agent — Tools', '']
-  for (const t of tools) {
+  for (const t of tools as any[]) {
     lines.push(`## ${t.name}`)
     lines.push(t.description || '')
     lines.push('')
     if (t.parameters) {
       lines.push(`**Parameters:**`)
-      for (const [k, v] of Object.entries(t.parameters)) {
+      for (const [k, v] of Object.entries(t.parameters) as [string, any][]) {
         lines.push(`- \`${k}\`: ${v.description || v.type} ${v.required ? '(required)' : ''}`)
       }
       lines.push('')

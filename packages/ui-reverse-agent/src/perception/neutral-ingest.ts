@@ -15,7 +15,7 @@ function isNeutralTree(obj) {
 function neutralNodeToBlueprintNode(n) {
   // n 来自 doc15 §6：{kind, x,y,width,height, flex, bg, radius, shadows, blur, opacity, rotate, children} 等
   const kind = n.kind
-  const base = {
+  const base: Record<string, any> = {
     id: n.id || `n-${Math.random().toString(36).slice(2,7)}`,
     name: n.name || kind,
     type: kind === 'text' ? 'TEXT' : kind === 'icon' ? 'PATH' : kind === 'image' ? 'LAYER' : kind === 'component' ? 'FRAME' : 'FRAME',
@@ -100,7 +100,7 @@ export function neutralToBlueprint(neutral) {
   return blueprint
 }
 
-export async function neutralIngest({ neutralTree, neutralPath, outPath } = {}) {
+export async function neutralIngest({ neutralTree, neutralPath, outPath }: Record<string, any> = {}) {
   let neutral = neutralTree
   if (!neutral && neutralPath) {
     try { neutral = JSON.parse(fs.readFileSync(neutralPath, 'utf8')) } catch (e) { throw new Error(`读取中立树失败 ${neutralPath}: ${e.message}`) }

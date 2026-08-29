@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { runtimeConfig } from '../config.ts'
 
-export function buildCiReport({ state, blueprint, artifacts = [] } = {}) {
+export function buildCiReport({ state, blueprint, artifacts = [] }: Record<string, any> = {}) {
   const scores = state?.scores || {}
   const total = scores.current?.total ?? 0
   const threshold = runtimeConfig.completeThreshold
@@ -33,7 +33,7 @@ export function buildCiReport({ state, blueprint, artifacts = [] } = {}) {
   return report
 }
 
-export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' } = {}) {
+export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' }: Record<string, any> = {}) {
   try {
     fs.mkdirSync(outDir, { recursive: true })
     const reportPath = path.join(outDir, 'report.json')
@@ -53,7 +53,7 @@ export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' } = {}) {
   }
 }
 
-export function ciGate(report, { threshold = runtimeConfig.completeThreshold, allowBlocked = false, allowP0 = false } = {}) {
+export function ciGate(report, { threshold = runtimeConfig.completeThreshold, allowBlocked = false, allowP0 = false }: Record<string, any> = {}) {
   if (!allowBlocked && report.blocked) return { pass: false, reason: 'blocked by anti_hack' }
   if (!allowP0 && report.hasP0) return { pass: false, reason: 'has P0 remaining' }
   if (report.total < threshold) return { pass: false, reason: `S ${report.total} < ${threshold}` }

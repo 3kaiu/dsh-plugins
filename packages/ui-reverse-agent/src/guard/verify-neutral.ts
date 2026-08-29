@@ -3,7 +3,7 @@
 // 输入：neutralTree（或 blueprint）+ 实现侧 DOM dump / 截图采样
 // 输出：与 anti_hack_scan 互补的确定性断言（几何/文本命中/溢出/重叠/样式探针）
 
-export function verifyNeutral({ neutral, blueprint, domDump, implementedTree, tolerance = 2 }) {
+export function verifyNeutral({ neutral, blueprint, domDump = null, implementedTree, tolerance = 2 }) {
   const root = neutral?.root || blueprint?.tree && { children: blueprint.tree } || null
   const canvas = neutral?.meta?.canvas || blueprint?.canvas || { width: 1440, height: 900 }
   const violations = []

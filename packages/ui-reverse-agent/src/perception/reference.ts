@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { buildBlueprint } from '@3kaiu/dsh-plugin-kit'
 
-export async function referenceIngest({ dsl, screenshotPaths, url, viewport, outPath } = {}, deps = {}) {
+export async function referenceIngest({ dsl, screenshotPaths, url, viewport, outPath }: Record<string, any> = {}, deps: Record<string, any> = {}) {
   const { classifyDsl, annotate, cleanToStandardDsl } = deps
   // fail-loud：无任何可用参考输入时直接报错，不静默产空蓝图
   if (!dsl && !url && !(Array.isArray(screenshotPaths) && screenshotPaths.length)) {

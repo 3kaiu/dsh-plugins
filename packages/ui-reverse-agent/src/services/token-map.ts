@@ -11,7 +11,7 @@ import { comparePalette } from '../compare/palette.ts'
  * @param blueprintProfile { 'header > title': {family,size,weight} }
  * @param projectTokens [{name, family, size, weight, cssVar}] 项目已有字体 tokens
  */
-export function mapTypographyTokens(blueprintProfile, projectTokens = []) {
+export function mapTypographyTokens(blueprintProfile: Record<string, any>, projectTokens: Record<string, any>[] = []) {
   const mappings = []
   for (const [path, spec] of Object.entries(blueprintProfile)) {
     const { family, size, weight } = spec

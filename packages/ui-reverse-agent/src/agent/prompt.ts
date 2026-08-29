@@ -21,7 +21,7 @@ try {
   )
 }
 
-export function renderPrompt(vars = {}) {
+export function renderPrompt(vars: Record<string, any> = {}) {
   let out = PROMPT_TEMPLATE
   for (const [k, v] of Object.entries(vars)) {
     out = out.replaceAll(`{{${k}}}`, String(v ?? ''))

@@ -17,7 +17,7 @@ function contrastRatio(fg, bg) {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-export function checkA11y({ tree, domDump, palette } = {}) {
+export function checkA11y({ tree, domDump, palette }: Record<string, any> = {}) {
   const nodes = flatten(tree || domDump?.tree || [])
   const violations = []
   const warnings = []

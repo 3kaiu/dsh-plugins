@@ -21,7 +21,7 @@ export function classifyByExpert(mismatches) {
   return byExpert
 }
 
-export function planParallelExperts(mismatches, { maxPerExpert = 2 } = {}) {
+export function planParallelExperts(mismatches, { maxPerExpert = 2 }: Record<string, any> = {}) {
   const byExpert = classifyByExpert(mismatches)
   const plans = []
   for (const [expert, list] of Object.entries(byExpert)) {

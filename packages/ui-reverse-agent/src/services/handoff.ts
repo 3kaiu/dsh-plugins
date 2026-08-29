@@ -2,7 +2,7 @@
 // handoff — 设计交付文档自动产出（供设计师/开发者验收）
 // 输入：blueprint + state + score，输出：markdown handoff
 
-export function generateHandoff({ blueprint, state, score } = {}) {
+export function generateHandoff({ blueprint, state, score }: Record<string, any> = {}) {
   const lines = [
     `# UI 还原交付文档`,
     ``,

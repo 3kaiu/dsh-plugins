@@ -9,12 +9,12 @@ export function generateDesignSystem(blueprint) {
   // tokens：colors, spacing, typography
   const tokens = {
     colors: palette.slice(0, 8).map((c, i) => ({ name: `color-${i}`, value: c.hex || c, count: c.count || 1 })),
-    typography: Object.entries(profile).slice(0, 6).map(([path, spec]) => ({ name: path.replace(/[^a-z0-9]/gi,'-'), ...spec })),
+    typography: (Object.entries(profile) as [string, any][]).slice(0, 6).map(([path, spec]) => ({ name: path.replace(/[^a-z0-9]/gi,'-'), ...spec })),
     spacing: [...new Set(collectSpacings(tree))].sort((a,b)=>a-b).slice(0,8),
   }
 
   // components：按 role 聚类（header/card/button）
-  const byRole = {}
+  const byRole: Record<string, any> = {}
   function collectByRole(nodes) {
     for (const n of nodes) {
       const role = n.role || n.name || 'unknown'
