@@ -93,6 +93,11 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 
 ### 2.3 验收口径
 
+**完成审计(2026-08-29, 四批全部落地后)**:
+- 每批 `pnpm build && pnpm test` 全绿; 批3 后 benchmark 2 案例数值与基线逐项一致(408-card 0.34 / live-course-card 0.28)。
+- grep 断言实测: `round1` 定义全仓仅 kit/cluster 1 处(layout-core 再导出, ui-restore numeric 转再导出); `const esc =` 仅 emit/escape.ts 1 处; 源码零残留"分叉声明"(全部转为批3 归一/正本语义); ura 零壳 shim; build.mjs 仅存 ui-restore 的活体多入口构建。
+- 复用度现状: kit 持纯引擎/dsl-clean/classify/repeat/system-chrome/CJK 正典, layout-infer 为再导出壳, ui-restore 引擎函数全部单源自 kit —— 三代同源分叉终结。
+
 - 每批结束：`pnpm build && pnpm test` 全绿 + 涉及包的基准/冒烟不回归。
 - 第 3 批额外：benchmark 2 案例指标逐项比对留痕（同 doc16 的真值门禁）。
 - 复用度度量：收敛后 grep 断言——`round1 =` 全仓源码仅 kit 1 处定义、`const esc =` 仅 escape.ts 1 处、`confineUnder` 仅 path-guard/fs-util、ura 无一行壳 shim、ui-restore/package.json 出现 `@3kaiu/dsh-plugin-kit`。
