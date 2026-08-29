@@ -25,7 +25,7 @@ function flatten(tree) {
   return out
 }
 
-export function antiHackScan({ domDump, reference, treeStats, codeStats, projectPath } = {}) {
+export function antiHackScan({ domDump, reference, treeStats, codeStats, projectPath }: Record<string, any> = {}) {
   const violations=[]
   const warnings=[]
 

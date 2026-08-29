@@ -4,21 +4,22 @@
 //   import { mockFetch, mockCtx } from "@3kaiu/dsh-plugin-kit/test-utils";
 
 /** 注入一个固定的 fetch mock;返回原 fetch 以便恢复 */
-export function mockFetch(status, body, contentType = "application/json") {
+export function mockFetch(status, body, contentType = "application/json"): any {
   const original = globalThis.fetch;
-  globalThis.fetch = async () => ({
+  // mock 返回的是 Response 的鸭子形态(status/ok/headers/text), 非真实 Response 实例 —— 显式断言
+  globalThis.fetch = (async () => ({
     status,
     ok: false,
     headers: new Map([["content-type", contentType]]),
     text: async () => body,
-  });
+  })) as any;
   return original;
 }
 
 /** 最小可用的 Cordis ctx: 记录工具注册,logger 静默,可按名取服务 */
-export function mockCtx(overrides = {}) {
+export function mockCtx(overrides: Record<string, any> = {}) {
   const registered = [];
-  const ctx = {
+  const ctx: any = {
     logger: { info() {}, warn() {}, error() {} },
     tools: {
       register(def) {

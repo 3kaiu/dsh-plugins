@@ -20,7 +20,7 @@ function nodeColor(n) { return typeof n._color === 'string' ? n._color : typeof 
 function nodeEffect(n) { return n._effect ?? n.effect ?? n._shadow ?? null }
 function nodeRadius(n) { return n._radius ?? n.borderRadius ?? n.radius ?? null }
 
-export function isBackgroundRect(n, canvasOrRect, maybeCanvas) {
+export function isBackgroundRect(n, canvasOrRect, maybeCanvas = null) {
   // 兼容两种调用：isBackgroundRect(n, canvas) 与 isBackgroundRect(n, rect, canvas)
   let canvas
   if (maybeCanvas) canvas = maybeCanvas

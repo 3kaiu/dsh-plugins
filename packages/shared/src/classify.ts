@@ -124,7 +124,7 @@ function spacingOf(node) {
   const fi = node.flexContainerInfo
   const ls = node.layoutStyle || {}
   const kids = node.children || []
-  const out = { gap: null, padding: null, alignItems: null, justifyContent: null, position: null, confidence: null }
+  const out: Record<string, any> = { gap: null, padding: null, alignItems: null, justifyContent: null, position: null, confidence: null }
 
   if (fi && fi.alignItems) {
     out.alignItems = fi.alignItems
@@ -294,7 +294,7 @@ function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved, r
     unresolved.push({ id: node.id, name: node.name ?? '', type: node.type, reason: sizing.reason[0] })
   }
 
-  const entry = {
+  const entry: Record<string, any> = {
     id: node.id,
     name: node.name ?? '',
     type: node.type,

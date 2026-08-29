@@ -7,6 +7,7 @@ export * from "./semaphore.ts";
 export * from "./layout-core.ts";
 export * from "./dsl-clean.ts";
 export * from "./cluster.ts";
+export { clusterBandsAdaptive } from "./cluster.ts"; // 显式再导出消歧(dsl-clean 的同名再导出与 cluster 星号导出冲突, TS2308)
 export * from "./dom-to-layout.ts";
 export * from "./compare.ts";
 export * from "./geometry.ts";

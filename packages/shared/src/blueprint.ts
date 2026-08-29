@@ -67,7 +67,7 @@ function extractAssets(tree, styles) {
   walk(Array.isArray(tree)?tree:[tree])
   // styles 中字体 token
   if (styles) {
-    for(const v of Object.values(styles)){
+    for(const v of Object.values(styles) as any[]){
       if (v?.value?.fontFamily) fonts.add(v.value.fontFamily)
       if (v?.value?.fontPostScript) fonts.add(v.value.fontPostScript)
     }
@@ -94,7 +94,7 @@ function buildRegions(tree, canvas) {
   return regions
 }
 
-export function buildBlueprint({ canvas, tree, styles, dsl, domDump, screenshotPaths, viewport } = {}) {
+export function buildBlueprint({ canvas, tree, styles, dsl, domDump, screenshotPaths, viewport }: Record<string, any> = {}) {
   // canvas
   const c = canvas || viewport || domDump?.viewport || dsl?.meta?.canvas || { width: 1440, height: 900 }
   // tree 已为标注树；若传入 dsl 且无 tree，则需外部先 classify/annotate（此处仅包装）
@@ -131,7 +131,7 @@ function extractPalette(tree, styles) {
   }
   walk(Array.isArray(tree)?tree:[tree])
   if (styles) {
-    for(const v of Object.values(styles)){
+    for(const v of Object.values(styles) as any[]){
       const val = v?.value
       if (typeof val==='string' && val.startsWith('#')) colors.push(val.toLowerCase())
       if (Array.isArray(val) && typeof val[0]==='string' && val[0].startsWith('#')) colors.push(val[0].toLowerCase())

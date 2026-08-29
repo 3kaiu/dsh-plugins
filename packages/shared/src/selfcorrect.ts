@@ -2,7 +2,7 @@
 // 自纠错：regression 定位与回滚指令 + 停滞检测（§7）
 // 输入：state.json 形态的 history / scores
 
-export function detectRegression({ scores, history, current, previous } = {}) {
+export function detectRegression({ scores, history, current, previous }: Record<string, any> = {}) {
   // scores: { history: [{iteration,total, ...layers}], current:{total}, previous:{total} }
   const hist = history || scores?.history || []
   const cur = current || scores?.current
@@ -36,7 +36,7 @@ export function detectRegression({ scores, history, current, previous } = {}) {
   return { triggered, delta, reason }
 }
 
-export function stagnationCheck(history, opts = {}) {
+export function stagnationCheck(history, opts: Record<string, any> = {}) {
   const window = opts.window ?? 3
   const threshold = opts.threshold ?? 0.005
   if (!Array.isArray(history) || history.length < window) return { stalled: false }
@@ -50,7 +50,7 @@ export function stagnationCheck(history, opts = {}) {
   return { stalled: allSmall, deltas, reason: allSmall ? `连续 ${window} 轮 ΔS < ${threshold}` : null }
 }
 
-export function rollbackPlan({ history, iteration, rollbackPoints } = {}) {
+export function rollbackPlan({ history, iteration, rollbackPoints }: Record<string, any> = {}) {
   // history: 最近变更记录；rollbackPoints: [{iteration, git, note}]
   // 策略：若本轮单假设，直接回滚本轮文件；否则二分到最近干净点
   if (!rollbackPoints || rollbackPoints.length === 0) {

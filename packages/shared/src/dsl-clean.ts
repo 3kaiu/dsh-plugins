@@ -238,7 +238,7 @@ function bandRole(band, canvas) {
 function leafToDsl(n, origin) {
   const dslRoot = n._dsl && n._dsl.nodes ? n._dsl.nodes[0] : null
   const ls = dslRoot && dslRoot.layoutStyle ? dslRoot.layoutStyle : {}
-  const out = {
+  const out: Record<string, any> = {
     type: dslRoot ? dslRoot.type : n.type,
     id: n.id,
     name: n.name,
@@ -273,7 +273,7 @@ function leafToDsl(n, origin) {
  */
 function containerToDsl(c) {
   const origin = c.origin || { x: 0, y: 0 }
-  const out = {
+  const out: Record<string, any> = {
     type: 'FRAME',
     id: c.id,
     name: c.name,
@@ -297,7 +297,7 @@ function containerToDsl(c) {
 
 /** inferLayout 结果 → 技术中立 flexContainerInfo(gap/padding 输出结构化数字, 不绑定任何 CSS/框架) */
 function flexInfo(layout) {
-  const info = {
+  const info: Record<string, any> = {
     flexDirection: layout.flexDirection,
     mainSizing: layout.mainSizing || 'auto',
     crossSizing: layout.crossSizing || 'auto',

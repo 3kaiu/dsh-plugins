@@ -35,7 +35,7 @@ function colorSignal(node) {
  * 节点结构指纹(递归)。相同指纹 => 结构同构,可视为同一重复项的实例。
  * 刻意忽略: 绝对/相对坐标、具体文案、id、name。
  */
-export function structureFingerprint(node, opts = {}) {
+export function structureFingerprint(node, opts: Record<string, any> = {}) {
   if (!node) return 'null'
   // 形状兼容: 清洗后 DSL(layoutStyle) 与蓝图节点(bounds/layout)双形态
   const ls = node.layoutStyle || {}
@@ -103,7 +103,7 @@ function measureGroup(items) {
  * @param {object} [opts] min: 最小重复数(默认 3)
  * @returns {Array<{startIndex:number, count:number, itemIds:Array, axis:string, itemWidth:number, itemHeight:number, gap:number}>}
  */
-export function detectRepeatGroups(nodes, opts = {}) {
+export function detectRepeatGroups(nodes, opts: Record<string, any> = {}) {
   const min = opts.min || 3
   const list = nodes || []
   const fps = list.map(structureFingerprint)
@@ -143,7 +143,7 @@ export function detectRepeatGroups(nodes, opts = {}) {
  * @param {object} [opts] minSections: 至少出现的 section 数(默认 2)
  * @returns {Array<{fingerprint, count, sections:Array<number>, itemWidth, itemHeight, instances:Array<{sectionIndex,id,name,x,y}>}>}
  */
-export function detectSharedComponents(trees, opts = {}) {
+export function detectSharedComponents(trees, opts: Record<string, any> = {}) {
   const minSections = opts.minSections || 2
   const byFp = new Map()
   // 深度优先索引: 只收有子节点的容器
@@ -215,7 +215,7 @@ export function detectSharedComponents(trees, opts = {}) {
  * @param {object} [opts] minCount: 最小实例数(默认2); minArea: 最小面积(默认64, 滤微噪)
  * @returns {Array<{groupId, count, axis?, gap?, itemWidth, itemHeight, instances}>}
  */
-export function detectSiblingComponentGroups(roots, opts = {}) {
+export function detectSiblingComponentGroups(roots, opts: Record<string, any> = {}) {
   const minCount = opts.minCount ?? 2
   const minArea = opts.minArea ?? 64
   const groups = []
