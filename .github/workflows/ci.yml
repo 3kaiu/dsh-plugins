@@ -38,9 +38,10 @@ jobs:
         run: pnpm test
 
   typecheck:
-    # 类型检查(信息性): 全仓 .ts 实为无类型标注 JS, tsc --noEmit 现存 ~720 个
-    # 契约失配错误(2026-08-28 基线)。清零前 continue-on-error 保持 CI 绿,
-    # 错误数可在 job 日志中观察增量; 清零后删除 continue-on-error 即转为阻塞门禁。
+    # 类型检查(信息性): 全仓 .ts 实为无类型标注 JS, tsc --noEmit 现存 ~682 个
+    # 契约失配错误(2026-08-29 基线; 引入 @types/node 后由 829 降至 682, 清掉全部
+    # TS2591 node 全局缺失)。清零前 continue-on-error 保持 CI 绿, 错误数可在
+    # job 日志中观察增量; 清零后删除 continue-on-error 即转为阻塞门禁。
     name: typecheck (informational)
     runs-on: ubuntu-latest
     timeout-minutes: 10
