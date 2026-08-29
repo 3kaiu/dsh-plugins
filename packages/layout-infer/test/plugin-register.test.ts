@@ -1,20 +1,12 @@
-// 插件注册 mock 测试: 模拟 ctx.tools.register,验证两个工具注册且可执行
+// 插件注册 mock 测试: 验证三个工具注册且可执行(ctx mock 收敛自 kit test-utils)
 import { apply } from "../dist/index.js";
+import { mockCtx } from "@3kaiu/dsh-plugin-kit";
 
-const registered = [];
-const disposers = [];
-const ctx = {
-  tools: {
-    register(def) {
-      registered.push(def);
-      disposers.push(() => {});
-      return () => {};
-    },
-  },
-};
+const ctx = mockCtx();
 
 apply(ctx);
 
+const registered = ctx.__registeredTools;
 const names = registered.map((t) => t.name);
 console.log("注册工具:", names.join(", "));
 if (!names.includes("infer_layout")) throw new Error("缺少 infer_layout");

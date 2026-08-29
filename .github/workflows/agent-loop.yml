@@ -30,12 +30,12 @@ jobs:
       # 安全提示: 第三方 action 应经 dependabot 钉死到提交 SHA(此处暂用主版本标签);
       # 同时本工作流持有 secrets.OPENCODE_ZEN_API_KEY 与 contents/pull-requests 写权限,
       # 故镜像第三方 action 到内部 org 并 SHA 钉死可进一步降低投毒面。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: 注入 DSH_HOME(RUNNER_TEMP,隔离于 ~/.dsh)
         run: echo "DSH_HOME=$RUNNER_TEMP/dsh-home" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 

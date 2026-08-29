@@ -1,9 +1,11 @@
 import { apply } from "../dist/index.js";
-const registered=[];
+import { mockCtx } from "@3kaiu/dsh-plugin-kit";
 const variables=[];
 const sections=[];
-const ctx={ tools:{ register(def){ registered.push(def); return ()=>{}; } }, systemPrompt:{ section(s){ sections.push(s); }, variable(name, provider){ variables.push([name, provider]); } } };
+// ctx mock 收敛自 kit test-utils(doc19 §1.2): register 收集走 __registeredTools
+const ctx=mockCtx({ systemPrompt:{ section(s){ sections.push(s); }, variable(name, provider){ variables.push([name, provider]); } } });
 apply(ctx);
+const registered=ctx.__registeredTools;
 const names=registered.map(t=>t.name);
 console.log('registered',names.join(', '));
 const must=['reference_ingest','neutral_ingest','browser_start','browser_viewport','browser_navigate','browser_screenshot','browser_dom_dump','browser_state_trigger','browser_console','browser_stop','compare_geometry','compare_typography','compare_palette','compare_screenshots','score_report','fanout_evaluate','verify_neutral','viewport_matrix','token_map','check_design_constraints','check_a11y','recovery_plan','ci_report','check_dsl_security','git_rollback_point','estimate_cost','capture_feedback','critique_design','generate_design_system','plan_experts','generate_handoff','anti_hack_scan','state_read','state_update'];

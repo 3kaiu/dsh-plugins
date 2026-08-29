@@ -1,0 +1,8 @@
+# 依赖自动更新: SHA 钉死的 github-actions 每周核对上游新版本(含安全补丁),
+# PR 人工审查后合并 —— 钉死 + 自动跟随的组合兼顾投毒面与补丁时效
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
