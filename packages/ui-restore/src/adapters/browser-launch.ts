@@ -11,6 +11,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { flag, hasFlag } from './args.ts';
+// URL 防护正典(doc19 SSRF 加固): http(s) 经 getaddrinfo 解析后按全保留段校验
+// (十进制/八进制/十六进制/短式 IP 与 DNS rebinding 不再可绕), file 走 LFI 校验。
+// toUrl 因此变为异步 —— 全部调用点已 await; 本地 dev server 场景可用
+// UI_RESTORE_ALLOW_PRIVATE_URLS=1 放行内网目标。
+import { resolveRenderTarget as toUrl } from '@3kaiu/dsh-plugin-kit';
+// dom-blocks/screenshot.ts 经本模块共享 toUrl(现异步: 调用点一律 await)
+export { toUrl };
 
 const args = process.argv.slice(2);
 
@@ -34,31 +41,8 @@ export function findSystemChrome() {
   return null;
 }
 
-export function toUrl(target, opts = {}) {
-  if (/^https?:\/\//i.test(target)) {
-    // SSRF 防护: 拒绝内网/元数据地址(设计稿预览 URL 不应指向本地服务或云元数据端点)
-    let host = '';
-    try { host = new URL(target).hostname.toLowerCase(); } catch { throw new Error(`非法 URL: ${target}`); }
-    const blocked = ['localhost', '0.0.0.0', '[::1]', '::1', 'metadata.google.internal', 'metadata.internal']
-      .some((h) => host === h || host.endsWith('.localhost') || host.endsWith('.internal'));
-    if (blocked || /^169\.254\./.test(host) || /^127\./.test(host) || host === '::1') {
-      throw new Error(`拒绝访问内网/元数据地址: ${host}`);
-    }
-    return target;
-  }
-  // file:// —— 拒绝读取敏感系统文件(LFI 防护); 普通渲染产物路径不受影响
-  const abs = path.resolve(target);
-  const SENSITIVE = ['/etc/', '/proc/', '/sys/', '/root/', '/private/etc/', '/windows/system32/'];
-  const lower = abs.toLowerCase();
-  if (SENSITIVE.some((p) => lower.startsWith(p)) || lower.includes('/.ssh/') || lower.includes('\\.ssh\\')) {
-    throw new Error(`拒绝访问敏感系统路径: ${target}`);
-  }
-  if (!fs.existsSync(abs)) throw new Error(`目标不存在: ${abs}`);
-  return `file://${abs}`;
-}
-
 /** 引擎一: 系统 Chrome/Edge headless(零安装) */
-function captureWithChrome(bin, target, outPng, opts) {
+async function captureWithChrome(bin, target, outPng, opts) {
   const width = opts.width ?? Number(flag(args, 'width')) ?? 375;
   const height = opts.height ?? Number(flag(args, 'height')) ?? 812;
   // 等待近似(审计修复): chrome 引擎无 waitForTimeout, 以虚拟时间预算承载 --wait,
@@ -68,7 +52,7 @@ function captureWithChrome(bin, target, outPng, opts) {
   if (opts.fullPage ?? hasFlag(args, 'full')) {
     throw new Error('chrome-headless 引擎不支持整页截图(--full): 改用 --engine auto(会自动切 playwright)或显式 --engine playwright');
   }
-  const url = toUrl(target);
+  const url = await toUrl(target);
   fs.mkdirSync(path.dirname(path.resolve(outPng)), { recursive: true });
   execFileSync(bin, [
     '--headless=new',
@@ -95,14 +79,15 @@ async function captureWithPlaywright(target, outPng, opts) {
   }
   const width = opts.width ?? Number(flag(args, 'width')) ?? 375;
   const height = opts.height ?? Number(flag(args, 'height')) ?? 812;
+  const url = await toUrl(target);
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width, height } });
-    await page.goto(toUrl(target), { waitUntil: 'networkidle', timeout: opts.timeoutMs ?? 30000 });
+    await page.goto(url, { waitUntil: 'networkidle', timeout: opts.timeoutMs ?? 30000 });
     await page.waitForTimeout(opts.waitMs ?? Number(flag(args, 'wait')) ?? 800);
     fs.mkdirSync(path.dirname(path.resolve(outPng)), { recursive: true });
     await page.screenshot({ path: outPng, fullPage: opts.fullPage ?? hasFlag(args, 'full') });
-    return { engine: 'playwright', url: toUrl(target), outPng: path.resolve(outPng), width, height };
+    return { engine: 'playwright', url, outPng: path.resolve(outPng), width, height };
   } finally {
     await browser.close();
   }

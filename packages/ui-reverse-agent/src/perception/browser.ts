@@ -1,6 +1,10 @@
 'use strict'
 // Playwright 封装：单例浏览器 + 每任务一个 context
 // 工具与浏览器通过此 service 交互；未安装 chromium 时优雅降级（返回 mock）
+// URL 防护(doc19 SSRF 加固): 导航目标一律经 kit url-guard 正典校验 ——
+// 原实现零校验(LLM 可传 file:///etc/passwd 或 http://169.254.169.254/);
+// 现按 getaddrinfo 解析后全保留段校验, file:// 保留 LFI 防护供本地产物渲染。
+import { resolveRenderTarget } from '@3kaiu/dsh-plugin-kit'
 
 let browserInstance = null
 let contextInstance = null
@@ -44,9 +48,11 @@ export async function browserStart({ url, headless = true, viewport, signal } = 
   })
   pageInstance = await contextInstance.newPage()
   if (url) {
-    try { await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000, signal }) } catch (e) { /* ignore */ }
+    const safe = await resolveRenderTarget(url)
+    try { await pageInstance.goto(safe, { waitUntil: 'domcontentloaded', timeout: 15000, signal }) } catch (e) { /* ignore */ }
+    return { url: safe, viewport: viewport || { width: 1440, height: 900 }, launched: true }
   }
-  return { url: url || 'about:blank', viewport: viewport || { width: 1440, height: 900 }, launched: true }
+  return { url: 'about:blank', viewport: viewport || { width: 1440, height: 900 }, launched: true }
 }
 
 export async function browserViewport({ width, height, dpr } = {}) {
@@ -61,11 +67,17 @@ export async function browserViewport({ width, height, dpr } = {}) {
 
 export async function browserNavigate({ url, signal }) {
   if (!pageInstance) return { error: 'browser not started', url }
+  let safe
   try {
-    await pageInstance.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000, signal })
-    return { url, ok: true }
+    safe = await resolveRenderTarget(url) // 校验失败直接作为 error 返回, 不触达浏览器
   } catch (e) {
-    return { url, ok: false, error: String(e) }
+    return { url, ok: false, error: String(e.message || e) }
+  }
+  try {
+    await pageInstance.goto(safe, { waitUntil: 'domcontentloaded', timeout: 15000, signal })
+    return { url: safe, ok: true }
+  } catch (e) {
+    return { url: safe, ok: false, error: String(e) }
   }
 }
 

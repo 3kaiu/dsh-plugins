@@ -12,6 +12,7 @@ export * from "./compare.ts";
 export * from "./geometry.ts";
 export * from "./typography.ts";
 export * from "./cjk.ts";
+export * from "./url-guard.ts";
 export * from "./repeat.ts";
 export * from "./system-chrome.ts";
 export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "./classify.ts";

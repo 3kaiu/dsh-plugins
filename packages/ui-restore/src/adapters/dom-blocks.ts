@@ -125,7 +125,8 @@ async function probeWithCdp(bin, target, outBlocks, opts) {
     await cdp.call('Page.enable');
     await cdp.call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     const loaded = cdp.once('Page.loadEventFired');
-    await cdp.call('Page.navigate', { url: toUrl(target) });
+    const url = await toUrl(target); // SSRF/LFI 校验正典(kit url-guard, 异步 DNS 级)
+    await cdp.call('Page.navigate', { url });
     await Promise.race([loaded, sleep(8000)]); // loadEventFired 与监听注册的竞态窗口用超时兜底; 本地静态页通常秒级
     await sleep(opts.waitMs ?? 500);
     const evalRes = await cdp.call('Runtime.evaluate', { expression: EVAL_TEXT_BLOCKS, returnByValue: true, awaitPromise: true });
@@ -146,7 +147,7 @@ async function probeWithCdp(bin, target, outBlocks, opts) {
     }
     fs.mkdirSync(path.dirname(path.resolve(outBlocks)), { recursive: true });
     fs.writeFileSync(outBlocks, JSON.stringify(blocks, null, 1));
-    return { engine: 'chrome-cdp', bin, url: toUrl(target), count: blocks.length, pngPath, width, height };
+    return { engine: 'chrome-cdp', bin, url, count: blocks.length, pngPath, width, height };
   } finally {
     cdp?.close?.();
     if (!proc.killed) proc.kill('SIGKILL');
@@ -160,10 +161,11 @@ async function probeWithPlaywright(target, outBlocks, opts) {
     throw new Error('无可用探针引擎 — 安装其一: (a)系统 Chrome 自动检测(cdp/auto 默认路径) (b) pnpm add -D playwright && npx playwright install chromium');
   }
   const width = opts.width ?? 375, height = opts.height ?? 812;
+  const url = await toUrl(target); // SSRF/LFI 校验正典(kit url-guard, 异步 DNS 级)
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
-    await page.goto(toUrl(target), { waitUntil: 'load', timeout: opts.timeoutMs ?? 30000 });
+    await page.goto(url, { waitUntil: 'load', timeout: opts.timeoutMs ?? 30000 });
     await page.waitForTimeout(opts.waitMs ?? 500);
     const blocks = JSON.parse(await page.evaluate(EVAL_TEXT_BLOCKS));
     let pngPath;
@@ -173,7 +175,7 @@ async function probeWithPlaywright(target, outBlocks, opts) {
     }
     fs.mkdirSync(path.dirname(path.resolve(outBlocks)), { recursive: true });
     fs.writeFileSync(outBlocks, JSON.stringify(blocks, null, 1));
-    return { engine: 'playwright', url: toUrl(target), count: blocks.length, pngPath, width, height };
+    return { engine: 'playwright', url, count: blocks.length, pngPath, width, height };
   } finally {
     await browser.close();
   }
