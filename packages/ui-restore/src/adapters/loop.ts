@@ -345,8 +345,9 @@ export async function runConvergeLoop(opts) {
     if (v.gate.pass) return { status: 'completed', iteration: iter, verify: v, state, best: state.best }
 
     if (state.shouldStop && !v.gate.pass) {
-      // 非通过但收敛停机 → exhausted
-      if (state.reason.includes('连续') || state.reason.includes('最大迭代')) return { status: 'exhausted', iteration: iter, verify: v, state, best: state.best }
+      // 非通过但收敛停机 → exhausted。stopKind 为机器可读停机类别(updateConvergence 产出),
+      // 禁止对 reason 文案做子串匹配(改措辞即静默失效)。
+      if (state.stopKind === 'max-iterations' || state.stopKind === 'stalled') return { status: 'exhausted', iteration: iter, verify: v, state, best: state.best }
     }
 
     // —— 单调收敛保证：维护最优代码快照并在回归时回滚 ——

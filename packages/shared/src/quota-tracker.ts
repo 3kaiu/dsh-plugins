@@ -147,7 +147,12 @@ export class QuotaTracker {
     };
   }
 
-  /** 原子持久化: 写 tmp 再 rename,崩溃/并发不会留下半写 JSON */
+  /**
+   * 原子持久化: 写 tmp 再 rename,崩溃/并发不会留下半写 JSON。
+   * 刻意保持同步写(审计结论): 触发点已防抖(force 仅在配额耗尽/限流等低频事件),
+   * JSON 体量小(<几 KB), 同步写对事件循环的影响可忽略; 改异步需引入
+   * 写队列防 tmp 交错/乱序 rename, 复杂度不值。
+   */
   persist(force = false) {
     if (!force && this.now() - this.lastPersistAt < PERSIST_DEBOUNCE_MS) return;
     try {

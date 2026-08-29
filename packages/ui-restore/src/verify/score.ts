@@ -130,6 +130,8 @@ export interface ConvergeState {
   regressed: boolean
   shouldStop: boolean
   reason: string
+  /** 机器可读停机类别 —— 消费方(loop)以此分支, 禁止对 reason 中文案做子串匹配 */
+  stopKind?: 'gate-pass' | 'max-iterations' | 'score-converged' | 'stalled'
 }
 
 /**
@@ -158,26 +160,31 @@ export function updateConvergence(
 
   let shouldStop = false
   let reason = ''
+  let stopKind: ConvergeState['stopKind'] = undefined
 
   if (cur.gatePass) {
     shouldStop = true
     reason = `门禁已通过(iter#${cur.iteration}, score=${cur.score.score})`
+    stopKind = 'gate-pass'
   } else if (cur.iteration >= maxIterations) {
     shouldStop = true
     reason = `达到最大迭代 ${maxIterations}`
+    stopKind = 'max-iterations'
   } else if (cur.score.score <= scoreThreshold && cur.score.components.geometryPenalty === 0) {
     shouldStop = true
     reason = `分数已收敛到阈值 ${scoreThreshold}(score=${cur.score.score})`
+    stopKind = 'score-converged'
   } else if (hist.length >= patience + 1) {
     // 连续 patience 轮未刷新 best → 停
     const recentBests = hist.slice(-patience).every((h) => h.score.score >= (newBest?.score.score ?? Infinity))
     if (recentBests && newBest && newBest.iteration <= cur.iteration - patience) {
       shouldStop = true
       reason = `连续 ${patience} 轮未提升(best iter#${newBest.iteration})`
+      stopKind = 'stalled'
     }
   }
 
-  return { best: newBest, history: hist, regressed, shouldStop, reason }
+  return { best: newBest, history: hist, regressed, shouldStop, reason, stopKind }
 }
 
 /** 兼容 pipeline 的字典序质量键：score 同时产出 lex 键供旧链路比对 */

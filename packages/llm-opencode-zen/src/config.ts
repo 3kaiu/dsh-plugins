@@ -15,6 +15,9 @@ const DEFAULT_MAX_TOKENS = 128000;
 const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300000;
 const DEFAULT_MAX_CONCURRENT_STREAMS = 2;
 
+// UA 兼容说明(决策留痕): 默认 UA 与 opencode 官方客户端对齐 —— zen 端点按客户端
+// 版本下发模型目录/计费策略, 非官方 UA 可能被降级或拒绝。这是兼容性决策而非隐藏身份:
+// userAgent 经 schemastery 暴露为可配置项, 使用方应自行评估 opencode 服务条款约束。
 const OPENCODE_UA = "opencode/1.18.18 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14";
 const PUBLIC_BASE_URL = "https://opencode.ai/zen/v1";
 const BASE_URL_ENV = "OPENCODE_ZEN_BASE_URL";

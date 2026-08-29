@@ -321,6 +321,7 @@ function apply(ctx, config) {
       implementedTree: { type: "json", required: true, description: "实现树（page_layout_tree 输出）" },
       tolerance: { type: "number", description: "容差 px，默认 2" },
       currentScore: { type: "number", description: "当前总分，用于 Δ 预测" },
+      currentLayers: { type: "json", description: "当前各层得分 {struct,geom,pixel,type,color}（来自 score_report.layers）—— 提供后不可观测层沿用真实分, 缺省 0.9 占位" },
     },
     output: { schema: { type: "json" }, render: renderJson },
     isConcurrencySafe: () => true,
@@ -331,6 +332,7 @@ function apply(ctx, config) {
       implementedTree: args.implementedTree,
       tolerance: args.tolerance,
       currentScore: args.currentScore,
+      currentLayers: args.currentLayers,
     }),
   }));
 

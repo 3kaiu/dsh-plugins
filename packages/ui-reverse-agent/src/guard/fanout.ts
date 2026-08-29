@@ -120,8 +120,11 @@ export function generateCandidates(mismatch, count = 3): FanoutCandidate[] {
  * @param implementedTree 实现树（当前 DOM 树）
  * @param opts.tolerance 容差（默认 2）
  * @param opts.currentScore 当前总分（用于 computed delta）
+ * @param opts.currentLayers 当前各层得分 {struct,geom,pixel,type,color}（来自 score_report.layers）。
+ *   不可观测层沿用调用方真实分; 缺省 0.9 占位 —— 占位层不参与真实预测,
+ *   排序主信号是 geomBefore/geomAfter/mismatchesAfter（纯几何可测）。
  */
-export function fanoutEvaluate({ mismatch, candidates, referenceTree, implementedTree, tolerance = 2, currentScore = null }) {
+export function fanoutEvaluate({ mismatch, candidates, referenceTree, implementedTree, tolerance = 2, currentScore = null, currentLayers = null }) {
   if (!mismatch || !referenceTree || !implementedTree) {
     return { error: 'missing mismatch/referenceTree/implementedTree', ranked: [] }
   }
@@ -140,13 +143,14 @@ export function fanoutEvaluate({ mismatch, candidates, referenceTree, implemente
     // 用 mismatches 减少量估算几何层分：每消除 1 条 mismatch 几何分 +0.1（上限 1）
     const geomBefore = Math.max(0, 1 - baselineMismatches * 0.1)
     const geomAfter = Math.max(0, 1 - mismatchesAfter * 0.1)
-    // 结构层假设不变，用 0.9 占位；其余三层沿用当前或 0.9
+    // 不可观测层(struct/pixel/type/color)沿用调用方真实分, 缺省 0.9 占位;
+    // 本工具唯一可实测的是几何层(geomBefore/geomAfter), 排序以此为primary信号。
     const s = scoreReport({
-      struct: 0.9,
+      struct: currentLayers?.struct ?? 0.9,
       geom: geomAfter,
-      pixel: 0.9,
-      type: 0.9,
-      color: 0.9,
+      pixel: currentLayers?.pixel ?? 0.9,
+      type: currentLayers?.type ?? 0.9,
+      color: currentLayers?.color ?? 0.9,
       previousTotal: currentScore ?? undefined,
     })
     const predictedDelta = currentScore != null ? Math.round((s.total - currentScore) * 1000) / 1000 : 0

@@ -806,13 +806,19 @@ function normRect(n) {
 
 /** 带语义角色: 全宽条按位置(顶/底)区分, 否则按内容分布 */
 function bandRoleOf(band, canvas) {
+  // 几何字段访问统一 _ 前缀优先并兜底缺省 0(与 cluster 内核约定一致):
+  // undefined 参与数值比较产生 NaN(恒 false), 会静默误判角色 —— 此前
+  // `first._y + first.height` 混用两套字段名即此类 bug。
+  const gw = (n) => n._width ?? n.width ?? 0
+  const gy = (n) => n._y ?? n.y ?? 0
+  const gh = (n) => n._height ?? n.height ?? 0
   const first = band.items[0]
   // 带内含贴底全宽背景条(高度≤110) → TabBar(即使背景条未触发全宽条独立带规则)
-  const bottomBg = band.items.find((n) => n._width >= canvas.width * 0.9 && n._y + n._height >= canvas.height - 12 && n._height <= 110)
+  const bottomBg = band.items.find((n) => gw(n) >= canvas.width * 0.9 && gy(n) + gh(n) >= canvas.height - 12 && gh(n) <= 110)
   if (bottomBg && band.items.length >= 3) return ROLES.TAB_BAR
   if (band.fullWidth) {
-    if (first._y <= 30) return ROLES.STATUS_BAR
-    if (first._y + first.height >= canvas.height - 10) return ROLES.TAB_BAR
+    if (gy(first) <= 30) return ROLES.STATUS_BAR
+    if (gy(first) + gh(first) >= canvas.height - 10) return ROLES.TAB_BAR
     return ROLES.NAV_BAR
   }
   if (band.items.length === 1) {
@@ -827,13 +833,18 @@ function bandRoleOf(band, canvas) {
 function pairIconLabels(icons, labels, tol = 40) {
   const pairs = []
   const usedLabels = new Set()
+  // 同 bandRoleOf: 几何访问 _ 前缀优先 + 0 兜底, 防 undefined→NaN 恒 false 误判
+  const gx = (n) => n._x ?? n.x ?? 0
+  const gw = (n) => n._width ?? n.width ?? 0
+  const gy = (n) => n._y ?? n.y ?? 0
+  const gh = (n) => n._height ?? n.height ?? 0
   for (const ic of icons) {
     let best = null
     let bestDist = Infinity
     for (const lb of labels) {
       if (usedLabels.has(lb.id)) continue
-      const dx = Math.abs(lb._x + lb.width / 2 - (ic._x + ic.width / 2))
-      const dy = lb._y - (ic._y + ic.height)
+      const dx = Math.abs(gx(lb) + gw(lb) / 2 - (gx(ic) + gw(ic) / 2))
+      const dy = gy(lb) - (gy(ic) + gh(ic))
       if (dx <= tol && dy >= -4 && dy < bestDist) {
         best = lb
         bestDist = dy
