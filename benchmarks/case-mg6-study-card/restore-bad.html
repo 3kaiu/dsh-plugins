@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- case-mg6-study-card 坏例(注入: 徽章文字 top 3→9px, 统计字号 12→10px): 按 blueprint 逐字段还原(bounds 唯一真值, 悬浮层置顶, softWrap=false)。
+     徽章/按钮底色取 styles 表真实画板色(#FEF8EB), 按钮内阴影 inset 0 -2.5px #FF984E(effect_103:15006);
+     卡片白底 + 双层阴影(effect_326:04346); 封面位图按"资源待导出"以占位呈现(与 case-408 同配方, 保证离线确定性)。 -->
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 343px; height: 132px; background: #FFFFFF; box-shadow: inset 0px 5px 32px 0px #E0E2ED, 0px 20px 36px 0px #EDEFF3; font-family: "PingFang SC", sans-serif; position: relative; }
+  .cover { position: absolute; left: 20px; top: 20px; width: 72px; height: 88px; background: #E5DAE5; border-radius: 12px; overflow: hidden; }
+  .badge { position: absolute; left: 104px; top: 51px; width: 86px; height: 20px; background: #FEF8EB; border-radius: 10px; }
+  .badge span { position: absolute; left: 8px; top: 9px; width: 70px; height: 14px; line-height: 14px; white-space: nowrap; font-size: 10px; font-weight: 500; color: #F1950A; }
+  .btn { position: absolute; left: 240px; top: 74px; width: 87px; height: 34px; background: #FEF8EB; box-shadow: inset 0px -2.5px 0px 0px #FF984E; border-radius: 8px; }
+  .btn span { position: absolute; left: 22px; top: 7px; width: 42px; height: 20px; line-height: 20px; white-space: nowrap; font-size: 14px; font-weight: 500; color: #240F00; }
+  .stat { position: absolute; left: 104px; top: 91px; width: 103px; height: 17px; line-height: 17px; white-space: nowrap; font-size: 10px; font-weight: 400; color: #838A99; }
+  .title { position: absolute; left: 104px; top: 20px; width: 144px; height: 25px; line-height: 25px; white-space: nowrap; font-size: 18px; font-weight: 500; color: #111E38; }
+</style>
+</head>
+<body>
+  <div class="cover"></div>
+  <div class="badge"><span>阿祖陪你学单词</span></div>
+  <div class="btn"><span>去学习</span></div>
+  <div class="stat">新词 168  复习词 6</div>
+  <div class="title">英语陪跑课高频词</div>
+</body>
+</html>
