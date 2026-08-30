@@ -88,7 +88,7 @@ ui-restore 是从 kit（@3kaiu/dsh-plugin-kit）+ layout-infer 复制出源码�
 **第 4 批 — 脚本去重（P2）**
 实施记录(2026-08-29):
 1. 已做: layout-infer 浏览器族 verify 三连(gaiban/gaiban2/demo)抽 `scripts/verify-lib.mjs` —— Chrome 探测(修掉 3 处硬编码 macOS 路径, 换机器/CI 即失效的典型拷贝漂移)/启动/网络空闲/canvas 原点/截图/关会话单点维护; 文本探针等 fixture 专属断言留在各脚本(强行合一只有间接成本)。verify-neutral 是纯 JSON 中立性扫描, 与浏览器族不同族, 保持独立。注: /tmp/pw(playwright-core dev 安装)不在时浏览器探针不可运行, 改动经语法校验 + 机械映射评审。
-2. 暂缓(决策记录): install-local `--release` 与 install-remote 去重、run-visual-loop 双子去重 —— 两者是部署关键路径, 本环境无法端到端验证 dsh 宿主安装流; 收益(~55 行)低于引入回归的风险, 留待下次需要改这两个脚本时顺路抽取。
+2. 补做(2026-08-30): install-local/install-remote 去重与 visual-loop 双子去重落地 —— 公共核抽 `scripts/install-shared.mjs`(reconcile/SHA 校验/下载)与 `scripts/visual-loop-shared.mjs`(展平/收集/flutter/对比), 两配对脚本瘦身为纯流程编排。验证方法: `DSH_HOME` 指向隔离临时 profile 端到端双路径(local dsh CLI / remote 真实 Release v0.1.0)断言 deps/bundles/patch 清理; visual-loop 以批处理前置阶段全量验证(30 fixtures, flutter 缺失显性失败)。**验证挖出三枚潜伏 bug**: ①pnpmAdd 盲带 -w(裸 profile 目录必败, 改探测 workspace); ②install-remote 的 bundle reconcile 恒空(file: 指向 tarball 是文件非目录, 纯 remote 安装的插件从未进入 harness, 改回退读 node_modules); ③batch 收集器缺 svg 资源表支持(漂移实证, 统一后修复)。
 3. shared/test/verify-clean.ts 与四连脚本同模式但属测试断言(有独立容差语义), 不强行共用 verify-lib。
 
 ### 2.3 验收口径
