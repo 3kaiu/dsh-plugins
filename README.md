@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/3kaiu/dsh-plugins/main/scripts/inst
 ```sh
 git clone https://github.com/3kaiu/dsh-plugins.git && cd dsh-plugins
 pnpm install
-node scripts/install-local.mjs   # pnpm build → pnpm add -w file:<abs> → reconcile bundles
+node scripts/install-local.mjs   # pnpm build → dsh plugin add(回退 pnpm add file:)→ reconcile bundles
 ```
 
 发布(可选):打任意 `v*` tag 并推送即触发 Actions → 自动 build + pack 2 个 tarball → Release(tag 名自动编码两包版本:`v<llm>+li<layout>`)。

@@ -48,7 +48,7 @@ server.tool(
   'ui_restore_run',
   'UI 还原主入口。mode=analyze(默认): 设计稿导出 json → UI Truth 产物包 + 四闸门禁; mode=verify: 参考图 vs 渲染截图 → 像素/块级指标 + 差异区域(含渲染侧文本块交叉引用 domHints) + LLM 可读修正指令; session_path 提供时附 iteration 记账与防退化(质量劣化自动要求回滚到最佳轮); mode=restore: 纯确定性状态机 —— 依会话返回当前 phase 与下一步动作(analyze→implement→correct→done/report), 绝不内置 LLM, 实现/修码由你完成。',
   {
-    mode: z.enum(['analyze', 'verify', 'restore']).optional().describe('缺省按参数推断(有图=verify, 否则 analyze)'),
+    mode: z.enum(['analyze', 'verify', 'restore']).optional().describe('缺省按参数推断(有图=verify; 仅会话=restore 状态机; 带设计稿=analyze)'),
     design_path: z.string().optional().describe('设计稿导出 json 路径(mode=analyze 必填; restore 首次进会话时可用于自动补 analyze)'),
     out_dir: z.string().optional().describe('产物目录(mode=analyze)'),
     scale: z.string().optional().describe('画布倍率归一: 正数或 auto(mode=analyze)'),

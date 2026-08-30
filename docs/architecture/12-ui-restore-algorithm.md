@@ -94,7 +94,7 @@
 
 - **叶子透传原始渲染信息**:fill/_color/effect/borderRadius/text/rowTexts/svgKey/svgShortKey/svgName/path/opacity 等全部保留(`leafToDsl` 白名单),内部子节点树原样保留
 - **容器输出 flexContainerInfo**:`{ flexDirection, mainSizing, crossSizing, justifyContent?, alignItems?, gap:{row,column}?, padding:[top,right,bottom,left]? }` —— gap/padding 用结构化数字,不绑定任何框架
-- **语义命名**:role 驱动(status-bar/nav-bar/learn-card/stats-row/content-tabs/tab-bar/hero + 首文本内容),如 `nav-bar-学习`,文本为空回退机器名
+- **语义命名**:role 驱动,纯几何信号(语言无关, doc19 批3):status-bar/nav-bar/tab-bar/hero/grid-row/card-deck/floating-capsule/segmented-bar/feature-card/sticker-card/stats-row/tab-item + 首文本内容,如 `nav-bar-学习`,文本为空回退机器名(语言绑定的 learn-card/content-tabs 已退役)
 - **统计**:background/container/band/sticker/off-canvas 计数
 - **验证契约**:清洗后树模拟渲染,每叶子页面绝对坐标与输入一致(容差 2px)
 
