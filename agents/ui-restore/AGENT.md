@@ -35,16 +35,16 @@ Phase 3.5 Vision          仅当确定性说不清时：region 成对裁图 → 
 |------|------|
 | 取数 | MasterGo MCP 的 section 枚举 + 逐 section DSL(分页取全, 不可跳过) |
 | 分析 | `ui_restore_run`(mode=analyze) 或 CLI `node <pkg>/dist/restore.js analyze <design.json> --session s.json` |
-| 画像 | `restore.mjs profile <projectDir> [--out p.json]` / `ui-restore profile <dir>` → Target Profile(置信度排序，未知=unknown；绝不默认 css-modules) |
-| 生成 | `restore.mjs generate <bp.json> --project <dir> --profile p.json [--assets a.json] [--serializer inline|tailwind|vue|flutter|miniprogram]` / `ui-restore generate` → `src/emit/registry.ts:1` 按 `profile` 热插拔解析 React/Vue/Flutter/小程序/Tailwind + preview.html + .restore-map.json(核心仅依赖 Style IR) |
-| 合并 | `restore.mjs merge <projectDir> [--from <generatedDir>]` / `ui-restore merge` / `ui_restore_merge` — V2 合并：生成文件合入既有项目，冲突重命名，`src/target/merge.ts:1` |
+| 画像 | `dist/restore.js profile <projectDir> [--out p.json]` / `ui-restore profile <dir>` → Target Profile(置信度排序，未知=unknown；绝不默认 css-modules) |
+| 生成 | `dist/restore.js generate <bp.json> --project <dir> --profile p.json [--assets a.json] [--serializer inline|tailwind|vue|flutter|miniprogram]` / `ui-restore generate` → `src/emit/registry.ts:1` 按 `profile` 热插拔解析 React/Vue/Flutter/小程序/Tailwind + preview.html + .restore-map.json(核心仅依赖 Style IR) |
+| 合并 | `dist/restore.js merge <projectDir> [--from <generatedDir>]` / `ui-restore merge` / `ui_restore_merge` — V2 合并：生成文件合入既有项目，冲突重命名，`src/target/merge.ts:1` |
 | 下钻 | `ui_restore_region`(rect/ids → 完整精确子树), 大页面禁止整页蓝图进上下文 |
-| 对比/门禁 | `ui_restore_run`(mode=verify) 或 `restore.mjs verify <truth.png> <render.png> --bp <blueprint.json> --session s.json`；`ui-restore gate <truth.png> <render.png> --bp <bp>` 组合验收(global+region+geometry+assets) |
+| 对比/门禁 | `ui_restore_run`(mode=verify) 或 `dist/restore.js verify <truth.png> <render.png> --bp <blueprint.json> --session s.json`；`ui-restore gate <truth.png> <render.png> --bp <bp>` 组合验收(global+region+geometry+assets) |
 | 定位 | `src/adapters/loop.ts`（产物 dist/loop.js）的 `locateRegions`：Pixel Region → DOM([data-restore-node]) → Blueprint node → restore-map → 源文件 |
 | 受限修复 | `src/target/patch.ts` Patch Contract + `validatePatch`；`src/adapters/loop.ts`（产物 dist/loop.js）的 `repairWithLlm`（受限修改器，越界/依赖/重写/资产替代四重拒收） |
 | 收敛评分 | `src/verify/score.ts` Convergence Score：global+region+geometry+changedArea+contract 权重和，单调收敛(P50≤3/P90≤5/P95≤8) |
 | Vision 兜底 | `src/verify/vision.ts` `shouldTriggerVision`/`diagnoseWithVision` + `loop.mjs` 回灌；确定性低置信/无候选时成对裁图→Vision→`[Vision] detail` |
-| 编排推进 | `ui_restore_run(mode=restore)` 或 `dist/restore.js restore [design.json] --session s.json` —— 确定性状态机；`src/adapters/loop.ts` runConvergeLoop({visionClient})` 完整收敛循环 |
+| 编排推进 | `ui_restore_run`(mode=restore, 或**仅传 session_path** 即自动进 restore)或 `dist/restore.js restore [design.json] --session s.json` —— 确定性状态机；`src/adapters/loop.ts` runConvergeLoop({visionClient})` 完整收敛循环 |
 | 防退化 | verify 会话记账自动执行: 质量劣化即 `[REGRESSED]`, 先 git 回滚到 best.iteration 轮再局部重改；Score 单调收敛仲裁 |
 | 截图/块清单 | `dist/screenshot.js`(仅图) / `dist/dom-blocks.js`(文本块清单 + 同源截图, Web 渲染体; 块清单成对传入 verify 即得 blockMatchRate) |
 | 回归 | `node scripts/run-benchmarks.mjs` 全量 benchmark(改算法前后各跑一次); `node scripts/truth-spike.mjs` Truth 三级定量 |

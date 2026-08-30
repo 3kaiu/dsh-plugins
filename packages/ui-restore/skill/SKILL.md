@@ -42,7 +42,22 @@ node <pkg>/dist/screenshot.js <url-or-file> <out.png> [--width 375] [--height 81
 node <pkg>/dist/dom-blocks.js <url-or-file> <out.blocks.json> [--png <out.png>] [--width 375] [--height 812] [--engine auto|playwright|cdp]
 ```
 
-MCP 等价工具:`ui_restore_run`(mode=analyze/verify) / `ui_restore_region`(区域下钻) / `ui_restore_diff` / `ui_restore_profile` / `ui_restore_generate` / `ui_restore_gate`。
+MCP 消费指南(`node <pkg>/dist/mcp-server.js`, stdio; 集成测试覆盖 10 工具全链路):
+
+| 工具 | 用途 | 关键参数 |
+|------|------|----------|
+| `ui_restore_run` | 主入口: analyze 产物包 / verify 对比+记账 / restore 状态机 | mode 缺省推断:**有图=verify; 仅会话=restore; 带设计稿=analyze**(显式 mode 优先); `session_path` 提供即迭代记账+防退化 |
+| `ui_restore_blueprint` | 设计稿 → 蓝图 + outline | design_path, out_dir, scale |
+| `ui_restore_verify` | 蓝图契约 + Yoga 真值单验 | blueprint_path |
+| `ui_restore_region` | 区域下钻(rect/ids → 精确子树), 大页面按需取数 | blueprint_path, rect/ids |
+| `ui_restore_diff` | 两图对比: 像素+块级+差异区域+修正指令 | truth_png, render_png, blueprint_path |
+| `ui_restore_tokens` | 蓝图 → DTCG token + 别名表 | blueprint_path |
+| `ui_restore_profile` | 项目 → Target Profile(未知=unknown) | project_dir |
+| `ui_restore_generate` | 蓝图+画像 → 多 serializer 代码 + preview + map | blueprint_path, project_dir |
+| `ui_restore_gate` | 组合验收(三闸, 缺蓝图 fail-closed) | truth_png, render_png, blueprint_path |
+| `ui_restore_merge` | 生成文件合入既有项目, 冲突重命名 | project_dir, from_dir |
+
+路径收容: 所有路径参数解析后必须落在 `UI_RESTORE_ROOT`(缺省=server 启动目录)内, 越界一律 `isError`(fail closed); 本地 dev server 等受信场景可用 `UI_RESTORE_ALLOW_PRIVATE_URLS=1` 放行内网渲染目标。
 
 Target 层: `src/target/{detect,resolve,contract,asset-resolver,patch,component-map,merge}.ts`；Verify 层: `src/verify/{gate,score,errors,vision}.ts`；Emit 层: `src/emit/{style-ir,react,html,tailwind,vue,flutter,miniprogram,registry}.ts`（`registry.ts:1` 热插拔，`registerAdapter` 零改核心加栈）；编排: `src/adapters/loop.ts`（构建产物 dist/loop.js，含 Vision 3.5 兜底）；V2: `src/ir/semantic.ts` / `merge.ts`。
 
