@@ -64,7 +64,10 @@ server.tool(
     const sessionAbs = session_path ? confineUnder(session_path) : null;
     const loadSession = () => (sessionAbs ? loadSessionFile(sessionAbs) : null);
     const saveSession = (patch) => (sessionAbs ? saveSessionFile(sessionAbs, patch) : null);
-    const m = mode || (truth_png || render_png ? 'verify' : 'analyze');
+    // 模式推断: 有图=verify; 仅会话(无图无设计稿)=restore 第三态 —— Agent 恢复会话的
+// 最自然调用是只传 session_path, 此前被误判 analyze 而报错(mcp-integration 测试抓出);
+// 带 design_path 的会话调用仍是 analyze(记录 analyze 后由调用方再进 restore)。
+const m = mode || (truth_png || render_png ? 'verify' : (session_path && !design_path ? 'restore' : 'analyze'));
 
     // 第三态: restore 编排器 —— 只做确定性推进决策, 不实现任何 LLM 行为
     if (m === 'restore') {
