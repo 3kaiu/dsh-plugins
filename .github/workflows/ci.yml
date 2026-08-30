@@ -52,7 +52,7 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
-      - name: build(先构建: 跨包 import 经 kit dist 解析, fresh clone 无 dist)
+      - name: "build —— 先构建再查型(跨包 import 经 kit dist 解析, fresh clone 无 dist)"
         run: pnpm build
       - name: tsc --noEmit
         run: npx tsc --noEmit
