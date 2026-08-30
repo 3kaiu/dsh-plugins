@@ -3,6 +3,7 @@ name: benchmark
 # 固定 macos: blockMetrics/几何度量对字体渲染敏感(macos 自带 PingFang SC),
 # 跨平台重生成 render 会与库内基准 truth.png 失配 —— 字形覆盖是排版级问题, 属 V2 专项。
 on:
+  workflow_dispatch:
   pull_request:
     paths: ["packages/ui-restore/**", "benchmarks/**", "scripts/run-benchmarks.mjs"]
   push:
