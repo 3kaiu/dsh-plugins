@@ -25,8 +25,8 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
-      - name: build @ui-restore/core
-        run: (cd packages/ui-restore && node build.mjs)
+      - name: build(拓扑全量: ui-restore 源码 import kit, kit dist 必须先存在)
+        run: pnpm build
       - name: run benchmarks(good 收敛 + bad 注入必检出)
         run: node scripts/run-benchmarks.mjs
       - name: 上传运行产物(diff/session, 便于事后诊断)

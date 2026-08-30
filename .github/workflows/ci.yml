@@ -27,9 +27,9 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
-      - name: adapter 语法检查 (node --check, 防 .mjs 里混入 TS 语法导致运行时崩溃)
+      - name: .mjs 语法检查 (node --check, 防 .mjs 里混入 TS 语法导致运行时崩溃)
         run: |
-          for f in packages/ui-restore/adapters/*.mjs; do
+          for f in $(git ls-files '*.mjs'); do
             node --check "$f" || { echo "syntax error: $f"; exit 1; }
           done
       - name: build
@@ -52,5 +52,7 @@ jobs:
         run: npm install -g pnpm@9.15.0
       - name: install
         run: pnpm install --frozen-lockfile
+      - name: build(先构建: 跨包 import 经 kit dist 解析, fresh clone 无 dist)
+        run: pnpm build
       - name: tsc --noEmit
         run: npx tsc --noEmit
