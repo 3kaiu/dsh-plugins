@@ -8,6 +8,8 @@ import { classifyDsl } from "./classify.ts";
 import { applyCleanTool } from "./clean.ts";
 
 const name = "dsh-layout-infer";
+const inject = ["tools"];
+
 
 const renderJson = (args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 
@@ -154,7 +156,7 @@ function apply(ctx) {
   );
 }
 
-export { name, apply };
+export { name, inject, apply };
 // 供测试与外部工具直接消费的核心逻辑(构建产物同步导出)
 export { annotate, annotateNode, suggestName } from "./annotate.ts";
 export { classifyDsl, classifyNode, kindOf, sizingOf, positionOf, spacingOf, paintValue, resolvePaint, svgOf } from "./classify.ts";

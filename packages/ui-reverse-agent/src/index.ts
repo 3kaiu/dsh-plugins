@@ -47,6 +47,11 @@ import { generateApiDocs, exampleSnippet } from "./services/typedoc.ts";
 
 const name = "dsh-ui-reverse-agent";
 const renderJson = (_args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
+const inject = {
+  required: ["tools"],
+  optional: ["systemPrompt", "planMode", "storageDomain", "goals", "todo"]
+};
+
 
 let devServerInstance = null;
 
@@ -617,7 +622,7 @@ function apply(ctx, config) {
   } catch {}
 }
 
-export { name, apply, PROMPT_TEMPLATE, Config, applyConfig, runtimeConfig, initStorageBackend, storageBackendName };
+export { name, inject, apply, PROMPT_TEMPLATE, Config, applyConfig, runtimeConfig, initStorageBackend, storageBackendName };
 export { referenceIngest } from "./perception/reference.ts";
 export * from "./perception/browser.ts";
 export * from "./perception/neutral-ingest.ts";
