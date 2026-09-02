@@ -10,21 +10,21 @@
 const round = (n: any) => Math.round((n || 0) * 100) / 100
 
 // 尺寸桶: 4px 容差,吸收设计稿 1-2px 的手工误差
-function sizeBucket(n) {
+function sizeBucket(n: any) {
   return n == null ? '?' : Math.round(n / 4)
 }
 
 // 文本信号: 存在性 + 粗粒度长度桶(16 字符),忽略具体内容
-function textSignal(node) {
+function textSignal(node: any) {
   let t = null
   if (typeof node.text === 'string') t = node.text
-  else if (Array.isArray(node.text)) t = node.text.map((x) => (x && x.text) || '').join('')
+  else if (Array.isArray(node.text)) t = node.text.map((x: any) => (x && x.text) || '').join('')
   if (t == null || t === '') return null
   return 'len' + Math.round(t.length / 16)
 }
 
 // 颜色信号: 直接可读的颜色值(清洗后 DSL 的 _color / 原生 fill / 蓝图 color)
-function colorSignal(node) {
+function colorSignal(node: any) {
   if (typeof node._color === 'string' && node._color) return node._color
   if (typeof node.color === 'string' && node.color) return node.color
   if (typeof node.fill === 'string' && node.fill && !/^paint_/.test(node.fill)) return node.fill
@@ -35,7 +35,7 @@ function colorSignal(node) {
  * 节点结构指纹(递归)。相同指纹 => 结构同构,可视为同一重复项的实例。
  * 刻意忽略: 绝对/相对坐标、具体文案、id、name。
  */
-export function structureFingerprint(node, opts: Record<string, any> = {}) {
+export function structureFingerprint(node: any, opts: Record<string, any> = {}) {
   if (!node) return 'null'
   // 形状兼容: 清洗后 DSL(layoutStyle) 与蓝图节点(bounds/layout)双形态
   const ls = node.layoutStyle || {}
@@ -51,14 +51,14 @@ export function structureFingerprint(node, opts: Record<string, any> = {}) {
   if (ts) parts.push('t:' + ts)
   const kids = node.children || []
   if (kids.length) {
-    const kidFps = kids.map((k) => structureFingerprint(k, opts))
+    const kidFps = kids.map((k: any) => structureFingerprint(k, opts))
     // 顺序无关: 同构判定不应依赖子节点排列顺序(几何聚类顺序因位置而异)
     parts.push('[' + (opts?.sortChildren ? kidFps.sort().join(',') : kidFps.join(',')) + ']')
   }
   return parts.join('|')
 }
 
-function median(nums) {
+function median(nums: any) {
   if (!nums.length) return null
   const s = [...nums].sort((a: any, b: any) => a - b)
   const mid = Math.floor(s.length / 2)
@@ -69,7 +69,7 @@ function median(nums) {
  * 测量重复组的轴向/间距/单项尺寸。
  * axis: 相邻 item 的主位移在 x 还是 y;gap 为同边间距差的中位数。
  */
-function measureGroup(items) {
+function measureGroup(items: any) {
   const first = items[0].layoutStyle || {}
   const dxs = []
   const dys = []
@@ -103,7 +103,7 @@ function measureGroup(items) {
  * @param {object} [opts] min: 最小重复数(默认 3)
  * @returns {Array<{startIndex:number, count:number, itemIds:Array, axis:string, itemWidth:number, itemHeight:number, gap:number}>}
  */
-export function detectRepeatGroups(nodes, opts: Record<string, any> = {}) {
+export function detectRepeatGroups(nodes: any, opts: Record<string, any> = {}) {
   const min = opts.min || 3
   const list = nodes || []
   const fps = list.map(structureFingerprint)
@@ -143,11 +143,11 @@ export function detectRepeatGroups(nodes, opts: Record<string, any> = {}) {
  * @param {object} [opts] minSections: 至少出现的 section 数(默认 2)
  * @returns {Array<{fingerprint, count, sections:Array<number>, itemWidth, itemHeight, instances:Array<{sectionIndex,id,name,x,y}>}>}
  */
-export function detectSharedComponents(trees, opts: Record<string, any> = {}) {
+export function detectSharedComponents(trees: any, opts: Record<string, any> = {}) {
   const minSections = opts.minSections || 2
   const byFp = new Map()
   // 深度优先索引: 只收有子节点的容器
-  const index = (node, sectionIndex) => {
+  const index = (node: any, sectionIndex: any) => {
     if (!node || !Array.isArray(node.children) || node.children.length === 0) return
     const ls = node.layoutStyle || {}
     const fp = structureFingerprint(node)
@@ -164,32 +164,32 @@ export function detectSharedComponents(trees, opts: Record<string, any> = {}) {
     })
     for (const c of node.children) index(c, sectionIndex)
   }
-  ;(trees || []).forEach((roots, si) => {
+  ;(trees || []).forEach((roots: any, si: any) => {
     for (const r of roots || []) index(r, si)
   })
 
   // 候选: 出现在 >= minSections 个不同 section
   const candidates = []
   for (const [fp, instances] of byFp) {
-    const sections = [...new Set(instances.map((i) => i.sectionIndex))]
+    const sections = [...new Set(instances.map((i: any) => i.sectionIndex))]
     if (sections.length >= minSections) candidates.push({ fp, instances, sections })
   }
   // 面积降序: 大组件优先成组,嵌套小容器随后被去重
   candidates.sort((a: any, b: any) => {
-    const area = (arr) => arr.reduce((s, i) => s + (i.width || 0) * (i.height || 0), 0) / arr.length
+    const area = (arr: any) => arr.reduce((s: any, i: any) => s + (i.width || 0) * (i.height || 0), 0) / arr.length
     return area(b.instances) - area(a.instances)
   })
 
   const reported = []
   const consumed = new Set() // 已归组子树的节点 id(嵌套去重)
-  const markSubtree = (node, set) => {
+  const markSubtree = (node: any, set: any) => {
     if (!node) return
     set.add(node.id)
     for (const c of node.children || []) markSubtree(c, set)
   }
   for (const cand of candidates) {
-    const live = cand.instances.filter((i) => !consumed.has(i.id))
-    const liveSections = [...new Set(live.map((i) => i.sectionIndex))]
+    const live = cand.instances.filter((i: any) => !consumed.has(i.id))
+    const liveSections = [...new Set(live.map((i: any) => i.sectionIndex))]
     if (liveSections.length < minSections) continue
     for (const i of live) markSubtree(i._node, consumed)
     reported.push({
@@ -215,12 +215,12 @@ export function detectSharedComponents(trees, opts: Record<string, any> = {}) {
  * @param {object} [opts] minCount: 最小实例数(默认2); minArea: 最小面积(默认64, 滤微噪)
  * @returns {Array<{groupId, count, axis?, gap?, itemWidth, itemHeight, instances}>}
  */
-export function detectSiblingComponentGroups(roots, opts: Record<string, any> = {}) {
+export function detectSiblingComponentGroups(roots: any, opts: Record<string, any> = {}) {
   const minCount = opts.minCount ?? 2
   const minArea = opts.minArea ?? 64
   const groups = []
   let seq = 0
-  const walk = (nodes) => {
+  const walk = (nodes: any) => {
     if (!Array.isArray(nodes) || nodes.length < minCount) {
       for (const n of nodes || []) walk(n?.children)
       return
@@ -244,7 +244,7 @@ export function detectSiblingComponentGroups(roots, opts: Record<string, any> = 
         itemWidth: round(members[0].bounds?.width || 0),
         itemHeight: round(members[0].bounds?.height || 0),
         ...measureGroupBounds(members),
-        instances: members.map((m) => ({ id: m.id, name: m.name || '', x: round(m.bounds?.x || 0), y: round(m.bounds?.y || 0) })),
+        instances: members.map((m: any) => ({ id: m.id, name: m.name || '', x: round(m.bounds?.x || 0), y: round(m.bounds?.y || 0) })),
       }
       groups.push(g)
       // 组员子树不再重复成组(同构组的孩子也是同构的, 冗余)
@@ -264,10 +264,10 @@ export function detectSiblingComponentGroups(roots, opts: Record<string, any> = 
  * 组员排布节奏(基于蓝图 bounds): 相邻实例主轴间距中位数。
  * 轴向取实例间位移跨度更大者; 重叠/不规则时 gap=null(交由 bounds 差值定位)。
  */
-function measureGroupBounds(members) {
+function measureGroupBounds(members: any) {
   if (!members || members.length < 2) return {}
-  const xs = members.map((m) => m.bounds?.x ?? 0)
-  const ys = members.map((m) => m.bounds?.y ?? 0)
+  const xs = members.map((m: any) => m.bounds?.x ?? 0)
+  const ys = members.map((m: any) => m.bounds?.y ?? 0)
   const spanX = Math.max(...xs) - Math.min(...xs)
   const spanY = Math.max(...ys) - Math.min(...ys)
   const axis = spanX >= spanY ? 'row' : 'column'
@@ -286,7 +286,7 @@ function measureGroupBounds(members) {
   return { axis, gap: allPositive ? medianOf(gaps) : null }
 }
 
-function medianOf(nums) {
+function medianOf(nums: any) {
   const s = [...nums].sort((a: any, b: any) => a - b)
   const mid = Math.floor(s.length / 2)
   return s.length % 2 ? s[mid] : round((s[mid - 1] + s[mid]) / 2)

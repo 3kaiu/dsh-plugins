@@ -38,7 +38,7 @@ import { systemChromeOf } from './system-chrome.ts'
  * @param {Array} opts.sections 每项 {id,name,type,x,y,width,height,dsl:{styles,nodes}}
  */
 function normalize({ canvas, sections }) {
-  const nodes = sections.map((s, i) => {
+  const nodes = sections.map((s: any, i: any) => {
     const root = s.dsl && s.dsl.nodes ? s.dsl.nodes[0] : null
     const ls = root && root.layoutStyle ? root.layoutStyle : {}
     const color = root && root._color != null ? root._color : null
@@ -71,7 +71,7 @@ function normalize({ canvas, sections }) {
 
 const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
 
-function isBackgroundRect(n, canvas) {
+function isBackgroundRect(n: any, canvas: any) {
   if (n._width < canvas.width * 0.8) return false
   if (Math.abs(n._rotation) > 0.5) return false
   const isBottomStrip = n._y + n._height >= canvas.height - 10 && n._height <= 100
@@ -82,14 +82,14 @@ function isBackgroundRect(n, canvas) {
   return false
 }
 
-function isContainerCandidate(n) {
+function isContainerCandidate(n: any) {
   if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
   if (Math.abs(n._rotation) > 0.5) return false
   return true
 }
 
 /** y 轴自适应聚类(与 layout-core 语义一致): 全宽条独立; gap 断裂 */
-function clusterBandsAdaptive(items, canvas, tol = 2) {
+function clusterBandsAdaptive(items: any, canvas: any, tol: any = 2) {
   const sorted = [...items].sort((a, b) => a._y - b._y)
   const bands = []
   for (const n of sorted) {
@@ -112,7 +112,7 @@ function clusterBandsAdaptive(items, canvas, tol = 2) {
 }
 
 /** 带内 x 聚类成列 */
-function clusterCols(items, tol = 12) {
+function clusterCols(items: any, tol: any = 12) {
   const sorted = [...items].sort((a, b) => a._x - b._x)
   const cols = []
   for (const n of sorted) {
@@ -128,7 +128,7 @@ function clusterCols(items, tol = 12) {
   return cols
 }
 
-function bandBBox(band) {
+function bandBBox(band: any) {
   const minX = Math.min(...band.items.map((n: any) => n._x))
   const minY = Math.min(...band.items.map((n: any) => n._y))
   const maxX = Math.max(...band.items.map((n: any) => n._x + n._width))
@@ -141,7 +141,7 @@ function bandBBox(band) {
 // =====================================================================
 
 /** 从 section 的 DSL 提取首个文本(用于命名/识别) */
-function firstText(n) {
+function firstText(n: any) {
   const dsl = n._dsl
   if (!dsl || !dsl.rowTexts || !dsl.rowTexts.length) return null
   const t = dsl.rowTexts[0]
@@ -149,7 +149,7 @@ function firstText(n) {
 }
 
 /** 语义命名: 角色 + 内容启发式 */
-function semanticName(n, role, canvas) {
+function semanticName(n: any, role: any, canvas: any) {
   const t = firstText(n)
   if (role === 'floating-capsule') return t ? 'floating-capsule-' + t : 'floating-capsule'
   if (role === 'grid-row') return 'grid-row'
@@ -172,7 +172,7 @@ function semanticName(n, role, canvas) {
 }
 
 /** 识别带内布局角色(基于内容/位置信号) */
-function bandRole(band, canvas) {
+function bandRole(band: any, canvas: any) {
   const first = band.items[0]
   const texts = band.items.map(firstText).filter(Boolean)
   
@@ -202,7 +202,7 @@ function bandRole(band, canvas) {
   if (band.items.length === 1) {
     const n = band.items[0]
     const t = firstText(n) || ''
-    if (band.items.some((x) => x._radius)) return 'card'
+    if (band.items.some((x: any) => x._radius)) return 'card'
     if (/^[a-zA-Z\s]+$/.test(t) && n.type === 'GROUP') return 'sticker'
     if (n._effect && /shadow/i.test(String(n._effect))) {
       if (n.children?.some((c: any) => c._rotation)) return 'sticker-card'
@@ -215,7 +215,7 @@ function bandRole(band, canvas) {
     }
   }
   // 统计行: 文本含数字(语言无关的量化信号)
-  if (texts.some((t) => /\d/.test(t))) return 'stats-row'
+  if (texts.some((t: any) => /\d/.test(t))) return 'stats-row'
   // 多节点带
   if (band.items.length === 1) {
     if (Math.abs(first._rotation) > 0.5) return 'sticker'
@@ -235,7 +235,7 @@ function bandRole(band, canvas) {
  * @param {object} n 归一化节点
  * @param {{x:number,y:number}} origin 父容器原点(页面坐标)
  */
-function leafToDsl(n, origin) {
+function leafToDsl(n: any, origin: any) {
   const dslRoot = n._dsl && n._dsl.nodes ? n._dsl.nodes[0] : null
   const ls = dslRoot && dslRoot.layoutStyle ? dslRoot.layoutStyle : {}
   const out: Record<string, any> = {
@@ -271,7 +271,7 @@ function leafToDsl(n, origin) {
  * 容器 → 标准 DSL 节点
  * @param {object} c 容器 {bbox, role, layout, children, origin(父容器原点)}
  */
-function containerToDsl(c) {
+function containerToDsl(c: any) {
   const origin = c.origin || { x: 0, y: 0 }
   const out: Record<string, any> = {
     type: 'FRAME',
@@ -296,7 +296,7 @@ function containerToDsl(c) {
 }
 
 /** inferLayout 结果 → 技术中立 flexContainerInfo(gap/padding 输出结构化数字, 不绑定任何 CSS/框架) */
-function flexInfo(layout) {
+function flexInfo(layout: any) {
   const info: Record<string, any> = {
     flexDirection: layout.flexDirection,
     mainSizing: layout.mainSizing || 'auto',
@@ -310,11 +310,11 @@ function flexInfo(layout) {
   }
   // 不等间距: 透传 per-pair 间距数组(相邻对,主轴排序),供下游按需展开
   if (Array.isArray(layout.spacing) && layout.spacing.length) {
-    info.spacing = layout.spacing.map((v) => round1(v))
+    info.spacing = layout.spacing.map((v: any) => round1(v))
   }
-  if (layout.padding && layout.padding.some((p) => p > 0.01)) {
+  if (layout.padding && layout.padding.some((p: any) => p > 0.01)) {
     // [top, right, bottom, left] — 与框架无关的数字序列
-    info.padding = layout.padding.map((v) => Math.round(v))
+    info.padding = layout.padding.map((v: any) => Math.round(v))
   }
   return info
 }
@@ -337,12 +337,12 @@ function flexInfo(layout) {
  * @param {object} dsl cleanToStandardDsl 的返回对象(或其 root)
  * @returns {string} 缩进树形文本
  */
-export function describeStructure(dsl) {
+export function describeStructure(dsl: any) {
   const root = dsl.root || dsl
   const canvas = dsl.meta && dsl.meta.canvas ? dsl.meta.canvas : null
   const lines = []
   if (canvas) lines.push(`画布 ${canvas.width}x${canvas.height}`)
-  const walk = (node, depth, origin) => {    const ls = node.layoutStyle || {}
+  const walk = (node: any, depth: any, origin: any) => {    const ls = node.layoutStyle || {}
     const x = origin.x + (ls.relativeX || 0)
     const y = origin.y + (ls.relativeY || 0)
     const pad = '  '.repeat(depth)
@@ -389,7 +389,7 @@ export function describeStructure(dsl) {
         groupAt.set(g.startIndex, g)
         for (let k = 1; k < g.count; k++) folded.add(g.startIndex + k)
       }
-      node.children.forEach((c, idx) => {
+      node.children.forEach((c: any, idx: any) => {
         const g = groupAt.get(idx)
         if (g) {
           c = Object.assign({}, c) // 不改原节点,仅描述层附加标记
@@ -439,7 +439,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
   const assigned = new Set()
   const absorbedContainers = new Set()
   const standaloneContainers = new Set()
-  const containers = rest.filter(isContainerCandidate).sort((a, b) => a._width * a._height - b._width * b._height)
+  const containers = rest.filter(isContainerCandidate).sort((a: any, b: any) => a._width * a._height - b._width * b._height)
 
   for (const c of containers) {
     if (assigned.has(c.id) || absorbedContainers.has(c.id) || standaloneContainers.has(c.id)) continue
@@ -489,10 +489,10 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
     const layout = kids.length
       ? inferLayout({
           container: { width: c._width, height: c._height },
-          children: kids.map((k) => ({ id: k.id, x: k._x - c._x, y: k._y - c._y, width: k._width, height: k._height, rotation: k._rotation })),
+          children: kids.map((k: any) => ({ id: k.id, x: k._x - c._x, y: k._y - c._y, width: k._width, height: k._height, rotation: k._rotation })),
         })
       : null
-    const childNodes = kids.map((k) => {
+    const childNodes = kids.map((k: any) => {
       if (Math.abs(k._rotation) > 0.5) {
         const l = leafToDsl(k, { x: c._x, y: c._y })
         l.role = 'sticker'
@@ -504,7 +504,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
     const dslKids = c._dsl && c._dsl.nodes && c._dsl.nodes[0] && c._dsl.nodes[0].children ? c._dsl.nodes[0].children : null
     if (dslKids && dslKids.length) {
       if (!childNodes.length) childNodes.push(...dslKids)
-      else childNodes.push(...dslKids.filter((k) => !childNodes.some((c2) => c2.id === k.id)))
+      else childNodes.push(...dslKids.filter((k: any) => !childNodes.some((c2: any) => c2.id === k.id)))
     }
     children.push(
       containerToDsl({
@@ -638,10 +638,10 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
 // 辅助
 // =====================================================================
 
-function detectContainerRole(c, kids) {
-  const texts = [...kids.map(firstText), ...(c._dsl && c._dsl.rowTexts ? c._dsl.rowTexts.map((t) => (typeof t === 'string' ? t : t.text)) : [])].filter(Boolean)
+function detectContainerRole(c: any, kids: any) {
+  const texts = [...kids.map((k: any) => firstText(k)), ...(c._dsl && c._dsl.rowTexts ? c._dsl.rowTexts.map((t: any) => (typeof t === 'string' ? t : t.text)) : [])].filter(Boolean)
   const t = texts.join('')
-  if (kids.some((k) => Math.abs(k._rotation) > 0.5)) return 'sticker-card'
+  if (kids.some((k: any) => Math.abs(k._rotation) > 0.5)) return 'sticker-card'
   if (c._effect && /shadow/i.test(String(c._effect))) {
     // 矮条带阴影 -> 分段切换条; 高体量阴影容器 -> 特性卡; 其余 -> 普通卡 (纯几何, 不依赖文本内容)
     if (c._height <= 48) return 'segmented-bar'
@@ -652,7 +652,7 @@ function detectContainerRole(c, kids) {
   return 'card'
 }
 
-function colBBox(items) {
+function colBBox(items: any) {
   const minX = Math.min(...items.map((n: any) => n._x))
   const minY = Math.min(...items.map((n: any) => n._y))
   const maxX = Math.max(...items.map((n: any) => n._x + n._width))
@@ -661,7 +661,7 @@ function colBBox(items) {
 }
 
 /** TabBar 构建: 全宽背景条 + icon/label 对 + home indicator(全部 absolute 定位, 保证几何精确) */
-function buildTabBar(band, canvas) {
+function buildTabBar(band: any, canvas: any) {
   const bg = band.items.find((n: any) => n._width >= canvas.width * 0.9)
   const items = band.items.filter((n: any) => n !== bg && !n.name.includes('Home Indicator'))
   const home = band.items.find((n: any) => n.name.includes('Home Indicator'))
@@ -724,7 +724,7 @@ function buildTabBar(band, canvas) {
   }
 
   // 未配对的 label
-  const leftover = labels.filter((l) => !pairs.some((p) => p.label && p.label.id === l.id))
+  const leftover = labels.filter((l: any) => !pairs.some((p: any) => p.label && p.label.id === l.id))
   for (const l of leftover) children.push(leafToDsl(l, origin))
   if (home) children.push(leafToDsl(home, origin))
 
