@@ -155,7 +155,7 @@ async function probeWithCdp(bin, target, outBlocks, opts) {
   }
 }
 
-async function probeWithPlaywright(target, outBlocks, opts) {
+async function probeWithPlaywright(target: any, outBlocks: any, opts: any) {
   let chromium;
   try { ({ chromium } = await import('playwright')); } catch {
     throw new Error('无可用探针引擎 — 安装其一: (a)系统 Chrome 自动检测(cdp/auto 默认路径) (b) pnpm add -D playwright && npx playwright install chromium');

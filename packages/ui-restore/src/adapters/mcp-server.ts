@@ -282,7 +282,7 @@ server.tool(
     const projectAbs = confineUnder(project_dir);
     const profile = profile_path ? (await import('../index.ts')).loadProfile(confineUnder(profile_path)) : (await import('../index.ts')).analyzeProject(projectAbs).profile;
     const plan = planGeneration(bp, profile);
-    const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path) : { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: projectAbs });
+    const assets = resolveAssets(bp, plan, { assetsExport: assets_path ? readJson(assets_path: any): { vectors: [], images: [] }, assetDir: profile.assetDir, projectDir: projectAbs });
     // out_subdir 为 LLM 可控相对路径，同样收容（防 .. 逃逸出 project_dir）
     const outDir = confineTo(projectAbs, out_subdir || 'restore');
     await ensureBuiltins()

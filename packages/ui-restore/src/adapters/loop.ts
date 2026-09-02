@@ -174,7 +174,7 @@ export function buildPatchRequests(locateResult, classifyErrors, opts: Record<st
  * @param {object} ctx {blueprint, projectDir, fileContents: Map<path, content>}
  * @param {function} repairFn async (prompt:string, req:PatchRequest)=>{files}|{content:string}  (调用方注入的 LLM)
  */
-export async function repairWithLlm(req, ctx, repairFn) {
+export async function repairWithLlm(req: any, ctx: any, repairFn: any) {
   if (typeof repairFn !== 'function') {
     // deterministic fallback：仅对可确定性修复的 LAYOUT/PAINT 直改
     return deterministicRepair(req, ctx)
@@ -311,7 +311,7 @@ export function applyPatch(projectDir, patch) {
  *   maxIterations?, thresholds?
  * }
  */
-export async function runConvergeLoop(opts) {
+export async function runConvergeLoop(opts: any) {
   const maxIterations = opts.maxIterations ?? 8
   const bp = JSON.parse(fs.readFileSync(opts.bpPath, 'utf8'))
   const restoreMap = opts.restoreMapPath && fs.existsSync(opts.restoreMapPath) ? JSON.parse(fs.readFileSync(opts.restoreMapPath, 'utf8')) : { entries: [] }

@@ -70,7 +70,7 @@ async function captureWithChrome(bin, target, outPng, opts) {
 }
 
 /** 引擎二: Playwright(可选 peerDependency, 未装给出安装提示) */
-async function captureWithPlaywright(target, outPng, opts) {
+async function captureWithPlaywright(target: any, outPng: any, opts: any) {
   let chromium;
   try {
     ({ chromium } = await import('playwright'));

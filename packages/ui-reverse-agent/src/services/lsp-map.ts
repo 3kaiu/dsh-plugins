@@ -88,7 +88,7 @@ function flattenBlueprint(tree) {
  * 1) 若 ctx.lsp 可用：调 goToDefinition/findReferences 精准
  * 2) 否则：返回空，调用方走宿主的 glob/grep 工具（不在本模块内做 IO，避免与现有宿主 read/glob 重叠）
  */
-export async function collectCandidatesWithLsp(ctx, blueprintNode) {
+export async function collectCandidatesWithLsp(ctx: any, blueprintNode: any) {
   const { available, lsp } = detectLsp(ctx)
   if (!available) return { source: 'none', candidates: [], reason: 'lsp not available, fallback to grep' }
   try {
