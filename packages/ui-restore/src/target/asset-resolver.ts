@@ -72,7 +72,7 @@ export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
 
   // image 节点(带 crop/transform 的位图): identity= node.fill.src ?? nodeId
   const imageNodes = []
-  const walk = (n) => {
+  const walk = (n: any) => {
     if (!n || typeof n !== 'object') return
     if (n.fill?.type === 'image') imageNodes.push(n)
     for (const c of n.children || []) walk(c)
@@ -100,11 +100,11 @@ export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
     }
   }
 
-  for (const ua of plan.unresolvedAssets.filter((a) => a.kind === 'svg')) {
+  for (const ua of plan.unresolvedAssets.filter((a: any) => a.kind === 'svg')) {
     const hit = idx.svg.get(ua.key)
     if (ua.key && fileByKey.has(`svg:${ua.key}`)) {
       deduped++
-      const prev = assets.find((a) => a.kind === 'svg' && a.key === ua.key)
+      const prev = assets.find((a: any) => a.kind === 'svg' && a.key === ua.key)
       if (prev) assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file: prev.file, dedupOf: prev.id, reference: prev.reference, rawSvg: (prev as any).rawSvg || (prev as any).svg, svg: (prev as any).svg || (prev as any).rawSvg })
       continue
     }
@@ -136,7 +136,7 @@ export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
     }
   }
 
-  const resolved = assets.filter((a) => a.status === 'resolved').length
+  const resolved = assets.filter((a: any) => a.status === 'resolved').length
   return {
     assets,
     storage,
@@ -145,7 +145,7 @@ export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
       resolved,
       missing: assets.length - resolved,
       deduped,
-      note: `missing 仅允许几何占位并计入 gate 违约(${assets.filter((a) => a.status === 'missing').length} 处)`,
+      note: `missing 仅允许几何占位并计入 gate 违约(${assets.filter((a: any) => a.status === 'missing').length} 处)`,
     },
   }
 }
@@ -166,9 +166,9 @@ export function imageBackgroundStyle(fill, bounds) {
   }
 }
 
-const sanitize = (s) => String(s || 'asset').replace(/[^a-zA-Z0-9_-]+/g, '_')
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
-const round2 = (n) => Math.round(n * 100) / 100
+const sanitize = (s: any) => String(s || 'asset').replace(/[^a-zA-Z0-9_-]+/g, '_')
+const clamp = (v: any, a: any, b: any) => Math.min(b, Math.max(a, v))
+const round2 = (n: any) => Math.round(n * 100) / 100
 
 /** 仅允许已知安全扩展名，避免 ext 注入造成的非预期落盘类型 */
 function safeExt(ext: string): string {

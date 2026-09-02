@@ -39,7 +39,7 @@ function vueNode(n) {
 
 function vueStyle(n) {
   const parts = []
-  const px = (prop, v) => {
+  const px = (prop: any, v: any) => {
     const k = num(v)
     if (k != null) parts.push(`${prop}:${k}px`)
   }

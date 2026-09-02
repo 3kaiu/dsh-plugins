@@ -10,7 +10,7 @@
 // (字符串一律 JSON.stringify 字面量, 几何值 num 钳制, SVG 仅注释占位)保持独立。
 import { num, neutralTag as reactTag } from './neutral-common.ts'
 
-const str = (v, fallback) => JSON.stringify(typeof v === 'string' && v ? v : (fallback ?? ''))
+const str = (v: any, fallback: any) => JSON.stringify(typeof v === 'string' && v ? v : (fallback ?? ''))
 
 export function neutralToReact(neutral) {
   const root = neutral.root || neutral
@@ -38,7 +38,7 @@ function reactNode(n) {
 
 function reactStyle(n) {
   const parts = []
-  const px = (prop, v) => {
+  const px = (prop: any, v: any) => {
     const k = num(v)
     if (k != null) parts.push(`${prop}:${k}`)
   }

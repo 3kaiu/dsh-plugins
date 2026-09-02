@@ -163,11 +163,11 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
     if (depth >= MAX_STRUCTURE_DEPTH) {
       return { ...item, isContainer: true, layout: { position: 'absolute', confidence: 0.3, reason: '结构深度上限' }, children: kids };
     }
-    const structuredKids = kids.map((k) => structureNode(k, depth + 1));
+    const structuredKids = kids.map((k: any) => structureNode(k, depth + 1));
     const resolvedChildren = aggregateTextColumn(item, structuredKids);
     const layout = inferLayout({
       container: { width: item.width, height: item.height },
-      children: resolvedChildren.map((k) => ({
+      children: resolvedChildren.map((k: any) => ({
         id: k.id,
         x: (k.x ?? k.bbox?.x ?? 0) - item.x,
         y: (k.y ?? k.bbox?.y ?? 0) - item.y,
@@ -185,7 +185,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
     };
   }
 
-  const structuredTree = topLevelItems.map((item) => structureNode(item, 0));
+  const structuredTree = topLevelItems.map((item: any) => structureNode(item, 0));
 
   return {
     canvas: { width: cw, height: ch },
@@ -263,7 +263,7 @@ function sanitizeDslNodes(nodes = [], canvas = { width: 375, height: 812 }) {
  */
 function neutralLayoutOf(layoutInfo: Record<string, any> = {}, exactStyles: Record<string, any> = {}) {
   const li = layoutInfo || {};
-  const normEnd = (v) => (v === 'flex-end' ? 'end' : v === 'flex-start' ? 'start' : v);
+  const normEnd = (v: any) => (v === 'flex-end' ? 'end' : v === 'flex-start' ? 'start' : v);
   const out: Record<string, any> = {
     role: li.position === 'absolute' ? 'stack'
       : li.flexDirection === 'row' ? 'row'
@@ -279,7 +279,7 @@ function neutralLayoutOf(layoutInfo: Record<string, any> = {}, exactStyles: Reco
   if (ai && ai !== 'start') out.alignItems = ai;
   if (Array.isArray(li.spacing)) out.gap = li.spacing;
   else if (Number(li.gap) > 0) out.gap = Number(li.gap);
-  if (Array.isArray(li.padding) && li.padding.some((p) => p > 0.01)) out.padding = li.padding;
+  if (Array.isArray(li.padding) && li.padding.some((p: any) => p > 0.01)) out.padding = li.padding;
   if (exactStyles.borderRadius != null) out.borderRadius = exactStyles.borderRadius;
   if (Array.isArray(exactStyles.effects) && exactStyles.effects.length > 0) out.effects = exactStyles.effects;
   return out;
@@ -314,7 +314,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   // 0. 裁剪语义预处理(A2): 展平前沿原始树给蒙版本体形状打标(_maskShape + _clipRadius)。
   //    展平重建是纯几何驱动, 原 GROUP 分组不可靠(同 bbox 蒙版 GROUP 可能被吸收不存活),
   //    故标记必须跟 mask 形状自身走; 容器归属由 nodeToBlueprint 递归时按"直接子级含蒙版形状"回填。
-  const markClipSemantics = (list) => {
+  const markClipSemantics = (list: any) => {
     for (const n of Array.isArray(list) ? list : []) {
       if (!n || typeof n !== 'object') continue;
       if (n.mask === 'outline' || n.mask === true) {
@@ -330,12 +330,12 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   // 图片显示框语义(A3): 素材位图越出其源父框可视区(Skill 高频坑: 图片原始尺寸≠显示框)。
   // 源父几何由展平段以 _parentBox 保留(ingest/sanitize 两级展平均挂), 此处对扁平列表单趟检测;
   // visibleRect 为父框可视部分在素材自身坐标系下的矩形, 下游按 cover 映射, 无需理解层级。
-  const imageFillOf = (n) => {
+  const imageFillOf = (n: any) => {
     if (n.type === 'IMAGE') return true;
     if (typeof n.fill === 'string' && /url\(|image/.test(n.fill)) return true;
     try { return extractExactStyles(n, styles || {}).fill?.type === 'image'; } catch { return false; }
   };
-  const markImageCrop = (list) => {
+  const markImageCrop = (list: any) => {
     for (const n of Array.isArray(list) ? list : []) {
       if (!n || typeof n !== 'object') continue;
       const pb = n._parentBox;
@@ -466,22 +466,22 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
 
     // 递归子节点
     if (Array.isArray(node.children) && node.children.length > 0) {
-      bp.children = node.children.map((c) => nodeToBlueprint(c));
+      bp.children = node.children.map((c: any) => nodeToBlueprint(c));
     }
 
     return bp;
   }
 
-  const floatingsBlueprint = layoutResult.floatings.map((n) => nodeToBlueprint(n));
-  const blueprintTree = layoutResult.structuredTree.map((n) => nodeToBlueprint(n));
+  const floatingsBlueprint = layoutResult.floatings.map((n: any) => nodeToBlueprint(n));
+  const blueprintTree = layoutResult.structuredTree.map((n: any) => nodeToBlueprint(n));
 
   // 3.5 页面级节奏: roots 在纵轴无重叠时聚合为 page column,
   //     section 间隙以逐对 spacing 精确表达(与 text_column 同构的机制)。
   //     无重叠判定不满足(多列/交叠画布)时维持 roots 原样, 下游按绝对定位处理。
-  const buildPageShell = (roots) => {
+  const buildPageShell = (roots: any) => {
     if (roots.length < 2) return { tree: roots, pageShell: null };
     const sorted = [...roots].sort((a, b) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0));
-    const hasBounds = sorted.every((r) => r.bounds);
+    const hasBounds = sorted.every((r: any) => r.bounds);
     // 纵轴无重叠 -> flow column(section 节奏以逐对 spacing 精确表达)
     let flowable = hasBounds;
     if (hasBounds) {
@@ -524,9 +524,9 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   let downgradedContainers = 0;
   if (diffReport.maxDelta > 2) {
     const offenderIds = new Set(diffReport.allOffenderIds || []);
-    const mark = (bp) => {
+    const mark = (bp: any) => {
       if (Array.isArray(bp.children)) {
-        const hasOffender = (n) => offenderIds.has(n.id) || (n.children || []).some(hasOffender);
+        const hasOffender = (n: any) => offenderIds.has(n.id) || (n.children || []).some(hasOffender);
         if (hasOffender(bp) && (bp.layout?.role === 'row' || bp.layout?.role === 'column' || bp.layout?.position === 'flex')) {
           bp.layout = { ...bp.layout, role: 'stack', position: 'absolute', downgradeReason: 'diff>2px 回验降级' };
           downgradedContainers++;
@@ -544,8 +544,8 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   let truthReport: any = verifyLayoutTruth({ tree: blueprintTree, floatings: floatingsBlueprint });
   let truthRefinedContainers = 0;
   if (truthReport && truthReport.worst.length > 0) {
-    const badIds = new Set(truthReport.worst.map((w) => w.containerId));
-    const refine = (bp) => {
+    const badIds = new Set(truthReport.worst.map((w: any) => w.containerId));
+    const refine = (bp: any) => {
       if (!bp || typeof bp !== "object") return;
       const ly = bp.layout || {};
       const kids = Array.isArray(bp.children) ? bp.children : [];
@@ -575,7 +575,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
     // 交由下游以 margin/偏移表达。仅 start 对齐容器参与(center/end 语义会互相干扰)。
     if (truthReport.worst.length > 0) {
       const byId = new Map();
-      const idx = (bp) => { if (!bp || !bp.id || byId.has(bp.id)) return; byId.set(bp.id, bp); for (const c of bp.children || []) idx(c); };
+      const idx = (bp: any) => { if (!bp || !bp.id || byId.has(bp.id)) return; byId.set(bp.id, bp); for (const c of bp.children || []) idx(c); };
       for (const root of [...blueprintTree, ...floatingsBlueprint]) idx(root);
       let crossCorrected = 0;
       for (const w of truthReport.worst) {
@@ -601,7 +601,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
 
   // 6. 样式守恒门禁: 原 DSL 样式事实 vs 蓝图逐 id 比对 —— 几何(diffReport)与
   //    flex 真值(truthReport)之外的第三道闸, 抓"颜色/描边/旋转/透明度在链路上丢失"。
-  const exemptIds = new Set(layoutResult.backgrounds.map((b) => b.id));
+  const exemptIds = new Set(layoutResult.backgrounds.map((b: any) => b.id));
   const styleDiffReport = verifyStyleConservation(cleanNodes, [...blueprintTreeOut, ...floatingsBlueprint], styles || {}, exemptIds);
 
   return {
@@ -649,7 +649,7 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
   const origMap = new Map();
   for (const n of originalNodes) if (n && n.id) origMap.set(n.id, n);
   const bpMap = new Map();
-  const walk = (n) => { if (!n || typeof n !== 'object' || !n.id || bpMap.has(n.id)) return; bpMap.set(n.id, n); for (const c of Array.isArray(n.children) ? n.children : []) walk(c); };
+  const walk = (n: any) => { if (!n || typeof n !== 'object' || !n.id || bpMap.has(n.id)) return; bpMap.set(n.id, n); for (const c of Array.isArray(n.children) ? n.children : []) walk(c); };
   roots.forEach(walk);
 
   // 树完整性: 原 id 未出现在蓝图(且非豁免) → 丢失
@@ -658,7 +658,7 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
 
   const offenders = [];
   let checkedFacts = 0;
-  const expect = (id, field, ok) => { checkedFacts++; if (!ok) offenders.push({ id, field }); };
+  const expect = (id: any, field: any, ok: any) => { checkedFacts++; if (!ok) offenders.push({ id, field }); };
   for (const [id, orig] of origMap) {
     const bp = bpMap.get(id);
     if (!bp) continue; // 缺树已由 missingIds 记账; 树内节点才查字段
@@ -705,7 +705,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
     if (n && n.id) originalMap.set(n.id, n);
   }
   // 统一取几何: 兼容 {x,y,width,height} / {bounds:{x,y,...}} / {layoutStyle:{relativeX,...}} 三种形态
-  const geom = (node) => {
+  const geom = (node: any) => {
     const b = node.bounds || {};
     const ls = node.layoutStyle || {};
     return {
@@ -737,7 +737,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
         const drift = dx + dy >= dw + dh
           ? (dy > dx ? 'position-y' : 'position-x')
           : (dh > dw ? 'size-height' : 'size-width');
-        const flexAncestor = [...ancestors].reverse().find((a) => {
+        const flexAncestor = [...ancestors].reverse().find((a: any) => {
           const ly = a.layout || {};
           return ly.role === 'row' || ly.role === 'column' || ly.position === 'flex';
         });
@@ -770,7 +770,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
     worstOffenders: offenders.slice(0, 10),
     offenderCount: offenders.length,
     // 上限截断防巨页产物膨胀(>100 时以 offenderCount 为准); 降级逻辑容忍截断
-    allOffenderIds: offenders.slice(0, 100).map((o) => o.id),
+    allOffenderIds: offenders.slice(0, 100).map((o: any) => o.id),
     verdict: maxDelta <= 0.04 ? "PASS_PIXEL_PERFECT (100% 1:1 零失真)" : (maxDelta <= 2 ? "PASS_WITH_TOLERANCE (<=2px)" : "FAIL_OVER_TOLERANCE (>2px, 需降级 absolute)"),
   };
 }

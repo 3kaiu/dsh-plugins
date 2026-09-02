@@ -136,7 +136,7 @@ import { sanitizeSvg } from '../target/svg-sanitize.ts'
 const safeIdent = (s:string, prefix:string) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  const name = parts.map((p: any) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore' + (name || '')
 }
 const jsxStyleObject = (style: Record<string, any>) => '{ ' + Object.entries(style)
@@ -260,7 +260,7 @@ export function emitTailwindReact(bp:any, plan:any, assets:any, profile:any, opt
     `export default function ${componentName}() {`,
     `  const pageCls = ${JSON.stringify(canvasTw.className)};`,
     `  const pageStyle = ${jsxStyleObject(canvasInline)};`,
-    ...decls.map((l) => l),
+    ...decls.map((l: any) => l),
     '  return (',
     '    <div data-restore-root className={pageCls} style={pageStyle}>',
     ...jsx,

@@ -35,13 +35,13 @@ export async function buildBlueprint(designPath, opts: Record<string, any> = {})
 /** 蓝图全部叶子节点(diffRegions 的候选映射输入)。此前 cli/mcp/pipeline 共四份相同 walk 拷贝, 已收敛于此 */
 export function collectLeaves(bp) {
   const leaves = [];
-  const walk = (n) => {
+  const walk = (n: any) => {
     if (!n || typeof n !== 'object') return;
     if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n);
     else for (const c of n.children) walk(c);
   };
   for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
-  return leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds }));
+  return leaves.map((n: any) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds }));
 }
 
 /**
@@ -52,7 +52,7 @@ export function writeArtifactBundle(bp, v, lint, outDir, base) {
   fs.mkdirSync(outDir, { recursive: true });
   const cl = restorationChecklist(bp);
   cl.gates.contract = v.ok ? 'PASS' : 'FAIL';  const files: Record<string, any> = {};
-  const write = (name, data) => { const p = path.join(outDir, name); fs.writeFileSync(p, data); return p; };
+  const write = (name: any, data: any) => { const p = path.join(outDir, name); fs.writeFileSync(p, data); return p; };
   files.blueprint = write(`${base}.blueprint.json`, JSON.stringify(bp));
   files.outline = write(`${base}.outline.txt`, blueprintToOutline(bp));
   files.checklistJson = write(`${base}.checklist.json`, JSON.stringify(cl, null, 1));
@@ -63,13 +63,13 @@ export function writeArtifactBundle(bp, v, lint, outDir, base) {
     vectors: cl.vectors,
     images: cl.images,
   }, null, 1));
-  const kb = (n) => `${Math.round(n / 102.4) / 10}KB`;
+  const kb = (n: any) => `${Math.round(n / 102.4) / 10}KB`;
   files.index = write('INDEX.txt', [
     `# UI 还原产物包 — ${base}`,
     `画布 ${bp.canvas.width}x${bp.canvas.height}${bp.canvas.scale ? `(原稿 ${bp.canvas.scale.factor}×已归一)` : ''}`,
     `门禁: ${v.ok ? '契约 PASS' : '契约 FAIL'} | ${bp.diffReport.verdict} | ${bp.styleDiffReport?.verdict || '-'} | ${bp.truthReport?.verdict || '-'}`,
     `输入体检: ${lint.ok ? 'PASS' : 'FAIL(见下方 WARN/FAIL 项, 先修复输入再消费)'}`,
-    ...lint.checks.filter((c) => c.level === 'WARN' || c.level === 'FAIL').map((c) => `  ! [${c.level}] ${c.check}: ${c.detail}`),
+    ...lint.checks.filter((c: any) => c.level === 'WARN' || c.level === 'FAIL').map((c: any) => `  ! [${c.level}] ${c.check}: ${c.detail}`),
     '',
     '消费顺序(渐进披露):',
     `1. 本文件 — 门禁基线与阅读地图`,
@@ -145,7 +145,7 @@ export function verifyScreenshots(opts) {
   if (opts.bpPath) {
     const bp = readJson(opts.bpPath);
     const leaves = [];
-    const walk = (n) => {
+    const walk = (n: any) => {
       if (!n || typeof n !== 'object') return;
       if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n);
       else for (const c of n.children) walk(c);
@@ -158,7 +158,7 @@ export function verifyScreenshots(opts) {
       const rb = readJson(opts.blocksRender);
       for (const rg of out.regions.regions || []) {
         rg.domHints = (Array.isArray(rb) ? rb : [])
-          .filter((b) => b.x < rg.x + rg.width && b.x + b.width > rg.x && b.y < rg.y + rg.height && b.y + b.height > rg.y)
+          .filter((b: any) => b.x < rg.x + rg.width && b.x + b.width > rg.x && b.y < rg.y + rg.height && b.y + b.height > rg.y)
           .slice(0, 5)
           .map(({ text, x, y, width, height }) => ({ text, x, y, width, height }));
       }

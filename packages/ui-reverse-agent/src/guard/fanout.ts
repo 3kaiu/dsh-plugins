@@ -136,7 +136,7 @@ export function fanoutEvaluate({ mismatch, candidates, referenceTree, implemente
   const baseline = compareGeometry({ referenceTree, implementedTree, tolerance })
   const baselineMismatches = baseline.mismatchedCount ?? baseline.mismatches?.length ?? 0
 
-  const ranked: RankedCandidate[] = cands.map((cand) => {
+  const ranked: RankedCandidate[] = cands.map((cand: any) => {
     const { tree: patchedTree, patched } = patchNodeProp(implementedTree, mismatch, cand.value)
     const cmp = compareGeometry({ referenceTree, implementedTree: patchedTree, tolerance })
     const mismatchesAfter = cmp.mismatchedCount ?? cmp.mismatches?.length ?? 0

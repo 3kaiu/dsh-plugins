@@ -92,7 +92,7 @@ export class DevServer {
     this.proc = null
     this.url = null
     if (proc.exitCode != null || proc.signalCode != null) return { stopped: true, alreadyExited: true }
-    const killGroup = (sig) => {
+    const killGroup = (sig: any) => {
       try { process.kill(-proc.pid, sig) } catch { try { proc.kill(sig) } catch {} }
     }
     const exited = new Promise((resolve) => { proc.once('exit', resolve); })

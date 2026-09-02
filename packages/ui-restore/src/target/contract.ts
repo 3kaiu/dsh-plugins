@@ -140,7 +140,7 @@ export function planGeneration(bp, profile, opts: Record<string, any> = {}) {
   }
   for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) decide(r)
 
-  const fonts = [...fontMap.values()].map((f) => ({ ...f, weights: [...f.weights].sort((a, b) => a - b) }))
-  const byId = new Map(items.map((i) => [i.nodeId, i]))
+  const fonts = [...fontMap.values()].map((f: any) => ({ ...f, weights: [...f.weights].sort((a, b) => a - b) }))
+  const byId = new Map(items.map((i: any) => [i.nodeId, i]))
   return { items, byId, fonts, unresolvedAssets, warnings }
 }

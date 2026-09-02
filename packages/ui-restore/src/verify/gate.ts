@@ -92,7 +92,7 @@ export function evaluateGate(input: GateInput): GateResult {
     const mr = input.regions.markedRatio ?? 0
     // 关键区域 = 单簇像素占比超过 criticalRegionRatio 的簇
     const canvasArea = input.blueprint?.canvas ? (input.blueprint.canvas.width * input.blueprint.canvas.height) : null
-    const critical = (input.regions.regions || []).some((r) => {
+    const critical = (input.regions.regions || []).some((r: any) => {
       if (canvasArea && canvasArea > 0) return (r.pixels / canvasArea) >= th.criticalRegionRatio
       return r.pixels > 800 // 无画布时回退绝对阈值(与 visual-diff major 阈值一致)
     })

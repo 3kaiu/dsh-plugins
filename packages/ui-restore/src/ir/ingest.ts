@@ -129,7 +129,7 @@ export function lintDesignExport(input, opts: Record<string, any> = {}) {
   const rawSections = Array.isArray(input) ? input : (input?.sections || [])
   const flat = ingestDesignExport(input)
   const checks = []
-  const push = (level, check, detail) => checks.push({ level, check, detail })
+  const push = (level: any, check: any, detail: any) => checks.push({ level, check, detail })
 
   // 1. 重复 id —— 直接破坏几何/样式守恒门禁的逐 id 配对
   const idCount = new Map()
@@ -154,7 +154,7 @@ export function lintDesignExport(input, opts: Record<string, any> = {}) {
       if (!(flat.styles && typeof flat.styles === 'object' && flat.styles[t.font])) missing.push({ id: n.id, ref: t.font })
     }
   }
-  push(missing.length ? 'WARN' : 'PASS', 'missing-font-refs', missing.length ? `${missing.length}/${refs} 处字体引用不在 styles 表(字号将缺失), 样本: ${missing.slice(0, 3).map((m) => `${m.id}→${m.ref}`).join(', ')}` : `${refs} 处字体引用全部可解析`)
+  push(missing.length ? 'WARN' : 'PASS', 'missing-font-refs', missing.length ? `${missing.length}/${refs} 处字体引用不在 styles 表(字号将缺失), 样本: ${missing.slice(0, 3).map((m: any) => `${m.id}→${m.ref}`).join(', ')}` : `${refs} 处字体引用全部可解析`)
 
   // 4. 内容外接盒 vs 画布 —— 越界提示漏拉/裁切, 覆盖率过低提示可能拿错页面
   const cw = flat.canvas?.width || 0
@@ -177,8 +177,8 @@ export function lintDesignExport(input, opts: Record<string, any> = {}) {
 
   // 5. 统计信息
   push(offCanvas ? 'INFO' : 'PASS', 'off-canvas', offCanvas ? `${offCanvas} 个节点越出画布边缘(将按 off-canvas 语义保留)` : '无越界节点')
-  const machineNamed = flat.nodes.filter((n) => LINT_MACHINE_NAME_RE.test(String(n.name || ''))).length
+  const machineNamed = flat.nodes.filter((n: any) => LINT_MACHINE_NAME_RE.test(String(n.name || ''))).length
   push('INFO', 'machine-names', machineNamed ? `${machineNamed}/${flat.nodes.length} 个机器命名(管线将合成语义名)` : '无机器命名')
 
-  return { ok: checks.every((c) => c.level !== 'FAIL'), checks }
+  return { ok: checks.every((c: any) => c.level !== 'FAIL'), checks }
 }

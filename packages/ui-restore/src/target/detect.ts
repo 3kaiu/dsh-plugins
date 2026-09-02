@@ -9,7 +9,7 @@ import path from 'node:path'
 import type { ProjectFacts, Candidate } from './types.ts'
 import { readJsonTolerant as readJson, readTextTolerant as readText } from '../fs-util.ts'
 
-const exists = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+const exists = (p: any) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
 function walk(dir, depth, out, maxDepth = 4) {
   let entries = []
@@ -26,12 +26,12 @@ function walk(dir, depth, out, maxDepth = 4) {
 export function listFiles(projectDir, maxDepth = 4) {
   const out = []
   walk(projectDir, 0, out, maxDepth)
-  return out.map((p) => path.relative(projectDir, p).split(path.sep).join('/'))
+  return out.map((p: any) => path.relative(projectDir, p).split(path.sep).join('/'))
 }
 
 function push(list, name, confidence, evidence) {
   if (confidence <= 0) return
-  const cur = list.find((c) => c.name === name)
+  const cur = list.find((c: any) => c.name === name)
   if (!cur || cur.confidence < confidence) {
     const i = list.findIndex((c) => c.name === name)
     const item = { name, confidence: Math.min(1, confidence), evidence }
@@ -54,11 +54,11 @@ export function detectProjectFacts(projectDir) {
   const pkg = readJson(path.join(projectDir, 'package.json'))
   const deps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) }
   const files = listFiles(projectDir)
-  const has = (re) => files.some((f) => re.test(f))
+  const has = (re: any) => files.some((f: any) => re.test(f))
 
   // ---- Web 栈(package.json 证据, 优先级高于文件形态) ----
   if (pkg) {
-    const dep = (n, c) => deps[n] != null && push(facts.framework, n === 'react-dom' ? 'react' : n, c, `package.json:${n}`)
+    const dep = (n: any, c: any) => deps[n] != null && push(facts.framework, n === 'react-dom' ? 'react' : n, c, `package.json:${n}`)
     dep('react', 0.99); dep('vue', 0.95); dep('svelte', 0.9); dep('solid-js', 0.85)
     if (deps.next) { push(facts.framework, 'next', 0.97, 'package.json:next'); push(facts.framework, 'react', 0.9, 'next 隐含 react') }
     if (deps.react || deps['react-dom'] || deps.next) push(facts.language, 'typescript', has(/^tsconfig\.(json|mjs|cjs)$/) ? 1 : 0.7, has(/^tsconfig/) ? 'tsconfig.json' : 'react 生态默认')
@@ -75,9 +75,9 @@ export function detectProjectFacts(projectDir) {
     if (deps['@vanilla-extract/css'] || deps['@vanilla-extract/webpack-plugin']) push(facts.styling, 'vanilla-extract', 0.9, 'package.json:@vanilla-extract/css')
     if (deps.sass || deps['node-sass'] || has(/\.scss$/)) push(facts.styling, 'scss', deps.sass ? 0.85 : 0.6, deps.sass ? 'package.json:sass' : '*.scss')
     if (deps.less || has(/\.less$/)) push(facts.styling, 'less', deps.less ? 0.8 : 0.55, 'less')
-    const moduleCss = files.filter((f) => /\.module\.css$/.test(f))
+    const moduleCss = files.filter((f: any) => /\.module\.css$/.test(f))
     if (moduleCss.length) push(facts.styling, 'css-modules', 0.85, `${moduleCss.length} 个 *.module.css`)
-    const plainCss = files.filter((f) => /^[^/]*\.css$/.test(f) && !/tailwind/.test(f))
+    const plainCss = files.filter((f: any) => /^[^/]*\.css$/.test(f) && !/tailwind/.test(f))
     if (plainCss.length) push(facts.styling, 'plain-css', 0.6, '根级 *.css(非 module)')
     if (deps['css-modules'] || deps['typings-for-css-modules-loader']) push(facts.styling, 'css-modules', 0.8, 'package.json')
     // shadcn/ui 仅通过 components.json 声明，属 styling 约定而非 framework，需单独探测
@@ -97,8 +97,8 @@ export function detectProjectFacts(projectDir) {
       if (deps[lib]) push(facts.componentLibraries, lib, 0.97, `package.json:${lib}`)
     }
     // 入口
-    facts.entry.html = files.find((f) => /^index\.html$/.test(f) || /^public\/index\.html$/.test(f))
-    facts.entry.main = files.find((f) => /^src\/main\.(t|j)sx?$/.test(f)) || files.find((f) => /^src\/index\.(t|j)sx?$/.test(f))
+    facts.entry.html = files.find((f: any) => /^index\.html$/.test(f) || /^public\/index\.html$/.test(f))
+    facts.entry.main = files.find((f: any) => /^src\/main\.(t|j)sx?$/.test(f)) || files.find((f: any) => /^src\/index\.(t|j)sx?$/.test(f))
   }
 
   // ---- Flutter ----
@@ -114,11 +114,11 @@ export function detectProjectFacts(projectDir) {
     push(facts.language, 'javascript', 0.85, '小程序默认')
   }
   // ---- iOS ----
-  const swiftFiles = files.filter((f) => /\.swift$/.test(f))
+  const swiftFiles = files.filter((f: any) => /\.swift$/.test(f))
   if (swiftFiles.length || has(/\.xcodeproj\//)) {
     push(facts.framework, 'ios', 0.9, '*.swift / xcodeproj')
     push(facts.language, 'swift', 1, '*.swift')
-    if (swiftFiles.some((f) => /import\s+SwiftUI/.test(readText(path.join(projectDir, f))))) {
+    if (swiftFiles.some((f: any) => /import\s+SwiftUI/.test(readText(path.join(projectDir, f))))) {
       push(facts.framework, 'swiftui', 0.85, 'import SwiftUI')
     }
   }

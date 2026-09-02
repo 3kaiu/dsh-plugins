@@ -6,7 +6,7 @@
 // Vue 侧走 HTML 转义 + cssValue 结构字符剥离 —— 语义不同, 不强行合一。
 
 /** 几何值钳制: 非有限数一律 null(调用方丢弃), 防注入与 NaN 传播 */
-export const num = (v) => {
+export const num = (v: any) => {
   const n = Number(v)
   return Number.isFinite(n) ? n : null
 }
@@ -19,8 +19,8 @@ export function neutralTag(n) {
   return 'div'
 }
 
-export const escText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-export const escAttr = (s) => escText(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+export const escText = (s: any) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export const escAttr = (s: any) => escText(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
 /** style 属性值: 先剥离 CSS 结构字符(;{}\<> 防声明注入/属性逃逸)再做属性转义 */
-export const cssValue = (v) => escAttr(String(v).replace(/[;{}\\<>]/g, ' ').replace(/\s+/g, ' ').trim())
+export const cssValue = (v: any) => escAttr(String(v).replace(/[;{}\\<>]/g, ' ').replace(/\s+/g, ' ').trim())

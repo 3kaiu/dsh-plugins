@@ -143,7 +143,7 @@ export function validatePatch(patch: Patch, request: PatchRequest, opts: Validat
   }
 
   // 2. 节点越界：统计 patch 内容中出现的 data-restore-node 与 nodeId 命中
-  const patchText = patch.files.map((f) => f.content).join('\n')
+  const patchText = patch.files.map((f: any) => f.content).join('\n')
   const touchedNodes = extractTouchedNodes(patchText)
   const allowedNodeSet = new Set(request.allowedNodes || [])
   // 若 LLM 声明 touchedNodes，则以声明为准再交叉校验内容(防声明与实际不符)
@@ -229,7 +229,7 @@ function extractNewImports(patch: Patch): string[] {
     const re = /(?:import\s+[^'"]*\s+from\s+|import\s*\(\s*|require\s*\(\s*)["']([^"']+)["']/g
     while ((m = re.exec(f.original))) originalDeps.add(m[1])
   }
-  return [...deps].filter((d) => !originalDeps.has(d))
+  return [...deps].filter((d: any) => !originalDeps.has(d))
 }
 
 /** 危险模块黑名单: 一旦被新引入即视为 RCE 逃逸尝试, 一律拒收 */
@@ -257,8 +257,8 @@ function diffLineCount(a: string[], b: string[]): number {
 
 function hasAssetPlaceholderReplacement(text: string, request: PatchRequest): boolean {
   // 启发式：请求含资产节点且补丁出现可疑手绘标记(用纯 CSS 三角/伪元素画图标)
-  const assetNodes = (request.affectedNodes || []).filter((id) => {
-    const ctx = request.context?.blueprintNodes?.find((n) => n.id === id)
+  const assetNodes = (request.affectedNodes || []).filter((id: any) => {
+    const ctx = request.context?.blueprintNodes?.find((n: any) => n.id === id)
     return ctx && ((ctx as any).svgKey || (ctx as any).fill?.type === 'image' || (ctx as any).mergedVector)
   })
   if (assetNodes.length === 0) return false

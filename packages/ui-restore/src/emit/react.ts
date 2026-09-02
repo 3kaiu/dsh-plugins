@@ -7,13 +7,13 @@ import { buildElementTree } from './style-ir.ts'
 import { sanitizeSvg } from '../target/svg-sanitize.ts'
 import { esc } from './escape.ts'
 
-const safeIdent = (s, prefix) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
-const pascal = (s) => {
+const safeIdent = (s: any, prefix: any) => prefix + '_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
+const pascal = (s: any) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  const name = parts.map((p: any) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore' + (name || '')
 }
-const jsxStyleObject = (style) => '{ ' + Object.entries(style)
+const jsxStyleObject = (style: any) => '{ ' + Object.entries(style)
   .filter(([, v]) => v != null && v !== '')
   .map(([k, v]) => `${k}: ${typeof v === 'number' ? JSON.stringify(v) : JSON.stringify(String(v))}`)
   .join(', ') + ' }'
@@ -31,12 +31,12 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
   const componentName = opts.componentName || pascal(opts.baseName) || 'Restore'
   const ctx = {
     contractById: plan.byId,
-    assetByNode: new Map((assets?.assets || []).filter((a) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
-    fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f) => `'${f}'`).join(', '),
+    assetByNode: new Map((assets?.assets || []).filter((a: any) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
+    fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f: any) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
   // ⑱ library 标注：按 contract 回填库组件标签
-  const annotateLibrary = (el)=>{
+  const annotateLibrary = (el: any) =>{
     const c = ctx.contractById.get(el.nodeId)
     if(c?.component?.strategy==='library' && c.component.name){
       el.library = { component: c.component.name, props: (c as any)._library?.props || {}, importFrom: (c as any)._library?.importFrom || profile.componentLibraries?.[0] || 'antd' }
@@ -45,7 +45,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
   }
   roots.forEach(annotateLibrary)
   const libraryImports = new Map()
-  const collectImports = (el)=>{
+  const collectImports = (el: any) =>{
     if(el.library) {
       const key = `${el.library.importFrom}:${el.library.component}`
       if(!libraryImports.has(key)) libraryImports.set(key, el.library)
@@ -58,7 +58,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
   const decls = []
   const jsx = []
 
-  const collect = (el) => {
+  const collect = (el: any) => {
     const styleVar = safeIdent(el.nodeId, 's')
     decls.push(`  const ${styleVar} = ${jsxStyleObject(el.style)};`)
     if (el.rawSvg) {
@@ -69,7 +69,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
   }
   for (const el of roots) collect(el)
 
-  const render = (el, indent) => {
+  const render = (el: any, indent: any) => {
     const pad = ' '.repeat(indent)
     const styleVar = safeIdent(el.nodeId, 's')
     const attrs = [`data-restore-node="${el.nodeId}"`]
@@ -95,7 +95,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
     for (const c of el.children) render(c, indent + 2)
     jsx.push(`${pad}${closeTag}`)
   }
-  const entry = (el, line, styleVar) => ({
+  const entry = (el: any, line: any, styleVar: any) => ({
     nodeId: el.nodeId,
     file: `src/${componentName}.tsx`,
     component: componentName,
@@ -120,7 +120,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
     ...importLines,
     `export default function ${componentName}() {`,
     `  const page = ${jsxStyleObject(canvasStyle)};`,
-    ...decls.map((l) => l),
+    ...decls.map((l: any) => l),
     '  return (',
     '    <div data-restore-root style={page}>',
     ...jsx,

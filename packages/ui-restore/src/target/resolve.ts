@@ -33,7 +33,7 @@ export function resolveProfile(facts, opts: Record<string, any> = {}) {
   const language = pick(facts.language, { unknown: 'javascript', overrides: o.language }) // js 是任意构建器都可跑的安全底
   const styling = pick(facts.styling, { overrides: o.styling }) // unknown 不二次加工 — 偷偷默认 = 改技术栈
   const build = pick(facts.build, { unknown: 'none', overrides: o.build })
-  const libs = (facts.componentLibraries || []).filter((c: any) => c.confidence >= RESOLVE_MIN_CONFIDENCE).map((c) => c.name)
+  const libs = (facts.componentLibraries || []).filter((c: any) => c.confidence >= RESOLVE_MIN_CONFIDENCE).map((c: any) => c.name)
 
   // assetDir: vite/next 用 public/*(静态直出), 其余 src/assets; 显式覆盖最高
   const assetDir = o.assetDir || (['vite', 'next'].includes(build.chosen) ? 'public/restore-assets' : 'src/assets')

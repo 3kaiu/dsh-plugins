@@ -77,7 +77,7 @@ async function main() {
     const raw = JSON.parse(fs.readFileSync(designPath, 'utf8'));
     const lint = lintDesignExport(raw, { expectSections: expectSections ? Number(expectSections) : undefined });
     printLint(lint);
-    const fails = lint.checks.filter((c) => c.level === 'FAIL').length;
+    const fails = lint.checks.filter((c: any) => c.level === 'FAIL').length;
     console.log(lint.ok ? '输入体检: PASS(可进管线)' : `输入体检: FAIL(${fails} 项必须修复)`);
     process.exit(lint.ok ? 0 : 1);
   }
@@ -100,7 +100,7 @@ async function main() {
     console.log('像素层:', JSON.stringify({ diffPixels: r.diffPixels, diffRatio: r.diffRatio }));
     if (manifest) {
       const files = manifest.split(',');
-      const [mT, mR] = files.map((f) => JSON.parse(fs.readFileSync(f, 'utf8')));
+      const [mT, mR] = files.map((f: any) => JSON.parse(fs.readFileSync(f, 'utf8')));
       const [W, H] = (canvasFlag || '375x812').split('x').map(Number);
       const imgT = decodePng(fs.readFileSync(truthPng));
       const imgR = decodePng(fs.readFileSync(renderPng));
@@ -140,7 +140,7 @@ async function main() {
     const { bp } = await runBlueprint(designPath);
     const sel: any = rectFlag
       ? (() => { const [x, y, width, height] = rectFlag.split(',').map(Number); return { x, y, width, height }; })()
-      : { ids: idsFlag.split(',').map((s) => s.trim()) };
+      : { ids: idsFlag.split(',').map((s: any) => s.trim()) };
     const region = blueprintRegion(bp, sel);
     if (!region) { console.error('区域下钻失败: 非法参数'); process.exit(1); }
     const outDir = flag(args, '--dir') || path.dirname(designPath);
@@ -193,10 +193,10 @@ async function main() {
     // DOM Map: 合并主图与预览 selector(同源 1:1)
     const mapPath = path.join(outDir, '.restore-map.json');
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
-    const miss = (assets.assets||[]).filter((a)=>a.status==='missing');
+    const miss = (assets.assets||[]).filter((a: any) =>a.status==='missing');
     const ext = serializer === 'vue' ? '.vue' : serializer === 'flutter' ? '.dart' : serializer === 'miniprogram' ? '.wxml' : '.tsx'
     console.log(`generate → ${outDir}: ${reactOut.componentName}${ext}(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
-    if (miss.length) console.log(`! 资产违约 ${miss.length} 处: `+ miss.slice(0,5).map((a)=>`${a.id}:${a.key}`).join(', '));
+    if (miss.length) console.log(`! 资产违约 ${miss.length} 处: `+ miss.slice(0,5).map((a: any) =>`${a.id}:${a.key}`).join(', '));
     if (plan.warnings.length) console.log(`! warnings: ${plan.warnings[0]}`);
     return;
   }

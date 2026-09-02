@@ -33,7 +33,7 @@ export async function decideWithAsk(ctx, { type, detail, options, fallback, agen
     return { decision: fallback || options?.[0], source: 'fallback', reason: 'userQuestions not available' }
   }
   const id = `q-${type}-${Date.now().toString(36)}`
-  const labels = (options && options.length ? options : ['继续用占位', '跳过该差异']).map((o) =>
+  const labels = (options && options.length ? options : ['继续用占位', '跳过该差异']).map((o: any) =>
     typeof o === 'string' ? { label: o } : o,
   )
   try {

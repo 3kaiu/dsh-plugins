@@ -26,7 +26,7 @@ import { flag } from './args.ts';
  *  屏蔽 script/style/template; 祖先可见性用 checkVisibility(display/visibility/opacity), 旧内核回退 computedStyle。 */
 const EVAL_TEXT_BLOCKS = (() => {
   const fn = () => {
-    const isVisible = (el) => {
+    const isVisible = (el: any) => {
       if (!el.isConnected) return false;
       if (typeof el.checkVisibility === 'function') {
         try { return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }); } catch { /* 回退 */ }
@@ -60,7 +60,7 @@ const EVAL_TEXT_BLOCKS = (() => {
   return '(' + Function.prototype.toString.call(fn) + ')()';
 })();
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: any) => new Promise((r) => setTimeout(r, ms));
 
 /** 极简 CDP 会话(零依赖): Node≥22 全局 WebSocket 承载 JSON-RPC; 只用到 Page/Emulation/Runtime 六个方法。
  *  call=带超时的请求-响应; once=单发事件监听(navigate 与 loadEventFired 存在竞态窗口, 调用方自行兜底)。 */
@@ -86,7 +86,7 @@ function connectCdp(wsUrl, deadlineMs) {
     ws.send(JSON.stringify({ id, method, params }));
     setTimeout(() => { if (pending.has(id)) { pending.delete(id); reject(new Error(`CDP 超时: ${method}`)); } }, deadlineMs);
   });
-  const once = (method) => new Promise((resolve) => {
+  const once = (method: any) => new Promise((resolve) => {
     if (!events.has(method)) events.set(method, []);
     events.get(method).push(resolve);
   });
@@ -118,7 +118,7 @@ async function probeWithCdp(bin, target, outBlocks, opts) {
     }
     if (!port) throw new Error('DevToolsActivePort 未在时限内出现(浏览器未起来?)');
     const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-    const pageWs = list.find((t) => t.type === 'page')?.webSocketDebuggerUrl;
+    const pageWs = list.find((t: any) => t.type === 'page')?.webSocketDebuggerUrl;
     if (!pageWs) throw new Error('/json/list 中无 page 目标');
     cdp = connectCdp(pageWs, deadlineMs);
     await cdp.ready;

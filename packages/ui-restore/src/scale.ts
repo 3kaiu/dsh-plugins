@@ -14,11 +14,11 @@
 
 import { round2 } from './numeric.ts'
 /** 长度字段缩放器(绑定因子; 非数值如 "auto" 原样透传) */
-const dimBy = (f) => (v) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
+const dimBy = (f: any) => (v) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
 
 /** 长度/数组长度缩放(radius 等单值或四角数组) */
 function scaleLength(v, dim) {
-  if (Array.isArray(v)) return v.map((x) => dim(x))
+  if (Array.isArray(v)) return v.map((x: any) => dim(x))
   return dim(v)
 }
 /** padding/margin 对象(数字或 {top,right,bottom,left})缩放 */
@@ -66,11 +66,11 @@ function collectFontSizes(nodes = [], styles: Record<string, any> = {}) {
   for (const n of nodes) {
     if (!n || n.type !== 'TEXT') continue
     if (n.textStyle?.fontSize != null) { sizes.push(Number(n.textStyle.fontSize)); continue }
-    const ref = Array.isArray(n.text) ? n.text.find((t) => t && t.font)?.font : null
+    const ref = Array.isArray(n.text) ? n.text.find((t: any) => t && t.font)?.font : null
     const v = ref && styles[ref] ? (styles[ref].value || styles[ref]) : null
     if (v && typeof v === 'object' && v.size != null) sizes.push(Number(v.size))
   }
-  return sizes.filter((s) => isFinite(s) && s > 0)
+  return sizes.filter((s: any) => isFinite(s) && s > 0)
 }
 
 function median(nums) {
@@ -135,8 +135,8 @@ export function detectDesignScale(input: Record<string, any> = {}) {
   const rest = ranked.slice(1)
   // 置信度 = 对最强竞争候选的边际占比(次高分作分母基准, 弱噪声不稀释);
   // 且强制"双证据才高置信": 仅单一证据时多种倍率常可同样解释(如 750 宽), 封顶 0.55 不予自动采纳
-  const usedWidth = evidence.some((e) => e.includes('逻辑宽'))
-  const usedFont = evidence.some((e) => e.includes('字号'))
+  const usedWidth = evidence.some((e: any) => e.includes('逻辑宽'))
+  const usedFont = evidence.some((e: any) => e.includes('字号'))
   const secondScore = rest[0]?.[1] || 0
   let confidence = bestScore / (bestScore + secondScore)
   if (!(usedWidth && usedFont)) confidence = Math.min(confidence, 0.55)
@@ -159,7 +159,7 @@ export function detectDesignScale(input: Record<string, any> = {}) {
 export function applyDesignScale(nodes = [], styles: Record<string, any> = {}, factor = 1) {
   if (!isFinite(factor) || factor <= 0 || factor === 1) return { nodes, styles }
   const dim = dimBy(factor)
-  const walkNode = (n) => {
+  const walkNode = (n: any) => {
     if (!n || typeof n !== 'object') return n
     const ls = n.layoutStyle || {}
     const out = { ...n }
@@ -183,9 +183,9 @@ export function applyDesignScale(nodes = [], styles: Record<string, any> = {}, f
     if (n.borderRadius != null) out.borderRadius = scaleLength(n.borderRadius, dim)
     if (n.padding != null) out.padding = scaleBox(n.padding, dim)
     if (n.stroke && typeof n.stroke === 'object') out.stroke = scaleStroke(n.stroke, dim)
-    if (Array.isArray(n.effects)) out.effects = n.effects.map((e) => scaleEffect(e, dim))
+    if (Array.isArray(n.effects)) out.effects = n.effects.map((e: any) => scaleEffect(e, dim))
     if (Array.isArray(n.textStyle)) {
-      out.textStyle = n.textStyle.map((t) => scaleTextStyle(t, factor))
+      out.textStyle = n.textStyle.map((t: any) => scaleTextStyle(t, factor))
     } else if (n.textStyle) {
       out.textStyle = scaleTextStyle(n.textStyle, factor)
     }

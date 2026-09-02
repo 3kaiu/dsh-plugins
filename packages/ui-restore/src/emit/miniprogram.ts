@@ -8,7 +8,7 @@ import { esc } from './escape.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  const name = parts.map((p: any) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore'
 }
 function pxToRpx(v: string|number, scale: number): string {

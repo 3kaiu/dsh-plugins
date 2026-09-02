@@ -9,4 +9,4 @@
 export { round1 } from '@3kaiu/dsh-plugin-kit'
 
 /** 两位小数舍入(指标/diffRatio/token 数值; null/undefined 归 0) */
-export const round2 = (n) => Math.round((n || 0) * 100) / 100
+export const round2 = (n: any) => Math.round((n || 0) * 100) / 100

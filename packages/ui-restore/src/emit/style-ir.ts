@@ -33,10 +33,10 @@ export interface ElementNode {
   line?: number
 }
 
-const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0)
+const num = (v: any) => (typeof v === 'number' && isFinite(v) ? v : 0)
 
 function gradientCss(fill) {
-  const stops = (fill.stops || []).map((s) => `${s.color} ${num(s.position)}%`).join(', ')
+  const stops = (fill.stops || []).map((s: any) => `${s.color} ${num(s.position)}%`).join(', ')
   return `linear-gradient(${num(fill.angle)}deg, ${stops})`
 }
 
@@ -54,8 +54,8 @@ function boxShadowCss(effects) {
   if (!Array.isArray(effects) || !effects.length) return undefined
   // 仅阴影类生效；LAYER_BLUR/BACKGROUND_BLUR 单独走 filter/backdrop-filter(见 buildElementTree)
   const parts = effects
-    .filter((e) => e.type === 'INNER_SHADOW' || e.type === 'DROP_SHADOW')
-    .map((e) => {
+    .filter((e: any) => e.type === 'INNER_SHADOW' || e.type === 'DROP_SHADOW')
+    .map((e: any) => {
       const inset = e.type === 'INNER_SHADOW' ? 'inset ' : ''
       return `${inset}${num(e.offsetX)}px ${num(e.offsetY)}px ${num(e.blur)}px ${num(e.spread)}px ${e.color}`
     })
@@ -68,7 +68,7 @@ function withAlpha(cssColor, alpha) {
   const m = /^#([0-9a-fA-F]{3,8})$/.exec(cssColor.trim())
   if (m) {
     let hex = m[1]
-    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
+    if (hex.length === 3) hex = hex.split('').map((c: any) => c + c).join('')
     if (hex.length === 6) hex += 'ff'
     if (hex.length !== 8) return cssColor // 非标准长度(4/5/7 位)原样返回, 避免 NaN
     const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16)
@@ -77,7 +77,7 @@ function withAlpha(cssColor, alpha) {
   }
   const rm = /^rgba?\(([^)]+)\)$/.exec(cssColor.trim())
   if (rm) {
-    const p = rm[1].split(',').map((s) => s.trim())
+    const p = rm[1].split(',').map((s: any) => s.trim())
     const baseA = p[3] != null ? parseFloat(p[3]) : 1
     return `rgba(${p[0]}, ${p[1]}, ${p[2]}, ${Math.round(baseA * alpha * 1000) / 1000})`
   }
@@ -88,7 +88,7 @@ function withAlpha(cssColor, alpha) {
 function backgroundWithOpacity(n, opacity) {
   if (n.fill?.type === 'solid') return withAlpha(n.fill.value, opacity)
   if (n.fill?.type === 'gradient') {
-    const stops = (n.fill.stops || []).map((s) => `${withAlpha(s.color, opacity)} ${num(s.position)}%`).join(', ')
+    const stops = (n.fill.stops || []).map((s: any) => `${withAlpha(s.color, opacity)} ${num(s.position)}%`).join(', ')
     return `linear-gradient(${num(n.fill.angle)}deg, ${stops})`
   }
   return null
@@ -148,7 +148,7 @@ export function buildElementTree(bp, ctx) {
       children: [],
     })
   }
-  const emitNode = (n, parentAbs, parentFlex) => {
+  const emitNode = (n: any, parentAbs: any, parentFlex: any) => {
     const c = ctx.contractById.get(n.id) || {}
     const b = n.bounds || { x: 0, y: 0, width: 0, height: 0 }
     const ly = n.layout || {}
@@ -240,7 +240,7 @@ export function buildElementTree(bp, ctx) {
     if (typeof n.text === 'string' && n.text) {
       el.style = { ...el.style, ...typographyStyle(n, ctx.fontStack) }
       if (Array.isArray(n.textRuns) && n.textRuns.length) {
-        el.textRuns = n.textRuns.map((r) => ({
+        el.textRuns = n.textRuns.map((r: any) => ({
           text: r.text,
           style: {
             ...(r.fontSize != null ? { fontSize: num(r.fontSize) } : {}),
@@ -319,7 +319,7 @@ function imageBackgroundInline(fill, bounds, file) {
 /** camelCase style → CSS 声明串(HTML serializer 用; React 直接用对象) */
 const UNITLESS = new Set(['opacity', 'zIndex', 'fontWeight', 'lineHeight', 'flexGrow', 'flexShrink', 'order', 'WebkitLineClamp'])
 export function styleToCssDeclarations(style) {
-  const kebab = (k) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+  const kebab = (k: any) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
   return Object.entries(style)
     .filter(([, v]) => v != null && v !== '')
     .map(([k, v]) => {
@@ -329,4 +329,4 @@ export function styleToCssDeclarations(style) {
     .join(';')
 }
 
-const round2 = (n) => Math.round(n * 100) / 100
+const round2 = (n: any) => Math.round(n * 100) / 100

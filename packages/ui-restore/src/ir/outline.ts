@@ -16,7 +16,7 @@ function nodeSummary(n) {
   parts.push(`@(${round2(b.x)},${round2(b.y)} ${round2(b.width)}x${round2(b.height)})`)
   if (n.color) parts.push(n.color)
   if (n.fill) {
-    if (n.fill.type === 'gradient') parts.push(`渐变:${(n.fill.stops || []).map((s) => s.color).join('→')} ${n.fill.angle ?? ''}°`.trim())
+    if (n.fill.type === 'gradient') parts.push(`渐变:${(n.fill.stops || []).map((s: any) => s.color).join('→')} ${n.fill.angle ?? ''}°`.trim())
     else if (n.fill.type === 'image') parts.push(`位图:${n.fill.src || '经资源导出表按节点id'}${n.fill.crop ? ` cover→${n.fill.crop.visibleRect.width}x${n.fill.crop.visibleRect.height}` : ''}`)
   }
   if (n.stroke) parts.push(`描边:${n.stroke.color || '?'} ${n.stroke.width != null ? n.stroke.width + 'px' : ''}${n.stroke.style ? ' ' + n.stroke.style : ''}`.trim())
@@ -34,7 +34,7 @@ function nodeSummary(n) {
   if (ly.alignItems && ly.alignItems !== 'start') parts.push(`align=${ly.alignItems}`)
   if (ly.crossOffset) parts.push(`crossOff=${round2(ly.crossOffset)}`)
   if (ly.borderRadius) parts.push(`r=${Array.isArray(ly.borderRadius) ? ly.borderRadius.join('/') : ly.borderRadius}`)
-  if (ly.effects?.some((e) => e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW')) parts.push('阴影')
+  if (ly.effects?.some((e: any) => e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW')) parts.push('阴影')
   if (ly.downgradeReason) parts.push(`(降级:${ly.downgradeReason})`)
   if (ly.clip?.enabled) parts.push(`裁剪${ly.clip.radius != null ? `(r=${Array.isArray(ly.clip.radius) ? ly.clip.radius.join('/') : ly.clip.radius})` : ''}`)
   if (n.clipShape) parts.push('蒙版形状')
@@ -92,15 +92,15 @@ export function blueprintRegion(bp, sel) {
   if (!bp || !sel) return null;
   const idSet = Array.isArray(sel.ids) ? new Set(sel.ids.map(String)) : null;
   const rect = sel.width != null && sel.height != null ? sel : null;
-  const hit = (n) => {
+  const hit = (n: any) => {
     if (idSet) return idSet.has(String(n.id));
     if (!rect || !n.bounds) return false;
     const b = n.bounds;
     return b.x < rect.x + rect.width && b.x + b.width > rect.x && b.y < rect.y + rect.height && b.y + b.height > rect.y;
   };
   let total = 0;
-  const countAll = (n) => { total++; for (const c of n.children || []) countAll(c); };
-  const pick = (n) => {
+  const countAll = (n: any) => { total++; for (const c of n.children || []) countAll(c); };
+  const pick = (n: any) => {
     if (hit(n)) { const cp = structuredClone(n); return cp; }
     const kids = [];
     for (const c of n.children || []) {
@@ -131,7 +131,7 @@ export function blueprintToOutline(bp, opts: Record<string, any> = {}) {
   const maxDepth = opts.maxDepth ?? 12
   const lines = []
   let count = 0
-  const walk = (n, depth) => {
+  const walk = (n: any, depth: any) => {
     if (!n || depth > maxDepth) return
     count++
     lines.push('  '.repeat(depth) + nodeSummary(n))
@@ -146,7 +146,7 @@ export function blueprintToOutline(bp, opts: Record<string, any> = {}) {
   if ((bp.componentGroups || []).length > 0) {
     lines.push('# 组件组(同构兄弟, 实现为单组件多实例)')
     for (const g of bp.componentGroups) {
-      const pos = g.instances.slice(0, 4).map((i) => `@${round2(i.x)},${round2(i.y)}`).join(' ')
+      const pos = g.instances.slice(0, 4).map((i: any) => `@${round2(i.x)},${round2(i.y)}`).join(' ')
       lines.push(`${g.groupId}: ${g.count} 个实例 ${round2(g.itemWidth)}x${round2(g.itemHeight)} ${pos}${g.instances.length > 4 ? ' …' : ''}${g.axis ? ` 排布=${g.axis}${g.gap != null ? ` 间距=${round2(g.gap)}` : ''}` : ''} — ids: ${g.instances.map(i => i.id).join(', ')}`)
     }
   }

@@ -69,7 +69,7 @@ async function main() {
     });
     const g = r.summary.gates;
     console.log(`门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`);
-    for (const c of r.lint.checks.filter((c) => c.level === 'WARN' || c.level === 'FAIL')) console.log(`! [${c.level}] ${c.check}: ${c.detail}`);
+    for (const c of r.lint.checks.filter((c: any) => c.level === 'WARN' || c.level === 'FAIL')) console.log(`! [${c.level}] ${c.check}: ${c.detail}`);
     console.log(`产物: ${Object.values(r.files).length} 个文件 @ ${r.summary.outDir}`);
     console.log('消费顺序: INDEX 见 checklist.txt(合同) → outline.txt(空间心智+消费指南) → blueprint.json(精确数值)');
     const sp = flag(args, 'session');
@@ -128,8 +128,8 @@ async function main() {
       for (const g of d.guidance) console.log('· ' + g);
     }
     // 局部修复辅助(W3): 差异区域 × 渲染文本块交叉引用 —— LLM 直接按文本定位代码段
-    for (const rg of (r.regions?.regions || []).filter((x) => x.domHints?.length).slice(0, 3)) {
-      console.log(`定位辅助: 区域(${rg.x},${rg.y} ${rg.width}x${rg.height}) 渲染侧文本块: ` + rg.domHints.map((b) => `"${b.text}"@(${b.x},${b.y})`).join(', '));
+    for (const rg of (r.regions?.regions || []).filter((x: any) => x.domHints?.length).slice(0, 3)) {
+      console.log(`定位辅助: 区域(${rg.x},${rg.y} ${rg.width}x${rg.height}) 渲染侧文本块: ` + rg.domHints.map((b: any) => `"${b.text}"@(${b.x},${b.y})`).join(', '));
     }
     return;
   }
@@ -199,10 +199,10 @@ async function main() {
     const mapPath = path.join(outDir, '.restore-map.json');
     fs.writeFileSync(mapPath, JSON.stringify({ ...reactOut.map, preview: htmlOut.map }, null, 1));
     // 资产违约摘要(missing=占位+违约, 禁止近似替代)
-    const miss = (assets.assets || []).filter((a) => a.status === 'missing');
+    const miss = (assets.assets || []).filter((a: any) => a.status === 'missing');
     const ext = serializer === 'vue' ? '.vue' : serializer === 'flutter' ? '.dart' : serializer === 'miniprogram' ? '.wxml/.wxss/.js/.json' : '.tsx'
     console.log(`generate → ${outDir}: ${reactOut.componentName}${ext}(${serializer}) + preview.html + .restore-map.json (contract ${plan.items.length}, 资产 ${assets.summary.resolved}/${assets.summary.total})`);
-    if (miss.length) console.log(`! 资产违约 ${miss.length} 处(几何占位, 禁止近似替代): ` + miss.slice(0, 5).map((a) => `${a.id}:${a.key}`).join(', ') + (miss.length > 5 ? ' ...' : ''));
+    if (miss.length) console.log(`! 资产违约 ${miss.length} 处(几何占位, 禁止近似替代): ` + miss.slice(0, 5).map((a: any) => `${a.id}:${a.key}`).join(', ') + (miss.length > 5 ? ' ...' : ''));
     if (plan.warnings.length) console.log(`! contract 警告 ${plan.warnings.length} 条(首条: ${plan.warnings[0]})`);
     return;
   }

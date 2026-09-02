@@ -143,7 +143,7 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
   }
   clusters.sort((p, q) => q.pixels - p.pixels)
 
-  const regions = clusters.slice(0, top).map((c) => {
+  const regions = clusters.slice(0, top).map((c: any) => {
     if (!nodes) return c
     const selfArea = (b: any) => Math.max(b.width * b.height, 1)
     const interArea = (n: any) => {
@@ -159,10 +159,10 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
       return ia > 0 ? ia * (ia / selfArea(n.bounds)) : 0
     }
     const candidates = nodes
-      .filter((n) => n.bounds && interArea(n) > 0)
+      .filter((n: any) => n.bounds && interArea(n) > 0)
       .sort((m, n) => score(n) - score(m))
       .slice(0, 3)
-      .map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? String(n.text).slice(0, 20) : (n.text ?? null) }))
+      .map((n: any) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? String(n.text).slice(0, 20) : (n.text ?? null) }))
     return { ...c, candidates }
   })
 
@@ -255,7 +255,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
 
   // Block-Match: 匹配面积的 precision/recall 调和均值(同时惩罚漏检与幻觉块)。
   // 面积直接取配对双方块, 不按文本回查(重名文本会错配)。
-  const areaOf = (b) => Math.max(0, b.width || 0) * Math.max(0, b.height || 0)
+  const areaOf = (b: any) => Math.max(0, b.width || 0) * Math.max(0, b.height || 0)
   const designArea = designBlocks.reduce((s, b) => s + areaOf(b), 0)
   const renderArea = renderBlocks.reduce((s, b) => s + areaOf(b), 0)
   const matchedDesignArea = matched.reduce((s, m) => s + areaOf(m._d), 0)
@@ -283,8 +283,8 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
     positionSimilarity,
     colorSimilarity,
     avgTextSimilarity: matched.length ? round2(matched.reduce((s, m) => s + m.textSim, 0) / matched.length) : null,
-    unmatchedDesign: designBlocks.filter((b) => !usedD.has(b)).map((b) => b.text),
-    unmatchedRender: renderBlocks.filter((b) => !usedR.has(b)).map((b) => b.text),
+    unmatchedDesign: designBlocks.filter((b: any) => !usedD.has(b)).map((b: any) => b.text),
+    unmatchedRender: renderBlocks.filter((b: any) => !usedR.has(b)).map((b: any) => b.text),
     detail: matched.map(({ _d, _r, ...rest }) => rest),
   }
 }
@@ -301,14 +301,14 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
 export function diffToCorrections(bp, diff) {
   if (!diff || !Array.isArray(diff.regions)) return null
   const byId = new Map()
-  const idx = (n) => {
+  const idx = (n: any) => {
     if (n && n.id) byId.set(n.id, n)
     for (const c of (n && n.children) || []) idx(c)
   }
   for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) idx(r)
   const corrections = diff.regions.map((r, i) => {
     const cands = r.candidates || []
-    const nodes = cands.map((c) => byId.get(c.id)).filter(Boolean)
+    const nodes = cands.map((c: any) => byId.get(c.id)).filter(Boolean)
     // severity 定级(审计修订): 有画布信息时主判据为"标记像素/画布面积"占比 ——
     // 与画布尺寸解耦: 长页上万级噪声像素不再误升 major, 大区域错乱也不因画布大而漏报;
     // 阈值按 375x812 手机稿标定(major≈914px/minor≈244px), 与旧绝对阈值在该基准下等价;
@@ -320,9 +320,9 @@ export function diffToCorrections(bp, diff) {
     const head = `#${i + 1} [${severity}] 区域(${r.x},${r.y} ${r.width}x${r.height}) 标记像素 ${r.pixels}`
     if (nodes.length) {
       const desc = nodes
-        .map((n) => `${n.id}(${n.name || ''}${typeof n.text === 'string' && n.text ? ` "${String(n.text).slice(0, 12)}"` : ''})`)
+        .map((n: any) => `${n.id}(${n.name || ''}${typeof n.text === 'string' && n.text ? ` "${String(n.text).slice(0, 12)}"` : ''})`)
         .join(', ')
-      return `${head} | 关联节点: ${desc} | 用 blueprintRegion(bp,{ids:[${nodes.map((n) => JSON.stringify(n.id)).join(',')}]}).nodes[0] 下钻, 以蓝图 bounds/layout/样式数值逐项核对渲染实现`
+      return `${head} | 关联节点: ${desc} | 用 blueprintRegion(bp,{ids:[${nodes.map((n: any) => JSON.stringify(n.id)).join(',')}]}).nodes[0] 下钻, 以蓝图 bounds/layout/样式数值逐项核对渲染实现`
     }
     return `${head} | 无蓝图节点命中 — 疑似元素缺失或越界内容, 对照 checklist 检查遗漏项`
   })
@@ -351,11 +351,11 @@ export function renderGeometrySnapshot(bp, opts: Record<string, any> = {}) {
   const W = Math.round((bp?.canvas?.width ?? 375) * scale)
   const H = Math.round((bp?.canvas?.height ?? 812) * scale)
   const png = new PNG({ width: W, height: H })
-  const hex2rgb = (s) => {
+  const hex2rgb = (s: any) => {
     const m = String(s || '').trim().match(/^#([0-9a-fA-F]{3,8})$/)
     if (!m) return null
     let h = m[1]
-    if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join('')
+    if (h.length === 3 || h.length === 4) h = [...h].map((c: any) => c + c).join('')
     const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
     return { r, g, b }
   }
@@ -387,7 +387,7 @@ export function renderGeometrySnapshot(bp, opts: Record<string, any> = {}) {
     const by = bg.bounds.y ?? 0
     fillRect(bx, by, bg.bounds.width ?? (W - bx), bg.bounds.height ?? (H - by), rgb)
   }
-  const walk = (n) => {
+  const walk = (n: any) => {
     if (!n || typeof n !== 'object' || !n.bounds) return
     const b = n.bounds
     const isText = n.type === 'TEXT' || (typeof n.text === 'string' && n.text !== '')

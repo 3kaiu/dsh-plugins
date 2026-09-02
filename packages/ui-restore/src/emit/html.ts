@@ -15,13 +15,13 @@ import { esc } from './escape.ts'
 export function emitPreviewHtml(bp, plan, assets, profile, opts: Record<string, any> = {}) {
   const ctx = {
     contractById: plan.byId,
-    assetByNode: new Map((assets?.assets || []).filter((a) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
+    assetByNode: new Map((assets?.assets || []).filter((a: any) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
     fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f: any) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
   const mapEntries = []
   const body = []
-  const render = (el, indent) => {
+  const render = (el: any, indent: any) => {
     const pad = ' '.repeat(indent)
     const decl = styleToCssDeclarations(el.style)
     const attrs = [`data-restore-node="${el.nodeId}"`]

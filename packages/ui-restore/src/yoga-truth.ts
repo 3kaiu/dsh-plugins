@@ -33,7 +33,7 @@ const ALIGN = {
 function checkContainer(node, kids, tolerance) {
   const pb = node.bounds || {}
   const ly = node.layout || {}
-  const rel = (cb) => ({
+  const rel = (cb: any) => ({
     x: round2((cb.x ?? 0) - (pb.x ?? 0)),
     y: round2((cb.y ?? 0) - (pb.y ?? 0)),
   })
@@ -51,7 +51,7 @@ function checkContainer(node, kids, tolerance) {
   root.setAlignItems(ALIGN[ly.alignItems] ?? Align.FlexStart)
   if (ly.gap > 0) root.setGap(ly.role === "row" ? Gutter.Column : Gutter.Row, ly.gap)
   const pad = Array.isArray(ly.padding) ? ly.padding : [0, 0, 0, 0]
-  if (pad.some((v) => v > 0)) {
+  if (pad.some((v: any) => v > 0)) {
     // 蓝图 padding 约定: [top, right, bottom, left]
     root.setPadding(Edge.Top, pad[0] || 0)
     root.setPadding(Edge.Right, pad[1] || 0)
@@ -136,14 +136,14 @@ export function verifyLayoutTruth(blueprint, opts: Record<string, any> = {}) {
   }
   for (const root of [...(blueprint.tree || []), ...(blueprint.floatings || [])]) walk(root)
 
-  const checked = results.filter((r) => !r.skipped)
-  const skipped = results.filter((r) => r.skipped)
+  const checked = results.filter((r: any) => !r.skipped)
+  const skipped = results.filter((r: any) => r.skipped)
   const childrenChecked = checked.reduce((s, r) => s + r.childCount, 0)
   const unverifiableCorrections = checked.reduce((s, r) => s + (r.unverifiableCorrections || 0), 0)
   const offenderTotal = checked.reduce((s, r) => s + r.offenders.length, 0)
   const maxDelta = round2(checked.reduce((m, r) => Math.max(m, r.maxDelta), 0))
   const worst = checked
-    .flatMap((r) => r.offenders.map((o) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
+    .flatMap((r) => r.offenders.map((o: any) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
     .sort((a, b) => b.delta - a.delta)
     .slice(0, 8)
 

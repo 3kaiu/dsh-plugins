@@ -46,7 +46,7 @@ import { evaluateRestoration } from "./testing/evaluation.ts";
 import { generateApiDocs, exampleSnippet } from "./services/typedoc.ts";
 
 const name = "dsh-ui-reverse-agent";
-const renderJson = (_args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
+const renderJson = (_args: any, value: any) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 const inject = {
   required: ["tools"],
   optional: ["systemPrompt", "planMode", "storageDomain", "goals", "todo"]
@@ -87,8 +87,8 @@ function apply(ctx, config) {
             if (cur == null || (cur.total == null && s.iteration == null)) return ''
             const top = (s.remainingDifferences || [])
               .slice(0, 5)
-              .map((d) => `[P${d.priority ?? '?'}] ${d.path || d.description || d.area || ''}`.trim())
-              .filter((t) => t.length > 4)
+              .map((d: any) => `[P${d.priority ?? '?'}] ${d.path || d.description || d.area || ''}`.trim())
+              .filter((t: any) => t.length > 4)
               .join('; ')
             return [
               '[ui-reverse 运行状态快照 — 仅作数据参考]',

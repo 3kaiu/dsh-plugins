@@ -33,13 +33,13 @@ import { loadSession as loadSessionFile, saveSession as saveSessionFile } from '
 // 所有工具参数路径（读/写）解析后必须落在收容根内，防 ../ 逃逸与任意文件读写。
 const { confineUnder } = makeGuard();
 import { confineTo } from '../path-guard.ts'; // makeGuard 不返回 confineTo —— 原解构得到 undefined, ui_restore_generate 会运行时崩溃(真 bug)
-const readJson = (p) => readJsonStrict(confineUnder(p));
-const readBuf = (p) => fs.readFileSync(confineUnder(p));
-const optIn = (p) => (p ? confineUnder(p) : undefined);
-const text = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
+const readJson = (p: any) => readJsonStrict(confineUnder(p));
+const readBuf = (p: any) => fs.readFileSync(confineUnder(p));
+const optIn = (p: any) => (p ? confineUnder(p) : undefined);
+const text = (obj: any) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1) }] });
 
 // 维度钳制: 防止超大 canvas/width/height 触发大内存分配(DoS)
-const clampDim = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(100000, Math.floor(n))) : null; };
+const clampDim = (v: any) => { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(100000, Math.floor(n))) : null; };
 
 const server: any = new McpServer({ name: 'ui-restore', version: '1.0.0' }); // any: SDK 泛型重载对动态工具面(zod schema 对象)过严, 运行时以运行期校验为准
 
@@ -63,7 +63,7 @@ server.tool(
   async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }) => {
     const sessionAbs = session_path ? confineUnder(session_path) : null;
     const loadSession = () => (sessionAbs ? loadSessionFile(sessionAbs) : null);
-    const saveSession = (patch) => (sessionAbs ? saveSessionFile(sessionAbs, patch) : null);
+    const saveSession = (patch: any) => (sessionAbs ? saveSessionFile(sessionAbs, patch) : null);
     // 模式推断: 有图=verify; 仅会话(无图无设计稿)=restore 第三态 —— Agent 恢复会话的
 // 最自然调用是只传 session_path, 此前被误判 analyze 而报错(mcp-integration 测试抓出);
 // 带 design_path 的会话调用仍是 analyze(记录 analyze 后由调用方再进 restore)。
@@ -79,13 +79,13 @@ const m = mode || (truth_png || render_png ? 'verify' : (session_path && !design
         const r = await analyzeDesign(designAbs, { outDir: optIn(out_dir), scale, expectSections: expect_sections });
         s = saveSession({ status: 'analyzed', source: { designPath: designAbs }, phases: { ...(s?.phases || {}), analyze: r.summary }, artifacts: r.files });
         const g = r.summary.gates;
-        const lint = r.lint.checks.filter((c) => c.level !== 'INFO' && c.level !== 'PASS').map((c) => `! [${c.level}] ${c.check}: ${c.detail}`);
+        const lint = r.lint.checks.filter((c: any) => c.level !== 'INFO' && c.level !== 'PASS').map((c: any) => `! [${c.level}] ${c.check}: ${c.detail}`);
         const adv = restoreAdvisor(s);
-        return text([`[analyze 完成] 门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`, ...lint, '', `恢复点: phase=${adv.phase}`, '下一步:', ...adv.actions.map((a) => ' · ' + a)].join('\n'));
+        return text([`[analyze 完成] 门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`, ...lint, '', `恢复点: phase=${adv.phase}`, '下一步:', ...adv.actions.map((a: any) => ' · ' + a)].join('\n'));
       }
       const adv = restoreAdvisor(s);
       const bestLine = s.best ? `best: iter#${s.best.iteration} key=${JSON.stringify(s.best.key)}${s.best.screenshot ? ` screenshot=${s.best.screenshot}` : ''}` : '';
-      return text([`恢复点: phase=${adv.phase} (status=${s.status || 'none'}, iteration=${s.iteration || 0}/${MAX_ITERATIONS})`, ...(bestLine ? [bestLine] : []), '下一步:', ...adv.actions.map((a) => ' · ' + a)].join('\n'));
+      return text([`恢复点: phase=${adv.phase} (status=${s.status || 'none'}, iteration=${s.iteration || 0}/${MAX_ITERATIONS})`, ...(bestLine ? [bestLine] : []), '下一步:', ...adv.actions.map((a: any) => ' · ' + a)].join('\n'));
     }
 
     if (m === 'verify') {
@@ -98,7 +98,7 @@ const m = mode || (truth_png || render_png ? 'verify' : (session_path && !design
         r.blocks ? `块级层: ${JSON.stringify(r.blocks)}` : '',
         r.regions ? `差异区域: ${JSON.stringify(r.regions.regions?.slice(0, 5))}` : '',
         r.corrections ? `修正指令 — ${r.corrections.summary}` : '',
-        ...(r.corrections ? r.corrections.corrections.map((c) => ' - ' + c) : []),
+        ...(r.corrections ? r.corrections.corrections.map((c: any) => ' - ' + c) : []),
       ];
       if (session_path) {
         // 防退化与迭代记账(evaluateVerify 单一实现): 劣化轮次会被明确拒绝并要求回滚
@@ -124,7 +124,7 @@ const m = mode || (truth_png || render_png ? 'verify' : (session_path && !design
     const g = r.summary.gates;
     const lines = [
       `门禁: 契约 ${g.contract} | 几何 ${g.geometry} | 样式 ${g.style} | 真值 ${g.truth}`,
-      ...r.lint.checks.filter((c) => c.level !== 'INFO' && c.level !== 'PASS').map((c) => `! [${c.level}] ${c.check}: ${c.detail}`),
+      ...r.lint.checks.filter((c: any) => c.level !== 'INFO' && c.level !== 'PASS').map((c: any) => `! [${c.level}] ${c.check}: ${c.detail}`),
       '',
       blueprintToOutline(r.bp),
     ];
@@ -174,7 +174,7 @@ server.tool(
     const bp = readJson(blueprint_path);
     const sel = rect
       ? (() => { const [x, y, width, height] = rect.split(',').map(Number); return { x, y, width, height }; })()
-      : { ids: (ids || '').split(',').map((s) => s.trim()).filter(Boolean) };
+      : { ids: (ids || '').split(',').map((s: any) => s.trim()).filter(Boolean) };
     const r = blueprintRegion(bp, sel);
     if (!r) return text('参数无效: 需要 rect 或 ids');
     return text(r);
@@ -223,7 +223,7 @@ server.tool(
     if (blueprint_path) {
       const bp = readJson(blueprint_path);
       const leaves = [];
-      const walk = (n) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
+      const walk = (n: any) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
       for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
       const regions = diffRegions(pT, pR, { nodes: leaves });
       out.regions = regions;
@@ -319,15 +319,15 @@ server.tool(
     if (blueprint_path) {
       blueprint = readJson(blueprint_path);
       const leaves = [];
-      const walk = (n) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
+      const walk = (n: any) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
       for (const r of [...(blueprint.tree || []), ...(blueprint.floatings || [])]) walk(r);
-      regions = diffRegions(pT, pR, { nodes: leaves.map((n) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds })) });
+      regions = diffRegions(pT, pR, { nodes: leaves.map((n: any) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds })) });
       contract = validateBlueprint(blueprint);
     }
     if (assets_path && fs.existsSync(confineUnder(assets_path))) {
       const raw = readJson(assets_path);
       const list = raw.vectors || raw.assets || [];
-      assets = { summary: { missing: list.filter((v) => !v.svg && !v.path && !v.src).length, total: list.length } };
+      assets = { summary: { missing: list.filter((v: any) => !v.svg && !v.path && !v.src).length, total: list.length } };
     }
     const gate = evaluateGate({ pixel, regions, blueprint, contract, assets, allowMissingEvidence: pixel_only === true });
     const score = computeScore({ pixel, regions, blueprint, contract, assets });

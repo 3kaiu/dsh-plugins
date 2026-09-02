@@ -73,7 +73,7 @@ export function mapBlueprint(blueprint, candidatesByNode = new Map()) {
 
 function flattenBlueprint(tree) {
   const out = []
-  const walk = (nodes) => {
+  const walk = (nodes: any) => {
     for (const n of (Array.isArray(nodes) ? nodes : [nodes])) {
       out.push(n)
       if (n.children?.length) walk(n.children)

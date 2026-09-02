@@ -8,7 +8,7 @@ import { sanitizeSvg } from '../target/svg-sanitize.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  const name = parts.map((p: any) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore'
 }
 const dartString = (s:string) => `'${String(s).replace(/'/g,"\\'")}'`
@@ -18,7 +18,7 @@ function colorToDart(hex:string): string {
   let m = s.match(/^#([0-9a-fA-F]{3,8})$/)
   if (m) {
     let h = m[1]
-    if (h.length === 3) h = [...h].map((c) => c + c).join('')
+    if (h.length === 3) h = [...h].map((c: any) => c + c).join('')
     if (h.length === 6) h = 'FF' + h
     return `Color(0x${h.toUpperCase()})`
   }
@@ -52,7 +52,7 @@ function radiusToDart(v:any): string {
   if (v == null) return ''
   if (typeof v === 'number') return `BorderRadius.circular(${v})`
   if (typeof v === 'string') {
-    const parts = String(v).split(/\s+/).map((p) => parseFloat(p)).filter((n) => !isNaN(n))
+    const parts = String(v).split(/\s+/).map((p: any) => parseFloat(p)).filter((n: any) => !isNaN(n))
     if (parts.length === 1) return `BorderRadius.circular(${parts[0]})`
     if (parts.length >= 2) {
       const [tl, tr, br, bl] = parts.length >= 4 ? [parts[0], parts[1], parts[2], parts[3]] : [parts[0], parts[1], parts[0], parts[1]]
@@ -77,19 +77,19 @@ function parseGradient(css:string): string | null {
   const m = String(css).match(/linear-gradient\(\s*([0-9.]+)deg\s*,([\s\S]+)\)/)
   if (!m) return null
   const angle = parseFloat(m[1])
-  const stops = m[2].split(',').map((s) => s.trim()).filter(Boolean)
-    .map((part) => {
+  const stops = m[2].split(',').map((s: any) => s.trim()).filter(Boolean)
+    .map((part: any) => {
       const mm = part.match(/^(.*?)\s+([0-9.]+)%$/)
       if (mm) return { color: mm[1].trim(), pos: parseFloat(mm[2]) / 100 }
       return { color: part, pos: null }
-    }).filter((s) => s.color && (s.pos != null))
+    }).filter((s: any) => s.color && (s.pos != null))
   if (!stops.length) return null
   const a = (angle % 360) * Math.PI / 180
   const dx = Math.sin(a), dy = -Math.cos(a)
   const begin = `Alignment(${(-dx).toFixed(3)}, ${(-dy).toFixed(3)})`
   const end = `Alignment(${dx.toFixed(3)}, ${dy.toFixed(3)})`
-  const colors = stops.map((s) => colorToDart(s.color)).join(', ')
-  const pos = stops.map((s) => s.pos).join(', ')
+  const colors = stops.map((s: any) => colorToDart(s.color)).join(', ')
+  const pos = stops.map((s: any) => s.pos).join(', ')
   return `LinearGradient(begin: ${begin}, end: ${end}, stops: [${pos}], colors: [${colors}])`
 }
 

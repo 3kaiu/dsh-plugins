@@ -59,13 +59,13 @@ export function restorationChecklist(bp) {
     canvas: bp.canvas ? { width: round2(bp.canvas.width), height: round2(bp.canvas.height) } : null,
     scale: bp.canvas?.scale ?? null,
     texts,
-    groups: (bp.componentGroups || []).map((g) => ({
+    groups: (bp.componentGroups || []).map((g: any) => ({
       groupId: g.groupId,
       count: g.count,
       axis: g.axis ?? null,
       gap: g.gap != null ? g.gap : null,
       itemSize: [round2(g.itemWidth), round2(g.itemHeight)],
-      instances: g.instances.map((i) => ({ id: i.id, name: i.name || '', x: round2(i.x), y: round2(i.y) })),
+      instances: g.instances.map((i: any) => ({ id: i.id, name: i.name || '', x: round2(i.x), y: round2(i.y) })),
     })),
     vectors: [...vectorMap.entries()].map(([svgKey, { name, ids }]) => ({ svgKey, name, nodeIds: [...ids] })),
     images,
@@ -105,7 +105,7 @@ export function checklistToText(cl, opts: Record<string, any> = {}) {
     lines.push('')
     lines.push(`## 组件组 (${cl.groups.length}) — 必须实现为单组件多实例, 禁止逐份拷贝`)
     for (const grp of cl.groups) {
-      const pos = grp.instances.slice(0, 4).map((i) => `@${i.x},${i.y}`).join(' ')
+      const pos = grp.instances.slice(0, 4).map((i: any) => `@${i.x},${i.y}`).join(' ')
       lines.push(`- ${grp.groupId}: ${grp.count} 实例 ${grp.itemSize[0]}x${grp.itemSize[1]} ${pos}${grp.instances.length > 4 ? ' …' : ''}${grp.axis ? ` 排布=${grp.axis}${grp.gap != null ? ` 间距=${grp.gap}` : ''}` : ''}`)
     }
   }

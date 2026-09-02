@@ -8,7 +8,7 @@ import { esc, escAttr } from './escape.ts'
 
 const pascal = (s:string) => {
   const parts = String(s || '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
-  const name = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  const name = parts.map((p: any) => p.charAt(0).toUpperCase() + p.slice(1)).join('')
   return /^[A-Za-z]/.test(name) ? name : 'Restore' + (name || '')
 }
 /** 生成安全的 Vue v-html 绑定字面量: 外层单引号属性, 内层 JSON 双引号字符串, 单引号转义(防反斜杠/换行/引号击穿属性) */

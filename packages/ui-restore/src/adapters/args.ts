@@ -4,7 +4,7 @@
 // 四版盲取下一 argv —— 统一取 cli 版的守卫语义(对畸形输入返回 null 触发用法提示, 而非把旗标当值)。
 // 带不带 `--` 前缀都接受(历史两种调用约定); 不 splice, 保持 args 数组纯净(避免 --help 场景误改参数表)。
 
-const norm = (name) => (name.startsWith('--') ? name : `--${name}`)
+const norm = (name: any) => (name.startsWith('--') ? name : `--${name}`)
 
 /** 读 `--name value` 的值; 旗标不存在、缺值或值以 -- 开头(即下一旗标)时返回 dflt。 */
 export function flag(args, name, dflt = null) {

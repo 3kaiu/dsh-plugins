@@ -189,14 +189,14 @@ export function blueprintJsonSchema() {
 export function validateBlueprint(bp, opts: Record<string, any> = {}) {
   const errors = []
   const maxErrors = opts.maxErrors ?? 20
-  const push = (path, msg) => { if (errors.length < maxErrors) errors.push(`${path}: ${msg}`) }
-  const isNum = (v) => typeof v === 'number' && isFinite(v)
+  const push = (path: any, msg: any) => { if (errors.length < maxErrors) errors.push(`${path}: ${msg}`) }
+  const isNum = (v: any) => typeof v === 'number' && isFinite(v)
 
   if (!bp || typeof bp !== 'object') return { ok: false, errors: ['root: 蓝图必须是对象'] }
   if (!bp.canvas || !isNum(bp.canvas.width) || !isNum(bp.canvas.height)) push('canvas', 'width/height 必须为有限数值')
   if (!Array.isArray(bp.tree)) push('tree', '必须是数组')
 
-  const checkNode = (n, path) => {
+  const checkNode = (n: any, path: any) => {
     if (!n || typeof n !== 'object') { push(path, '节点必须是对象'); return }
     if (typeof n.id !== 'string' || !n.id) push(path + '.id', '必须有非空字符串 id')
     const ly = n.layout

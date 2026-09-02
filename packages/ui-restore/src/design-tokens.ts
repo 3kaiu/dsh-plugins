@@ -35,7 +35,7 @@ function hexToRgbaStr(color, fallbackAlpha = 1) {
   if (/^rgba?\(/i.test(c)) return c
   if (!c.startsWith("#")) return null
   let v = c.slice(1)
-  if (v.length === 3) v = v.split("").map((ch) => ch + ch).join("")
+  if (v.length === 3) v = v.split("").map((ch: any) => ch + ch).join("")
   if (v.length === 6) {
     const r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b = parseInt(v.slice(4, 6), 16)
     return `rgba(${r}, ${g}, ${b}, ${round2(fallbackAlpha)})`
@@ -66,7 +66,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
   const shadows = new Map() // 序列化签名 -> {value, count}
   const aliases = []
 
-  const visit = (node) => {
+  const visit = (node: any) => {
     if (!node || typeof node !== "object") return
     const ly = node.layout || {}
     if (node.color) {
@@ -82,7 +82,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
     }
     const radius = ly.borderRadius
     if (radius != null) {
-      const vals = Array.isArray(radius) ? [...new Set(radius.filter((r) => r > 0))] : [radius]
+      const vals = Array.isArray(radius) ? [...new Set(radius.filter((r: any) => r > 0))] : [radius]
       for (const r of vals) { radii.add(round2(r)); aliases.push({ nodeId: node.id, property: "borderRadius", token: null, _col: radii, _raw: round2(r) }) }
     }
     for (const eff of ly.effects || []) {
@@ -105,7 +105,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
     radius: radii.names("radius"),
   }
   // 组内查找需隔离: 直接用 name 列表建 per-group map
-  const groupMap = (list) => new Map(list.map(({ value, token }) => [String(value), token]))
+  const groupMap = (list: any) => new Map(list.map(({ value, token }) => [String(value), token]))
   const mTextColor = groupMap(named.textColor), mBgColor = groupMap(named.bgColor)
   const mFontSize = groupMap(named.fontSize), mFontWeight = groupMap(named.fontWeight)
   const mLineHeight = groupMap(named.lineHeight), mRadius = groupMap(named.radius)
@@ -115,7 +115,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
     .map(([sig, s]) => ({ sig, ...s }))
     .sort((a, b) => b.count - a.count)
     .map((s, i) => ({ ...s, token: `shadow.1.${i + 1}` }))
-  const mShadow = new Map(shadowList.map((s) => [s.sig, s.token]))
+  const mShadow = new Map(shadowList.map((s: any) => [s.sig, s.token]))
 
   // 回填 alias token 名
   for (const a of aliases) {
@@ -129,7 +129,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
   }
 
   const tokens = {}
-  const put = (name, def) => { tokens[name] = def }
+  const put = (name: any, def: any) => { tokens[name] = def }
   for (const { value, token } of named.textColor) put(token, { $type: "color", "$value": String(value) })
   for (const { value, token } of named.bgColor) put(token, { $type: "color", "$value": String(value) })
   for (const { value, token } of named.fontSize) put(token, { $type: "dimension", "$value": dim(value) })
@@ -140,7 +140,7 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
 
   return {
     tokens,
-    aliases: includeAliases ? aliases.filter((a) => a.token) : [],
+    aliases: includeAliases ? aliases.filter((a: any) => a.token) : [],
     stats: {
       colorTextInput: named.textColor.length,
       colorBg: named.bgColor.length,

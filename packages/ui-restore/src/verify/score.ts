@@ -176,7 +176,7 @@ export function updateConvergence(
     stopKind = 'score-converged'
   } else if (hist.length >= patience + 1) {
     // 连续 patience 轮未刷新 best → 停
-    const recentBests = hist.slice(-patience).every((h) => h.score.score >= (newBest?.score.score ?? Infinity))
+    const recentBests = hist.slice(-patience).every((h: any) => h.score.score >= (newBest?.score.score ?? Infinity))
     if (recentBests && newBest && newBest.iteration <= cur.iteration - patience) {
       shouldStop = true
       reason = `连续 ${patience} 轮未提升(best iter#${newBest.iteration})`
