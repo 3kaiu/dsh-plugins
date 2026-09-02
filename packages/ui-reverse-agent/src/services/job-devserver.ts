@@ -4,7 +4,7 @@
 
 import { DevServer } from './devserver.ts'
 
-function detectJobs(ctx) {
+function detectJobs(ctx: any) {
   if (!ctx) return { available: false, jobs: null }
   const jobs = ctx.jobs || (ctx.get && (() => { try { return ctx.get('jobs') } catch { return null } })()) || null
   const alt = !jobs && ctx.get ? (() => { try { return ctx.get('dsh-jobs') } catch { return null } })() : null
@@ -12,7 +12,7 @@ function detectJobs(ctx) {
   return { available: !!svc && typeof svc.run === 'function', jobs: svc }
 }
 
-function detectTerminal(ctx) {
+function detectTerminal(ctx: any) {
   if (!ctx) return { available: false, terminal: null }
   const t = ctx.terminal || (ctx.get && (() => { try { return ctx.get('terminal') } catch { return null } })()) || null
   return { available: !!t, terminal: t }
@@ -87,7 +87,7 @@ export class JobDevServer {
 }
 
 // 宿主侧 Job 注册的探测辅助（供 preset 的 agent.cordis.yml 条件挂载参考）
-export function describeJobSupport(ctx) {
+export function describeJobSupport(ctx: any) {
   const { available } = detectJobs(ctx)
   const { available: tAvail } = detectTerminal(ctx)
   return { jobs: available, terminal: tAvail, recommendation: available ? 'Use JobDevServer (scoped, ui-jobs visible)' : 'Fallback to raw DevServer (process group)' }

@@ -8,11 +8,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { buildBlueprint } from '@3kaiu/dsh-plugin-kit'
 
-function isNeutralTree(obj) {
+function isNeutralTree(obj: any) {
   return obj && typeof obj === 'object' && (obj.root || obj.meta) && obj.format === 'neutral-render-tree-v1' || (obj.root && obj.root.kind === 'page')
 }
 
-function neutralNodeToBlueprintNode(n) {
+function neutralNodeToBlueprintNode(n: any) {
   // n 来自 doc15 §6：{kind, x,y,width,height, flex, bg, radius, shadows, blur, opacity, rotate, children} 等
   const kind = n.kind
   const base: Record<string, any> = {
@@ -79,13 +79,13 @@ function neutralNodeToBlueprintNode(n) {
   return base
 }
 
-function neutralTreeToBlueprintTree(neutral) {
+function neutralTreeToBlueprintTree(neutral: any) {
   const root = neutral.root || neutral
   const kids = root.children || []
   return kids.map(neutralNodeToBlueprintNode)
 }
 
-export function neutralToBlueprint(neutral) {
+export function neutralToBlueprint(neutral: any) {
   const tree = neutralTreeToBlueprintTree(neutral)
   const canvas = neutral.meta?.canvas || neutral.root?.canvas || { width: neutral.root?.width || 1440, height: neutral.root?.height || 900, background: neutral.root?.background || '#fff' }
   // 诊断：doc14/15 的 diagnostics 直接并入 blueprint.meta

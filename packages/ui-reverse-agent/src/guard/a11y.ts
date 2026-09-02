@@ -3,7 +3,7 @@
 // 输入：implementedTree / domDump（需含 tag/role/alt/text）
 // 输出：{passed, violations, warnings} — 语义化、alt、heading 层级、对比度
 
-function luminance(hex) {
+function luminance(hex: any) {
   const h = hex.replace('#','')
   const r = h.length===3 ? parseInt(h[0]+h[0],16) : parseInt(h.slice(0,2),16)
   const g = h.length===3 ? parseInt(h[1]+h[1],16) : parseInt(h.slice(2,4),16)
@@ -11,7 +11,7 @@ function luminance(hex) {
   const toL = (c: any) => { const s = c/255; return s <= 0.03928 ? s/12.92 : Math.pow((s+0.055)/1.055,2.4) }
   return 0.2126*toL(r) + 0.7152*toL(g) + 0.0722*toL(b)
 }
-function contrastRatio(fg, bg) {
+function contrastRatio(fg: any, bg: any) {
   const l1 = luminance(fg), l2 = luminance(bg)
   const lighter = Math.max(l1,l2), darker = Math.min(l1,l2)
   return (lighter + 0.05) / (darker + 0.05)
@@ -78,9 +78,9 @@ export function checkA11y({ tree, domDump, palette }: Record<string, any> = {}) 
   }
 }
 
-function flatten(tree) {
+function flatten(tree: any) {
   const out = []
-  function walk(nodes) {
+  function walk(nodes: any) {
     for (const n of nodes) {
       out.push(n)
       if (n.children) walk(n.children)

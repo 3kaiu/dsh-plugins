@@ -41,7 +41,7 @@ import {
 const args = process.argv.slice(2);
 const cmd = args[0];
 
-function loadSession(p) {
+function loadSession(p: any) {
   if (!p) return null;
   if (!fs.existsSync(p)) {
     const s = { createdAt: new Date().toISOString(), iteration: 0, status: 'analyzing', phases: {} };
@@ -51,7 +51,7 @@ function loadSession(p) {
   }
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
-function saveSession(p, patch) {
+function saveSession(p: any, patch: any) {
   const s = loadSession(p) || {};
   Object.assign(s, patch, { updatedAt: new Date().toISOString() });
   fs.writeFileSync(p, JSON.stringify(s, null, 1));

@@ -7,7 +7,7 @@
 import { round2 } from '../numeric.ts'
 
 /** 防原型污染: 仅拷贝自有可枚举键, 跳过 __proto__/constructor/prototype 等危险键 */
-function safeAssignStyles(target, src) {
+function safeAssignStyles(target: any, src: any) {
   if (!src || typeof src !== 'object') return target
   for (const k of Object.keys(src)) {
     if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue
@@ -23,7 +23,7 @@ function safeAssignStyles(target, src) {
  * @param {object} raw { sections: [{x, y, dsl: {nodes, styles}}], meta?: {canvas} }
  * @returns {{canvas: {width,height}, styles: object, nodes: Array}}
  */
-export function flattenDesignSections(raw) {
+export function flattenDesignSections(raw: any) {
   const canvas = raw?.meta?.canvas || { width: 375, height: 812 }
   const styles = Object.create(null)
   const nodes = []
@@ -70,7 +70,7 @@ export function flattenDesignSections(raw) {
  * @param {object|Array} input 任一上述形态
  * @returns {{canvas:{width,height}, styles:object, nodes:Array}} 与 flattenDesignSections 同形
  */
-export function ingestDesignExport(input) {
+export function ingestDesignExport(input: any) {
   const obj = Array.isArray(input) ? { sections: input } : (input || {})
   const rawSecs = Array.isArray(obj.sections) ? obj.sections : []
   const norm = []

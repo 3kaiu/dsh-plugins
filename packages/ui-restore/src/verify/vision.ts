@@ -44,7 +44,7 @@ export function shouldTriggerVision(opts: {
   const unmatched = opts.regions.regions.filter(r => !(r.candidates?.length))
   if (unmatched.length>0) return true
   // 整体错误置信度均低
-  const avgConf = errs.reduce((s,e)=>s+(e.confidence ?? 0),0)/Math.max(1, errs.length)
+  const avgConf = errs.reduce((s: any, e: any) =>s+(e.confidence ?? 0),0)/Math.max(1, errs.length)
   return avgConf < 0.55
 }
 

@@ -5,10 +5,10 @@ export function createComment({ author, text, path, pos }) {
   return { id: `c-${Date.now().toString(36)}`, author, text, path, pos, at: new Date().toISOString(), resolved: false }
 }
 
-export function resolveComment(comments, id) {
+export function resolveComment(comments: any, id: any) {
   return comments.map(c => c.id === id ? { ...c, resolved: true } : c)
 }
 
-export function threadForPath(comments, path) {
+export function threadForPath(comments: any, path: any) {
   return comments.filter(c => c.path === path)
 }

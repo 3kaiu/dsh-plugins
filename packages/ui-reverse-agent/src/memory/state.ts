@@ -28,7 +28,7 @@ const DOMAIN_VERSION = 1
  * 探测并打开 storage domain（fire-and-forget：open 完成前读取走 fs 回退）
  * @returns Promise<Domain|null>
  */
-export function initStorageBackend(ctx) {
+export function initStorageBackend(ctx: any) {
   try {
     const facility = ctx?.storageDomain
       || (typeof ctx?.get === 'function' && (() => { try { return ctx.get('storageDomain') } catch { return null } })())
@@ -61,7 +61,7 @@ export function storageBackendName() {
   return domainHandle ? 'storage-domain' : 'fs'
 }
 
-function ensureDir(p) {
+function ensureDir(p: any) {
   try { fs.mkdirSync(path.dirname(p), { recursive: true }) } catch {}
 }
 
@@ -111,7 +111,7 @@ export function stateRead({ statePath }: Record<string, any> = {}) {
   }
 }
 
-function nextState(prev, patch) {
+function nextState(prev: any, patch: any) {
   const next = { ...prev, ...patch }
   // iteration 自增（若 patch 未显式指定）
   if (patch.iteration == null && prev.iteration != null) next.iteration = prev.iteration + 1
@@ -131,7 +131,7 @@ function nextState(prev, patch) {
   return next
 }
 
-function writeHistoryEntry(next, patch, historyNote, p) {
+function writeHistoryEntry(next: any, patch: any, historyNote: any, p: any) {
   if (historyNote == null && patch.lastChanges == null) return
   const hdir = path.dirname(p) + '/history'
   ensureDir(hdir + '/x')
@@ -173,9 +173,9 @@ export function appendHistory(entry, { statePath }: Record<string, any> = {}) {
 }
 
 // 辅助：更新剩余差异（按优先级排序）
-export function sortDifferences(diffs) {
+export function sortDifferences(diffs: any) {
   const order = { P0: 0, P1: 1, P2: 2, P3: 3 }
-  return [...diffs].sort((a,b) => (order[a.priority] ?? 9) - (order[b.priority] ?? 9) || (b.delta||0)-(a.delta||0))
+  return [...diffs].sort((a: any, b: any) => (order[a.priority] ?? 9) - (order[b.priority] ?? 9) || (b.delta||0)-(a.delta||0))
 }
 
 // ── Goals / TODO 双写（Preset 增强） ───────────────────────────────
@@ -189,7 +189,7 @@ export function syncGoalsAndTodo(state, { statePath }: Record<string, any> = {})
   const diffs = Array.isArray(state.remainingDifferences) ? state.remainingDifferences : []
   const sorted = sortDifferences(diffs)
   // goals：每个剩余差异映射为一个 goal，P0/P1 为 open，P2/P3 为 pending
-  const goals = sorted.map((d, i) => ({
+  const goals = sorted.map((d: any, i: any) => ({
     id: `ui-${String(i+1).padStart(2,'0')}`,
     title: `${d.path} ${d.prop}: 期望 ${d.expected} vs 实际 ${d.actual} (Δ${d.delta ?? '?'})`,
     priority: d.priority || 'P2',
@@ -199,7 +199,7 @@ export function syncGoalsAndTodo(state, { statePath }: Record<string, any> = {})
   // todo：首条 in_progress，其余 open；已解决差异对应 completed
   const todos = [
     ...goals.map(g => ({ id: g.id, title: g.title, status: g.status, priority: g.priority })),
-    ...(Array.isArray(state.resolvedDifferences) ? state.resolvedDifferences.slice(-10).map((d, i) => ({
+    ...(Array.isArray(state.resolvedDifferences) ? state.resolvedDifferences.slice(-10).map((d: any, i: any) => ({
       id: `done-${d.iteration ?? i}`,
       title: `✓ ${d.path} ${d.prop}`,
       status: 'completed',

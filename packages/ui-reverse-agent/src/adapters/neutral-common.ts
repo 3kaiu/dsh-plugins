@@ -12,7 +12,7 @@ export const num = (v: any) => {
 }
 
 /** 中立树节点 → HTML 标签(React JSX 与 Vue template 同构映射) */
-export function neutralTag(n) {
+export function neutralTag(n: any) {
   if (n.kind === 'text') return 'span'
   if (n.kind === 'icon') return 'i'
   if (n.kind === 'image') return 'img'

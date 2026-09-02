@@ -21,7 +21,7 @@ async function getPlaywright() {
 
 // exec.signal 契约(官方 "Honor exec.signal"): 调用方取消时在途工作必须中止。
 // page.evaluate 无原生 signal 选项，用 race 包装; 其余 Playwright API 原生透传。
-function raceAbort(promise, signal) {
+function raceAbort(promise: any, signal: any) {
   if (!signal) return promise
   if (signal.aborted) return Promise.reject(new Error('aborted before dispatch'))
   return new Promise((resolve, reject) => {
@@ -104,11 +104,11 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
   try {
     const dump = await raceAbort(pageInstance.evaluate(({ selector, includeComputed }) => {
       let uid = 0 // 每次 dump 的确定性序号：同 DOM 两次 dump 的 id 一致（Math.random 会破坏配对）
-      function getRect(el) {
+      function getRect(el: any) {
         const r = el.getBoundingClientRect()
         return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
       }
-      function getComputed(el) {
+      function getComputed(el: any) {
         if (!includeComputed) return {}
         const cs = getComputedStyle(el)
         const pick = {}
@@ -117,7 +117,7 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
         }
         return pick
       }
-      function visible(el) {
+      function visible(el: any) {
         const cs = getComputedStyle(el)
         if (cs.display === 'none' || cs.visibility === 'hidden') return false
         const r = el.getBoundingClientRect()

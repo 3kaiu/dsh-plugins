@@ -57,7 +57,7 @@ export const runtimeConfig = {
   weights: { ...WEIGHTS },
 }
 
-export function applyConfig(config) {
+export function applyConfig(config: any) {
   if (config == null) return runtimeConfig
   if (config.tol != null) runtimeConfig.tol = config.tol
   if (config.completeThreshold != null) runtimeConfig.completeThreshold = config.completeThreshold

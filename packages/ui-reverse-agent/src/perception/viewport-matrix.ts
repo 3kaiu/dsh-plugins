@@ -52,7 +52,7 @@ export function aggregateMatrixScores(results, { weights = { desktop: 1, tablet:
   }
   for (const vp of Object.keys(byViewport)) {
     const arr = byViewport[vp].scores
-    byViewport[vp].avg = arr.reduce((a, b) => a + b, 0) / arr.length
+    byViewport[vp].avg = arr.reduce((a: any, b: any) => a + b, 0) / arr.length
     byViewport[vp].min = Math.min(...arr)
     byViewport[vp].max = Math.max(...arr)
   }

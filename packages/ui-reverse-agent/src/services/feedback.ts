@@ -25,7 +25,7 @@ export function loadFeedback(feedbackPath = '.ui-reverse/feedback.json') {
   } catch { return [] }
 }
 
-export function replayFeedback(feedback, blueprint) {
+export function replayFeedback(feedback: any, blueprint: any) {
   // 将历史 feedback 转为“约束”（如用户曾纠正 gap 24 而非 16，则后续 fanout 优先 24）
   const constraints = { spacingScale: new Set(), colorPalette: new Set() }
   for (const fb of feedback) {

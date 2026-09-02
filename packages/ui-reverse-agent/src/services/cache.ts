@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 
-export function hashOf(obj) {
+export function hashOf(obj: any) {
   const s = typeof obj === 'string' ? obj : JSON.stringify(obj)
   return createHash('md5').update(s).digest('hex').slice(0, 8)
 }

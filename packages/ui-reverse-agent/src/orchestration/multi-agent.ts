@@ -8,7 +8,7 @@ export const EXPERTS = {
   content: { name: 'content', props: ['text','fontFamily','fontSize','fontWeight','src','alt'], priority: 'P1/P2' },
 }
 
-export function classifyByExpert(mismatches) {
+export function classifyByExpert(mismatches: any) {
   const byExpert = { layout: [], style: [], content: [], unknown: [] }
   for (const m of mismatches) {
     const prop = m.prop || m.property || ''
@@ -33,9 +33,9 @@ export function planParallelExperts(mismatches, { maxPerExpert = 2 }: Record<str
   return { byExpert, plans, totalGroups: plans.length, canParallel: plans.length > 1 }
 }
 
-export function mergeExpertResults(results) {
+export function mergeExpertResults(results: any) {
   // results: [{expert, score, changes}]
-  const totalScore = results.reduce((a, r) => a + (r.score?.total ?? 0), 0) / (results.length || 1)
+  const totalScore = results.reduce((a: any, r: any) => a + (r.score?.total ?? 0), 0) / (results.length || 1)
   const allChanges = results.flatMap(r => r.changes || [])
   const byExpert = {}
   for (const r of results) byExpert[r.expert] = r

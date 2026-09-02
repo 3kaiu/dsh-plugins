@@ -64,7 +64,7 @@ const sleep = (ms: any) => new Promise((r) => setTimeout(r, ms));
 
 /** 极简 CDP 会话(零依赖): Node≥22 全局 WebSocket 承载 JSON-RPC; 只用到 Page/Emulation/Runtime 六个方法。
  *  call=带超时的请求-响应; once=单发事件监听(navigate 与 loadEventFired 存在竞态窗口, 调用方自行兜底)。 */
-function connectCdp(wsUrl, deadlineMs) {
+function connectCdp(wsUrl: any, deadlineMs: any) {
   const ws = new WebSocket(wsUrl);
   let seq = 0;
   const pending = new Map();
@@ -97,7 +97,7 @@ function connectCdp(wsUrl, deadlineMs) {
   return { ready, call, once, close: () => { try { ws.close(); } catch { /* 忽略 */ } } };
 }
 
-async function probeWithCdp(bin, target, outBlocks, opts) {
+async function probeWithCdp(bin: any, target: any, outBlocks: any, opts: any) {
   const width = opts.width ?? 375, height = opts.height ?? 812;
   const deadlineMs = opts.timeoutMs ?? 45000;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dom-blocks-'));

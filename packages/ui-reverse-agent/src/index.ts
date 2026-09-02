@@ -55,7 +55,7 @@ const inject = {
 
 let devServerInstance = null;
 
-function apply(ctx, config) {
+function apply(ctx: any, config: any) {
   applyConfig(config); // yml config 经 schemastery 校验后写入 runtimeConfig(此前被静默丢弃)
   // ── Preset Persona（若宿主提供 systemPrompt 则覆盖 deployment persona） ──
   try {

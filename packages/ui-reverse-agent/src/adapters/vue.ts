@@ -10,7 +10,7 @@
 // 本文件的注入防护策略(文本 HTML 转义 + cssValue 结构字符剥离)保持独立。
 import { num, neutralTag as vueTag, escText, escAttr, cssValue } from './neutral-common.ts'
 
-export function neutralToVue(neutral) {
+export function neutralToVue(neutral: any) {
   const root = neutral.root || neutral
   const children = (root.children || []).map(n => vueNode(n)).join('\n')
   const canvas = neutral.meta?.canvas || root
@@ -28,7 +28,7 @@ export function neutralToVue(neutral) {
   ].join('\n')
 }
 
-function vueNode(n) {
+function vueNode(n: any) {
   const style = vueStyle(n)
   const tag = vueTag(n)
   const children = (n.children || []).map(vueNode).join('')
@@ -37,7 +37,7 @@ function vueNode(n) {
   return `<${tag} style="${style}">${content}${extra}</${tag}>`
 }
 
-function vueStyle(n) {
+function vueStyle(n: any) {
   const parts = []
   const px = (prop: any, v: any) => {
     const k = num(v)

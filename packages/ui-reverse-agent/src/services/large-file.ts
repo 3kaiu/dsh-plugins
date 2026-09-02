@@ -24,7 +24,7 @@ export function paginateSections(sections, pageSize = 10) {
   return { pages, pageSize, total: sections.length, pageCount: pages.length }
 }
 
-export function largeFileDiagnostics(sections, canvas) {
+export function largeFileDiagnostics(sections: any, canvas: any) {
   const { kept, dropped } = filterAbandonedSections(sections, canvas)
   const { pages, pageCount } = paginateSections(kept, 10)
   const hasFlex = kept.filter(s => s.flexContainerInfo).length

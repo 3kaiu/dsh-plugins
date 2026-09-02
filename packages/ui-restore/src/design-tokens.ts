@@ -8,7 +8,7 @@
 
 import { round2 } from './numeric.ts'
 
-function dim(n) {
+function dim(n: any) {
   return { value: round2(n), unit: "px" }
 }
 
@@ -23,7 +23,7 @@ class Collector {
   }
   // 命名: 频次降序 -> 字典序升序, 稳定确定
   names(prefix) {
-    const entries = [...this.map.entries()].sort((a, b) => (b[1] - a[1]) || String(a[0]).localeCompare(String(b[0])))
+    const entries = [...this.map.entries()].sort((a: any, b: any) => (b[1] - a[1]) || String(a[0]).localeCompare(String(b[0])))
     return entries.map(([v], i) => ({ value: v, token: `${prefix}.${i + 1}` }))
   }
 }
@@ -113,8 +113,8 @@ export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
   // 阴影命名: 频次降序
   const shadowList = [...shadows.entries()]
     .map(([sig, s]) => ({ sig, ...s }))
-    .sort((a, b) => b.count - a.count)
-    .map((s, i) => ({ ...s, token: `shadow.1.${i + 1}` }))
+    .sort((a: any, b: any) => b.count - a.count)
+    .map((s: any, i: any) => ({ ...s, token: `shadow.1.${i + 1}` }))
   const mShadow = new Map(shadowList.map((s: any) => [s.sig, s.token]))
 
   // 回填 alias token 名

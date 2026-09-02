@@ -6,7 +6,7 @@
  * 探测宿主是否提供 LSP（dsh-lsp 或兼容的 ctx.lsp / ctx.get('lsp')）
  * 返回 { available, lsp }，available=false 时调用方走 grep 降级
  */
-export function detectLsp(ctx) {
+export function detectLsp(ctx: any) {
   if (!ctx) return { available: false, lsp: null }
   const lsp = ctx.lsp || (ctx.get && (() => { try { return ctx.get('lsp') } catch { return null } })()) || null
   // 兼容：部分部署把 LSP 以 dsh-lsp 键暴露
@@ -29,7 +29,7 @@ export function mapSingleNode(blueprintNode, candidates = []) {
     return { blueprintNode, component: null, css: null, asset: null, confidence: 0, reason: 'unmapped — 无候选', status: 'unmapped' }
   }
   // 按 score 降序
-  const sorted = [...candidates].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+  const sorted = [...candidates].sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0))
   const top = sorted[0]
   // 置信度：score 归一（grep 的 score 可能是 bm25，LSP 的 score 可能是 1.0 精准）
   const confidence = Math.min(1, (top.score ?? 0.5))
@@ -71,7 +71,7 @@ export function mapBlueprint(blueprint, candidatesByNode = new Map()) {
   }
 }
 
-function flattenBlueprint(tree) {
+function flattenBlueprint(tree: any) {
   const out = []
   const walk = (nodes: any) => {
     for (const n of (Array.isArray(nodes) ? nodes : [nodes])) {

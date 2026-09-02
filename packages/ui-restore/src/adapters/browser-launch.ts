@@ -42,7 +42,7 @@ export function findSystemChrome() {
 }
 
 /** 引擎一: 系统 Chrome/Edge headless(零安装) */
-async function captureWithChrome(bin, target, outPng, opts) {
+async function captureWithChrome(bin: any, target: any, outPng: any, opts: any) {
   const width = opts.width ?? Number(flag(args, 'width')) ?? 375;
   const height = opts.height ?? Number(flag(args, 'height')) ?? 812;
   // 等待近似(审计修复): chrome 引擎无 waitForTimeout, 以虚拟时间预算承载 --wait,

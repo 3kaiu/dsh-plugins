@@ -19,7 +19,7 @@ export function checkDesignConstraints({ prop, value, path }, constraints: Desig
   const spacingProps = ['gap', 'padding', 'margin', 'width', 'height', 'x', 'y', 'top', 'left', 'right', 'bottom', 'rowGap', 'columnGap']
   if (spacingProps.includes(prop) && typeof value === 'number' && Array.isArray(constraints.spacingScale) && constraints.spacingScale.length) {
     const scale = constraints.spacingScale
-    const nearest = scale.reduce((a, b) => Math.abs(b - value) < Math.abs(a - value) ? b : a, scale[0])
+    const nearest = scale.reduce((a: any, b: any) => Math.abs(b - value) < Math.abs(a - value) ? b : a, scale[0])
     const dist = Math.abs(value - nearest)
     if (dist > runtimeConfig.tol) { // 容差（config.tol，默认 2px）
       violations.push({ rule: 'spacing-scale', prop, value, nearest, dist, path, reason: `值 ${value} 未命中 spacingScale，近邻 ${nearest} 距 ${dist}px` })
@@ -41,7 +41,7 @@ export function checkDesignConstraints({ prop, value, path }, constraints: Desig
   // 3. Typography 约束（fontSize/weight/family 应来自 scale）
   if ((prop === 'fontSize' || prop === 'size') && typeof value === 'number' && constraints.typographyScale?.sizes?.length) {
     const scale = constraints.typographyScale.sizes
-    const nearest = scale.reduce((a, b) => Math.abs(b - value) < Math.abs(a - value) ? b : a, scale[0])
+    const nearest = scale.reduce((a: any, b: any) => Math.abs(b - value) < Math.abs(a - value) ? b : a, scale[0])
     if (Math.abs(value - nearest) > 1) {
       violations.push({ rule: 'typography-size', prop, value, nearest, reason: `字号 ${value} 未命中 typeScale，近邻 ${nearest}` })
     }
@@ -59,7 +59,7 @@ export function checkDesignConstraints({ prop, value, path }, constraints: Desig
 
   // 4. Radius 约束
   if (prop === 'borderRadius' && typeof value === 'number' && Array.isArray(constraints.borderRadiusScale) && constraints.borderRadiusScale.length) {
-    const nearest = constraints.borderRadiusScale.reduce((a, b) => Math.abs(b - value) < Math.abs(a - value) ? b : a, constraints.borderRadiusScale[0])
+    const nearest = constraints.borderRadiusScale.reduce((a: any, b: any) => Math.abs(b - value) < Math.abs(a - value) ? b : a, constraints.borderRadiusScale[0])
     if (Math.abs(value - nearest) > 2) {
       warnings.push({ rule: 'radius-scale', prop, value, nearest, reason: `圆角 ${value} 非 scale，近邻 ${nearest}` })
     }
@@ -81,7 +81,7 @@ export function checkDesignConstraints({ prop, value, path }, constraints: Desig
  * @param constraints 项目约束
  * @returns {filtered, blocked} filtered 为通过约束的候选（按原 rank 保序）
  */
-export function filterByConstraints(ranked, constraints) {
+export function filterByConstraints(ranked: any, constraints: any) {
   const filtered = []
   const blocked = []
   for (const r of ranked) {

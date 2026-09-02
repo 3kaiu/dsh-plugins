@@ -99,7 +99,7 @@ export function computeScore(input: ScoreInput, weights: Partial<ScoreWeights> =
     contract: contractViolationPenalty * w.contract,
     blocks: blocksPenalty * w.blocks,
   }
-  const score = Object.values(weighted).reduce((s, v) => s + v, 0)
+  const score = Object.values(weighted).reduce((s: any, v: any) => s + v, 0)
   const verdict = geometryPenalty > 0 || contractViolationPenalty > 0 ? `SCORE_${score.toFixed(4)}_WITH_VIOLATION` : `SCORE_${score.toFixed(4)}`
 
   return {

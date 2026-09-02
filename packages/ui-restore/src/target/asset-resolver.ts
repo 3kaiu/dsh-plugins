@@ -20,7 +20,7 @@ import { confineOrNull as confine } from '../path-guard'
  * @param {object} exported {svgs:[{id,svg}], images:[{id,src}]}  —— id 为 svgKey 或 nodeId
  * @returns {{vectors: number, images: number}} 回填计数
  */
-export function backfillAssets(assetsJsonPath, exported) {
+export function backfillAssets(assetsJsonPath: any, exported: any) {
   const table = JSON.parse(fs.readFileSync(assetsJsonPath, 'utf8'))
   let vectors = 0, images = 0
   for (const s of exported.svgs || []) {
@@ -39,7 +39,7 @@ export function backfillAssets(assetsJsonPath, exported) {
 }
 
 /** 从回填后的 assets 表建索引: svgKey/nodeId → {svg|src} */
-function indexAssets(assetsExport) {
+function indexAssets(assetsExport: any) {
   const svg = new Map(), image = new Map()
   for (const v of assetsExport?.vectors || []) {
     const key = v.svgKey || v.id
@@ -151,7 +151,7 @@ export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
 }
 
 /** image+crop → CSS background 三件套(emit 与验证共用同一映射, 防两处实现漂移) */
-export function imageBackgroundStyle(fill, bounds) {
+export function imageBackgroundStyle(fill: any, bounds: any) {
   if (!fill || fill.type !== 'image') return null
   const src = fill.src || 'MISSING_ASSET'
   if (!fill.crop) return { backgroundImage: `url(${src})`, backgroundSize: '100% 100%', backgroundPosition: '0 0' }

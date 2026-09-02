@@ -8,7 +8,7 @@ export function guardRoot() {
 }
 
 /** 把 rel 解析进 rootDir；逃逸即抛错（fail loud）。 */
-export function confineTo(rootDir, rel) {
+export function confineTo(rootDir: any, rel: any) {
   const abs = path.resolve(rootDir, rel);
   const rel2 = path.relative(rootDir, abs);
   if (rel2.startsWith('..') || path.isAbsolute(rel2)) throw new Error(`拒绝越界路径: ${rel}`);
@@ -17,7 +17,7 @@ export function confineTo(rootDir, rel) {
 
 /** 同 confineTo 的宽容变体：逃逸（含 rel 解析为根本身）返回 null 而非抛错。
  *  收敛自 target/asset-resolver.ts 的本地 confine —— 资产解析对越界的正确处置是拒绝该项，不是中断整批。 */
-export function confineOrNull(rootDir, rel) {
+export function confineOrNull(rootDir: any, rel: any) {
   const abs = path.resolve(rootDir, rel);
   const rel2 = path.relative(rootDir, abs);
   if (rel2 === '' || rel2.startsWith('..') || path.isAbsolute(rel2)) return null;

@@ -6,14 +6,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /** 保存 profile( pretty JSON)并返回写入路径 */
-export function saveProfile(profile, filePath) {
+export function saveProfile(profile: any, filePath: any) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, JSON.stringify(profile, null, 1))
   return filePath
 }
 
 /** 读取 profile; 缺字段时以 unknown/默认补齐并标注 (兼容手写 profile) */
-export function loadProfile(filePath) {
+export function loadProfile(filePath: any) {
   const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'))
   const p = {
     framework: raw.framework ?? 'unknown',

@@ -7,7 +7,7 @@
 import { round2 } from '../numeric.ts'
 
 /** 单节点一行摘要 */
-function nodeSummary(n) {
+function nodeSummary(n: any) {
   const ly = n.layout || {}
   const b = n.bounds || {}
   const parts = []
@@ -47,7 +47,7 @@ function nodeSummary(n) {
  * 消费指南(固定文本): 蓝图字段的语义约定。
  * LLM 无需读算法源码, 按本指南即可正确消费蓝图。
  */
-export function restorationGuide(bp) {
+export function restorationGuide(bp: any) {
   const canvas = bp.canvas || {}
   return [
     '## 消费指南(蓝图字段语义)',
@@ -88,7 +88,7 @@ export function restorationGuide(bp) {
  * @param {object} sel {x,y,width,height}(画布绝对矩形, 与 bounds 相交即命中) | {ids:[...]}(节点 id 白名单)
  * @returns {{sel, canvas, nodes:Array, count:number}|null}
  */
-export function blueprintRegion(bp, sel) {
+export function blueprintRegion(bp: any, sel: any) {
   if (!bp || !sel) return null;
   const idSet = Array.isArray(sel.ids) ? new Set(sel.ids.map(String)) : null;
   const rect = sel.width != null && sel.height != null ? sel : null;

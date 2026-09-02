@@ -35,12 +35,12 @@ export interface ElementNode {
 
 const num = (v: any) => (typeof v === 'number' && isFinite(v) ? v : 0)
 
-function gradientCss(fill) {
+function gradientCss(fill: any) {
   const stops = (fill.stops || []).map((s: any) => `${s.color} ${num(s.position)}%`).join(', ')
   return `linear-gradient(${num(fill.angle)}deg, ${stops})`
 }
 
-function borderRadiusCss(radius) {
+function borderRadiusCss(radius: any) {
   if (radius == null) return undefined
   if (typeof radius === 'number') return radius
   if (Array.isArray(radius)) {
@@ -50,7 +50,7 @@ function borderRadiusCss(radius) {
   return undefined
 }
 
-function boxShadowCss(effects) {
+function boxShadowCss(effects: any) {
   if (!Array.isArray(effects) || !effects.length) return undefined
   // 仅阴影类生效；LAYER_BLUR/BACKGROUND_BLUR 单独走 filter/backdrop-filter(见 buildElementTree)
   const parts = effects
@@ -63,7 +63,7 @@ function boxShadowCss(effects) {
 }
 
 /** 把 alpha 烘焙进 CSS 颜色(#rgb/#rrggbb/#rrggbbaa/rgb()/rgba())，避免整树透明度泄漏到子元素 */
-function withAlpha(cssColor, alpha) {
+function withAlpha(cssColor: any, alpha: any) {
   if (typeof cssColor !== 'string') return cssColor
   const m = /^#([0-9a-fA-F]{3,8})$/.exec(cssColor.trim())
   if (m) {
@@ -85,7 +85,7 @@ function withAlpha(cssColor, alpha) {
 }
 
 /** 容器透明度烘焙：把 frame opacity 仅作用于背景（solid/gradient），子代保持不透明 */
-function backgroundWithOpacity(n, opacity) {
+function backgroundWithOpacity(n: any, opacity: any) {
   if (n.fill?.type === 'solid') return withAlpha(n.fill.value, opacity)
   if (n.fill?.type === 'gradient') {
     const stops = (n.fill.stops || []).map((s: any) => `${withAlpha(s.color, opacity)} ${num(s.position)}%`).join(', ')
@@ -94,7 +94,7 @@ function backgroundWithOpacity(n, opacity) {
   return null
 }
 
-function typographyStyle(n, fontStack) {
+function typographyStyle(n: any, fontStack: any) {
   const s: Record<string, any> = {}
   if (n.fontSize != null) s.fontSize = num(n.fontSize)
   if (n.fontWeight != null) s.fontWeight = n.fontWeight
@@ -130,7 +130,7 @@ export interface EmitContext {
  * @param {object} bp 蓝图({canvas,tree,floatings,backgrounds})
  * @param {EmitContext} ctx
  */
-export function buildElementTree(bp, ctx) {
+export function buildElementTree(bp: any, ctx: any) {
   const roots = []
   // 页面级背景层(蓝图单独输出, z 序在最下)
   for (const bg of Array.isArray(bp.backgrounds) ? bp.backgrounds : []) {
@@ -304,7 +304,7 @@ export function buildElementTree(bp, ctx) {
 }
 
 /** image+crop → inline style(引用 asset-resolver 共享映射, 防两处实现漂移) */
-function imageBackgroundInline(fill, bounds, file) {
+function imageBackgroundInline(fill: any, bounds: any, file: any) {
   // 直接复用 asset-resolver 的映射语义(src 换成本地 file)
   const px = fill.crop ? ((fill.crop.visibleRect.x + fill.crop.visibleRect.width / 2) / Math.max(1, bounds.width)) * 100 : 50
   const py = fill.crop ? ((fill.crop.visibleRect.y + fill.crop.visibleRect.height / 2) / Math.max(1, bounds.height)) * 100 : 50
@@ -318,7 +318,7 @@ function imageBackgroundInline(fill, bounds, file) {
 
 /** camelCase style → CSS 声明串(HTML serializer 用; React 直接用对象) */
 const UNITLESS = new Set(['opacity', 'zIndex', 'fontWeight', 'lineHeight', 'flexGrow', 'flexShrink', 'order', 'WebkitLineClamp'])
-export function styleToCssDeclarations(style) {
+export function styleToCssDeclarations(style: any) {
   const kebab = (k: any) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
   return Object.entries(style)
     .filter(([, v]) => v != null && v !== '')

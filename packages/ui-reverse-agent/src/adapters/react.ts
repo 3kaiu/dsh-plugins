@@ -12,7 +12,7 @@ import { num, neutralTag as reactTag } from './neutral-common.ts'
 
 const str = (v: any, fallback: any) => JSON.stringify(typeof v === 'string' && v ? v : (fallback ?? ''))
 
-export function neutralToReact(neutral) {
+export function neutralToReact(neutral: any) {
   const root = neutral.root || neutral
   const children = (root.children || []).map(n => reactNode(n)).join('\n')
   const canvas = neutral.meta?.canvas || root
@@ -27,7 +27,7 @@ export function neutralToReact(neutral) {
   ].join('\n')
 }
 
-function reactNode(n) {
+function reactNode(n: any) {
   const style = reactStyle(n)
   const tag = reactTag(n)
   const children = (n.children || []).map(reactNode).join('')
@@ -36,7 +36,7 @@ function reactNode(n) {
   return `<${tag} style={${style}}>${content}${extra}</${tag}>`
 }
 
-function reactStyle(n) {
+function reactStyle(n: any) {
   const parts = []
   const px = (prop: any, v: any) => {
     const k = num(v)

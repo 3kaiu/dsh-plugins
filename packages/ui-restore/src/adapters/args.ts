@@ -15,6 +15,6 @@ export function flag(args, name, dflt = null) {
 }
 
 /** 布尔开关: `--name` 出现即为 true(不消费值, 缺值也算开)。 */
-export function hasFlag(args, name) {
+export function hasFlag(args: any, name: any) {
   return args.indexOf(norm(name)) >= 0
 }

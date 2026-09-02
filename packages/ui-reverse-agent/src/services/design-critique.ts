@@ -11,7 +11,7 @@ export function critiqueDesign({ blueprint, tree }: Record<string, any> = {}) {
 
   // 1. 间距一致性：gap/padding 值是否离散（应聚类到少数 scale）
   const gaps = new Set()
-  function collectGaps(nodes) {
+  function collectGaps(nodes: any) {
     for (const n of nodes) {
       if (n.computed?.gap) gaps.add(n.computed.gap)
       if (n.layout?.gap) gaps.add(n.layout.gap)

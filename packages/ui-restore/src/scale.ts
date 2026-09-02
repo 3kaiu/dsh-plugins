@@ -17,12 +17,12 @@ import { round2 } from './numeric.ts'
 const dimBy = (f: any) => (v) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
 
 /** 长度/数组长度缩放(radius 等单值或四角数组) */
-function scaleLength(v, dim) {
+function scaleLength(v: any, dim: any) {
   if (Array.isArray(v)) return v.map((x: any) => dim(x))
   return dim(v)
 }
 /** padding/margin 对象(数字或 {top,right,bottom,left})缩放 */
-function scaleBox(p, dim) {
+function scaleBox(p: any, dim: any) {
   if (typeof p === 'number') return dim(p)
   if (p && typeof p === 'object') {
     const o = {}
@@ -34,14 +34,14 @@ function scaleBox(p, dim) {
   return p
 }
 /** 描边缩放(宽度/虚线) */
-function scaleStroke(s, dim) {
+function scaleStroke(s: any, dim: any) {
   if (!s || typeof s !== 'object') return s
   const o = { ...s }
   for (const k of ['width', 'dashWidth', 'dashGap']) if (o[k] != null) o[k] = dim(o[k])
   return o
 }
 /** 阴影/模糊效果缩放(offsetX/Y/blur/spread/radius) */
-function scaleEffect(e, dim) {
+function scaleEffect(e: any, dim: any) {
   if (!e || typeof e !== 'object') return e
   const o = { ...e }
   for (const k of ['offsetX', 'offsetY', 'blur', 'spread', 'radius']) if (o[k] != null) o[k] = dim(o[k])
@@ -56,8 +56,8 @@ const SCALE_FACTORS = [1, 1.5, 2, 3, 4]
 const BODY_FONT_MIN = 9
 const BODY_FONT_MAX = 20
 
-function nearestFactor(ratio) {
-  return SCALE_FACTORS.reduce((a, b) => (Math.abs(b - ratio) < Math.abs(a - ratio) ? b : a))
+function nearestFactor(ratio: any) {
+  return SCALE_FACTORS.reduce((a: any, b: any) => (Math.abs(b - ratio) < Math.abs(a - ratio) ? b : a))
 }
 
 /** 收集观测字号: 内联 textStyle 优先, 其次 dsl.styles 字体引用表 */
@@ -73,9 +73,9 @@ function collectFontSizes(nodes = [], styles: Record<string, any> = {}) {
   return sizes.filter((s: any) => isFinite(s) && s > 0)
 }
 
-function median(nums) {
+function median(nums: any) {
   if (!nums.length) return null
-  const s = [...nums].sort((a, b) => a - b)
+  const s = [...nums].sort((a: any, b: any) => a - b)
   const mid = Math.floor(s.length / 2)
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
 }
@@ -130,7 +130,7 @@ export function detectDesignScale(input: Record<string, any> = {}) {
   }
 
   // 排序: 分数降序, 同分取更小倍率(奥卡姆)
-  const ranked = [...scoreBy.entries()].sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]))
+  const ranked = [...scoreBy.entries()].sort((a: any, b: any) => (b[1] - a[1]) || (a[0] - b[0]))
   const [bestScale, bestScore] = ranked[0]
   const rest = ranked.slice(1)
   // 置信度 = 对最强竞争候选的边际占比(次高分作分母基准, 弱噪声不稀释);
@@ -210,7 +210,7 @@ export function applyDesignScale(nodes = [], styles: Record<string, any> = {}, f
   return { nodes: scaledNodes, styles: scaledStyles }
 }
 
-function scaleTextStyle(ts, f) {
+function scaleTextStyle(ts: any, f: any) {
   if (!ts || typeof ts !== 'object') return ts
   const dim = dimBy(f)
   const out = { ...ts }

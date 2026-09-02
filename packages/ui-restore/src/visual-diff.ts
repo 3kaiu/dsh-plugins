@@ -54,7 +54,7 @@ export function comparePng(bufA: any, bufB: any, opts: Record<string, any> = {})
   }
 }
 
-function cropTo(png, width, height) {
+function cropTo(png: any, width: any, height: any) {
   if (png.width === width && png.height === height) return png.data
   const out = Buffer.alloc(width * height * 4)
   for (let y = 0; y < height; y++) {
@@ -141,7 +141,7 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
       clusters.push({ x: minX, y: minY, width: maxX - minX, height: maxY - minY, pixels })
     }
   }
-  clusters.sort((p, q) => q.pixels - p.pixels)
+  clusters.sort((p: any, q: any) => q.pixels - p.pixels)
 
   const regions = clusters.slice(0, top).map((c: any) => {
     if (!nodes) return c
@@ -160,7 +160,7 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
     }
     const candidates = nodes
       .filter((n: any) => n.bounds && interArea(n) > 0)
-      .sort((m, n) => score(n) - score(m))
+      .sort((m: any, n: any) => score(n) - score(m))
       .slice(0, 3)
       .map((n: any) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? String(n.text).slice(0, 20) : (n.text ?? null) }))
     return { ...c, candidates }
@@ -194,10 +194,10 @@ export function textSimilarity(s1: any, s2: any) {
   const g1 = grams(s1), g2 = grams(s2)
   let inter = 0
   for (const [g, c] of g1) if (g2.has(g)) inter += Math.min(c, g2.get(g))
-  return (2 * inter) / ([...g1.values()].reduce((a, b) => a + b, 0) + [...g2.values()].reduce((a, b) => a + b, 0)) || (s1.length === 1 && s2.length === 1 ? (s1 === s2 ? 1 : 0) : 0)
+  return (2 * inter) / ([...g1.values()].reduce((a: any, b: any) => a + b, 0) + [...g2.values()].reduce((a: any, b: any) => a + b, 0)) || (s1.length === 1 && s2.length === 1 ? (s1 === s2 ? 1 : 0) : 0)
 }
 
-function regionAvgColor(img, width, blk) {
+function regionAvgColor(img: any, width: any, blk: any) {
   // 采样块区域的平均 RGB(步长采样防大块过慢)
   const x0 = Math.max(0, Math.round(blk.x)), y0 = Math.max(0, Math.round(blk.y))
   const x1 = Math.min(width, Math.round(blk.x + (blk.width || 0)))
@@ -214,7 +214,7 @@ function regionAvgColor(img, width, blk) {
   return [r / n, g / n, b / n]
 }
 
-function colorSim(c1, c2) {
+function colorSim(c1: any, c2: any) {
   if (!c1 || !c2) return null
   const d = Math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2 + (c1[2] - c2[2]) ** 2) / Math.sqrt(3 * 255 * 255)
   return round2(1 - d)
@@ -240,7 +240,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
       pairs.push({ d, r, ts, dc })
     }
   }
-  pairs.sort((a, b) => (b.ts - a.ts) || (a.dc - b.dc))
+  pairs.sort((a: any, b: any) => (b.ts - a.ts) || (a.dc - b.dc))
   const usedD = new Set(), usedR = new Set()
   const matched = []
   for (const p of pairs) {
@@ -256,16 +256,16 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
   // Block-Match: 匹配面积的 precision/recall 调和均值(同时惩罚漏检与幻觉块)。
   // 面积直接取配对双方块, 不按文本回查(重名文本会错配)。
   const areaOf = (b: any) => Math.max(0, b.width || 0) * Math.max(0, b.height || 0)
-  const designArea = designBlocks.reduce((s, b) => s + areaOf(b), 0)
-  const renderArea = renderBlocks.reduce((s, b) => s + areaOf(b), 0)
-  const matchedDesignArea = matched.reduce((s, m) => s + areaOf(m._d), 0)
-  const matchedRenderArea = matched.reduce((s, m) => s + areaOf(m._r), 0)
+  const designArea = designBlocks.reduce((s: any, b: any) => s + areaOf(b), 0)
+  const renderArea = renderBlocks.reduce((s: any, b: any) => s + areaOf(b), 0)
+  const matchedDesignArea = matched.reduce((s: any, m: any) => s + areaOf(m._d), 0)
+  const matchedRenderArea = matched.reduce((s: any, m: any) => s + areaOf(m._r), 0)
   const recallP = designArea > 0 ? matchedDesignArea / designArea : 1
   const precisionP = renderArea > 0 ? matchedRenderArea / renderArea : 1
   // 无配对 → 块匹配率为 0(设计有文本块但渲染什么都没匹配上时, 不得判为满分)
   const blockMatchRate = matched.length === 0 ? 0 : round2((2 * recallP * precisionP) / (recallP + precisionP))
 
-  const positionSimilarity = matched.length ? round2(matched.reduce((s, m) => s + m.posSim, 0) / matched.length) : null
+  const positionSimilarity = matched.length ? round2(matched.reduce((s: any, m: any) => s + m.posSim, 0) / matched.length) : null
 
   let colorSimilarity = null
   if (ctx.designImg && ctx.renderImg) {
@@ -274,7 +274,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
       const cs = colorSim(regionAvgColor(ctx.designImg, ctx.designImg.width, m._d), regionAvgColor(ctx.renderImg, ctx.renderImg.width, m._r))
       if (cs != null) sims.push(cs)
     }
-    if (sims.length) colorSimilarity = round2(sims.reduce((a, b) => a + b, 0) / sims.length)
+    if (sims.length) colorSimilarity = round2(sims.reduce((a: any, b: any) => a + b, 0) / sims.length)
   }
 
   return {
@@ -282,7 +282,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
     matchedPairs: matched.length,
     positionSimilarity,
     colorSimilarity,
-    avgTextSimilarity: matched.length ? round2(matched.reduce((s, m) => s + m.textSim, 0) / matched.length) : null,
+    avgTextSimilarity: matched.length ? round2(matched.reduce((s: any, m: any) => s + m.textSim, 0) / matched.length) : null,
     unmatchedDesign: designBlocks.filter((b: any) => !usedD.has(b)).map((b: any) => b.text),
     unmatchedRender: renderBlocks.filter((b: any) => !usedR.has(b)).map((b: any) => b.text),
     detail: matched.map(({ _d, _r, ...rest }) => rest),
@@ -298,7 +298,7 @@ export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any
  * @param {object} diff diffRegions 输出 {regions:[{x,y,width,height,pixels,candidates?}], markedRatio}
  * @returns {{summary:string, corrections:string[]}|null}
  */
-export function diffToCorrections(bp, diff) {
+export function diffToCorrections(bp: any, diff: any) {
   if (!diff || !Array.isArray(diff.regions)) return null
   const byId = new Map()
   const idx = (n: any) => {
@@ -306,7 +306,7 @@ export function diffToCorrections(bp, diff) {
     for (const c of (n && n.children) || []) idx(c)
   }
   for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) idx(r)
-  const corrections = diff.regions.map((r, i) => {
+  const corrections = diff.regions.map((r: any, i: any) => {
     const cands = r.candidates || []
     const nodes = cands.map((c: any) => byId.get(c.id)).filter(Boolean)
     // severity 定级(审计修订): 有画布信息时主判据为"标记像素/画布面积"占比 ——

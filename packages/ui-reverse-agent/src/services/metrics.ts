@@ -20,8 +20,8 @@ export function createMetrics() {
       for (const k of Object.keys(byName)) {
         byName[k].avg = Math.round(byName[k].total / byName[k].count)
       }
-      const total = marks.reduce((a, b) => a + b.dur, 0)
-      const sorted = Object.entries(byName).sort((a, b) => b[1].total - a[1].total)
+      const total = marks.reduce((a: any, b: any) => a + b.dur, 0)
+      const sorted = Object.entries(byName).sort((a: any, b: any) => b[1].total - a[1].total)
       const bottleneck = sorted[0]?.[0] || null
       return { byName, total, bottleneck, suggestion: bottleneck ? `优化 ${bottleneck}（${byName[bottleneck].total}ms 占 ${Math.round(byName[bottleneck].total/total*100)}%）` : null, marks }
     },

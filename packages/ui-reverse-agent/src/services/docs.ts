@@ -1,7 +1,7 @@
 'use strict'
 // docs — 34 工具与 helpers 的自动文档生成（供 marketplace/README 消费）
 
-export function generateToolDocs(tools) {
+export function generateToolDocs(tools: any) {
   const lines = ['# UI Reverse Agent — Tools', '']
   for (const t of tools as any[]) {
     lines.push(`## ${t.name}`)
@@ -18,7 +18,7 @@ export function generateToolDocs(tools) {
   return lines.join('\n')
 }
 
-export function generateHelperDocs(helpers) {
+export function generateHelperDocs(helpers: any) {
   const lines = ['# Helpers', '']
   for (const h of helpers) {
     lines.push(`- \`${h.name}\`: ${h.description}`)

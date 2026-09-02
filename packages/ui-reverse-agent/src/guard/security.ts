@@ -6,7 +6,7 @@
 const ALLOWED_URL_PREFIXES = ['https://image-resource.mastergo.com/', 'https://cdn.', 'data:image/']
 const BLOCKED_PATTERNS = [/<script/i, /javascript:/i, /on\w+\s*=/i, /data:text\/html/i]
 
-export function sanitizeText(text) {
+export function sanitizeText(text: any) {
   if (typeof text !== 'string') return text
   let out = text
   // 去除控制字符，保留 \n
@@ -16,20 +16,20 @@ export function sanitizeText(text) {
   return out
 }
 
-export function isAllowedUrl(url) {
+export function isAllowedUrl(url: any) {
   if (!url || typeof url !== 'string') return false
   if (url.startsWith('data:image/')) return true
   return ALLOWED_URL_PREFIXES.some(p => url.startsWith(p)) || url.startsWith('assets/') || url.startsWith('./assets/') || url.startsWith('/assets/')
 }
 
-export function checkDslSecurity(dsl) {
+export function checkDslSecurity(dsl: any) {
   const violations = []
   const warnings = []
 
   const texts = []
   const urls = []
   const svgs = []
-  function walk(n) {
+  function walk(n: any) {
     if (!n || typeof n !== 'object') return
     if (typeof n.text === 'string') texts.push(n.text)
     if (Array.isArray(n.text)) for (const t of n.text) if (t?.text) texts.push(t.text)
@@ -66,9 +66,9 @@ export function checkDslSecurity(dsl) {
   }
 }
 
-export function sanitizeDsl(dsl) {
+export function sanitizeDsl(dsl: any) {
   const clone = JSON.parse(JSON.stringify(dsl))
-  function walk(n) {
+  function walk(n: any) {
     if (!n || typeof n !== 'object') return
     if (typeof n.text === 'string') n.text = sanitizeText(n.text)
     if (Array.isArray(n.text)) for (const t of n.text) if (t?.text) t.text = sanitizeText(t.text)

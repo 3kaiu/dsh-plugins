@@ -29,16 +29,16 @@ export interface RankedCandidate extends FanoutCandidate {
   rank: number
 }
 
-function cloneTree(tree) {
+function cloneTree(tree: any) {
   return JSON.parse(JSON.stringify(tree))
 }
 
-function findNodeByPath(tree, path) {
+function findNodeByPath(tree: any, path: any) {
   // path 如 "main > .card-grid" 按 ">" 切段，按 name/id 模糊匹配
   const segments = path.split('>').map(s => s.trim()).filter(Boolean)
   // 树可能是数组（多根）或单根
   const roots = Array.isArray(tree) ? tree : [tree]
-  function search(nodes, segIdx) {
+  function search(nodes: any, segIdx: any) {
     if (segIdx >= segments.length) return null
     const seg = segments[segIdx]
     for (const n of nodes) {
@@ -64,7 +64,7 @@ function findNodeByPath(tree, path) {
   return search(roots, 0)
 }
 
-function patchNodeProp(tree, mismatch, candidateValue) {
+function patchNodeProp(tree: any, mismatch: any, candidateValue: any) {
   const cloned = cloneTree(tree)
   const node = findNodeByPath(cloned, mismatch.path)
   if (!node) return { tree: cloned, patched: false }
@@ -172,12 +172,12 @@ export function fanoutEvaluate({ mismatch, candidates, referenceTree, implemente
   })
 
   // 按 predictedTotal 降序，其次 mismatchesAfter 升序，其次 value 接近 expected 优先
-  ranked.sort((a, b) => {
+  ranked.sort((a: any, b: any) => {
     if (b.predictedTotal !== a.predictedTotal) return b.predictedTotal - a.predictedTotal
     if (a.mismatchesAfter !== b.mismatchesAfter) return a.mismatchesAfter - b.mismatchesAfter
     return Math.abs((a.value as number) - (mismatch.expected as number)) - Math.abs((b.value as number) - (mismatch.expected as number))
   })
-  ranked.forEach((r, i) => (r.rank = i + 1))
+  ranked.forEach((r: any, i: any) => (r.rank = i + 1))
 
   const best = ranked[0] || null
   return {

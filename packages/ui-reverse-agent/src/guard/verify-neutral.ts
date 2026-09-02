@@ -69,9 +69,9 @@ export function verifyNeutral({ neutral, blueprint, domDump = null, implementedT
   }
 }
 
-function flattenNeutral(root) {
+function flattenNeutral(root: any) {
   const out = []
-  function walk(n) {
+  function walk(n: any) {
     out.push(n)
     if (n.children) for (const c of n.children) walk(c)
   }
@@ -79,9 +79,9 @@ function flattenNeutral(root) {
   else walk(root)
   return out
 }
-function flattenImpl(tree) {
+function flattenImpl(tree: any) {
   const out = []
-  function walk(nodes) {
+  function walk(nodes: any) {
     for (const n of nodes) {
       out.push(n)
       if (n.children) walk(n.children)
@@ -90,22 +90,22 @@ function flattenImpl(tree) {
   walk(Array.isArray(tree) ? tree : [tree])
   return out
 }
-function findClosestByName(nodes, name) {
+function findClosestByName(nodes: any, name: any) {
   if (!name) return null
   return nodes.find(n => (n.name || n.id) === name) || nodes.find(n => (n.name || '').includes(name) || name.includes(n.name || '')) || null
 }
-function collectTexts(root) {
+function collectTexts(root: any) {
   const out = []
-  function walk(n) {
+  function walk(n: any) {
     if (n.text) out.push(n.text)
     if (n.children) for (const c of n.children) walk(c)
   }
   walk(root)
   return out
 }
-function collectImplTexts(tree) {
+function collectImplTexts(tree: any) {
   const out = []
-  function walk(nodes) {
+  function walk(nodes: any) {
     for (const n of nodes) {
       if (n.text) out.push(n.text)
       if (n.children) walk(n.children)
@@ -114,9 +114,9 @@ function collectImplTexts(tree) {
   walk(Array.isArray(tree) ? tree : [tree])
   return out
 }
-function scanOverflow(tree) {
+function scanOverflow(tree: any) {
   const out = []
-  function walk(nodes, base) {
+  function walk(nodes: any, base: any) {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name||n.id}` : (n.name||n.id)
       const rect = n.rect || n.bbox
@@ -129,9 +129,9 @@ function scanOverflow(tree) {
   walk(Array.isArray(tree)?tree:[tree], '')
   return out
 }
-function scanOverlap(tree) {
+function scanOverlap(tree: any) {
   const leaves = []
-  function walk(nodes) {
+  function walk(nodes: any) {
     for (const n of nodes) {
       if (!n.children?.length && n.rect) leaves.push(n)
       if (n.children) walk(n.children)

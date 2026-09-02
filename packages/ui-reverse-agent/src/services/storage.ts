@@ -6,7 +6,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-function detectStorage(ctx) {
+function detectStorage(ctx: any) {
   if (!ctx) return { available: false, storage: null }
   const s = ctx.storage || (ctx.get && (() => { try { return ctx.get('storage') } catch { return null } })()) || null
   const alt = !s && ctx.get ? (() => { try { return ctx.get('dsh-storage') } catch { return null } })() : null
@@ -14,7 +14,7 @@ function detectStorage(ctx) {
   return { available: !!svc && typeof svc.get === 'function', storage: svc }
 }
 
-export function storageKeyForArtifact(kind, viewport, state) {
+export function storageKeyForArtifact(kind: any, viewport: any, state: any) {
   // kind: blueprint / diff / current / baseline
   return `ui-reverse:${kind}:${viewport}:${state || 'default'}`
 }

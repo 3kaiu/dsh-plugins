@@ -13,7 +13,7 @@ import { round2 } from '../numeric.ts'
  * @returns {{gates:object, canvas:object, scale:object|null, texts:Array, groups:Array,
  *            vectors:Array, images:Array, counts:object}}
  */
-export function restorationChecklist(bp) {
+export function restorationChecklist(bp: any) {
   if (!bp || typeof bp !== 'object') return null
   const texts = []
   const vectorMap = new Map() // svgKey -> {name, ids:Set}

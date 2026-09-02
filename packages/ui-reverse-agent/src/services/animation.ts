@@ -1,9 +1,9 @@
 'use strict'
 // animation — 动效还原与校验（transition/animation 的提取与对比）
 
-export function extractAnimations(tree) {
+export function extractAnimations(tree: any) {
   const out = []
-  function walk(nodes) {
+  function walk(nodes: any) {
     for (const n of nodes) {
       const anim = n.computed?.animation || n.effect?.animation || n.style?.animation
       const trans = n.computed?.transition || n.style?.transition
@@ -31,7 +31,7 @@ export function compareAnimations(refAnims, implAnims, toleranceMs = 50) {
   return { mismatches, passed: mismatches.length === 0 }
 }
 
-function parseDuration(str) {
+function parseDuration(str: any) {
   if (!str || typeof str !== 'string') return null
   const m = str.match(/(\d+)(ms|s)/)
   if (!m) return null

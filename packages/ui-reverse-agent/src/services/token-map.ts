@@ -69,12 +69,12 @@ export function mapPaletteTokens(blueprintPalette, projectPalette = [], deltaETh
   return mappings
 }
 
-function hexDistance(a, b) {
+function hexDistance(a: any, b: any) {
   const pa = parseHex(a), pb = parseHex(b)
   if (!pa || !pb) return 100
   return Math.sqrt((pa.r-pb.r)**2 + (pa.g-pb.g)**2 + (pa.b-pb.b)**2) / 441.6 * 100 // 归一 0-100
 }
-function parseHex(hex) {
+function parseHex(hex: any) {
   if (!hex || typeof hex !== 'string') return null
   const h = hex.replace('#','')
   if (h.length === 3) return { r: parseInt(h[0]+h[0],16), g: parseInt(h[1]+h[1],16), b: parseInt(h[2]+h[2],16) }

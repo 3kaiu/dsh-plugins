@@ -40,7 +40,7 @@ export const REPAIR_STRATEGY = {
  * 生成一条分类错误。
  * @param {object} e {category, kind, nodeId, detail, expected?, actual?, confidence?}
  */
-export function classifyError(e) {
+export function classifyError(e: any) {
   if (!ERROR_CATEGORIES.includes(e.category)) throw new Error(`未知错误类: ${e.category}(允许: ${ERROR_CATEGORIES.join('/')})`)
   return {
     category: e.category,

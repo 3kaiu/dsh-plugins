@@ -10,7 +10,7 @@ export const RECOVERY_POLICY = {
   file: { retries: 1, delayMs: 0, fallback: 'skip' },
 }
 
-export function classifyError(error) {
+export function classifyError(error: any) {
   const msg = String(error?.message || error || '').toLowerCase()
   if (msg.includes('devserver') || msg.includes('econnrefused') || msg.includes('port')) return 'devServer'
   if (msg.includes('browser') || msg.includes('chromium') || msg.includes('playwright') || msg.includes('context')) return 'browser'

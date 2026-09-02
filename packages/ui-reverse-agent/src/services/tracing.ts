@@ -16,7 +16,7 @@ export function createTracer(traceId = `ui-${Date.now().toString(36)}`) {
       }
     },
     report() {
-      const total = spans.reduce((a, s) => a + s.dur, 0)
+      const total = spans.reduce((a: any, s: any) => a + s.dur, 0)
       return { traceId, spans, total, count: spans.length }
     },
     toJson() { return JSON.stringify({ traceId, spans }, null, 2) },

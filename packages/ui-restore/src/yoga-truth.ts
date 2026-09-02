@@ -30,7 +30,7 @@ const ALIGN = {
  * 单容器真值求解: 用推断的 flex 参数重排设计尺寸固定的子节点,
  * 比对求解位置与设计位置(bounds 相对父容器差值)。
  */
-function checkContainer(node, kids, tolerance) {
+function checkContainer(node: any, kids: any, tolerance: any) {
   const pb = node.bounds || {}
   const ly = node.layout || {}
   const rel = (cb: any) => ({
@@ -138,13 +138,13 @@ export function verifyLayoutTruth(blueprint, opts: Record<string, any> = {}) {
 
   const checked = results.filter((r: any) => !r.skipped)
   const skipped = results.filter((r: any) => r.skipped)
-  const childrenChecked = checked.reduce((s, r) => s + r.childCount, 0)
-  const unverifiableCorrections = checked.reduce((s, r) => s + (r.unverifiableCorrections || 0), 0)
-  const offenderTotal = checked.reduce((s, r) => s + r.offenders.length, 0)
-  const maxDelta = round2(checked.reduce((m, r) => Math.max(m, r.maxDelta), 0))
+  const childrenChecked = checked.reduce((s: any, r: any) => s + r.childCount, 0)
+  const unverifiableCorrections = checked.reduce((s: any, r: any) => s + (r.unverifiableCorrections || 0), 0)
+  const offenderTotal = checked.reduce((s: any, r: any) => s + r.offenders.length, 0)
+  const maxDelta = round2(checked.reduce((m: any, r: any) => Math.max(m, r.maxDelta), 0))
   const worst = checked
     .flatMap((r) => r.offenders.map((o: any) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
-    .sort((a, b) => b.delta - a.delta)
+    .sort((a: any, b: any) => b.delta - a.delta)
     .slice(0, 8)
 
   return {

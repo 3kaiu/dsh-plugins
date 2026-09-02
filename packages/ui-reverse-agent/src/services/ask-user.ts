@@ -9,7 +9,7 @@ import { stateRead } from '../memory/state.ts'
 /**
  * 探测 UserQuestionService 能力
  */
-export function detectAskUser(ctx) {
+export function detectAskUser(ctx: any) {
   if (!ctx) return { available: false, svc: null }
   const svc = ctx.userQuestions
     || (typeof ctx.get === 'function' && (() => { try { return ctx.get('userQuestions') } catch { return null } })())

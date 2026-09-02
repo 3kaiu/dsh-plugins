@@ -33,7 +33,7 @@ export async function buildBlueprint(designPath, opts: Record<string, any> = {})
 }
 
 /** 蓝图全部叶子节点(diffRegions 的候选映射输入)。此前 cli/mcp/pipeline 共四份相同 walk 拷贝, 已收敛于此 */
-export function collectLeaves(bp) {
+export function collectLeaves(bp: any) {
   const leaves = [];
   const walk = (n: any) => {
     if (!n || typeof n !== 'object') return;
@@ -123,7 +123,7 @@ export async function analyzeDesign(designPath, opts: Record<string, any> = {}) 
  * @param {object} opts {truthPng, renderPng, bpPath?, blocksTruth?, blocksRender?, grid?, top?}
  * @returns {{pixel, blocks?, regions?, corrections?}}
  */
-export function verifyScreenshots(opts) {
+export function verifyScreenshots(opts: any) {
   const { truthPng, renderPng } = opts;
   const pT = fs.readFileSync(truthPng);
   const pR = fs.readFileSync(renderPng);
@@ -173,7 +173,7 @@ export function verifyScreenshots(opts) {
 export const MAX_ITERATIONS = 5;
 
 /** 质量键(字典序比较, 无人为权重): 区域数 → 标记像素占比 → 像素差异率, 均越小越好 */
-export function verifyQualityKey(r) {
+export function verifyQualityKey(r: any) {
   const inf = Number.POSITIVE_INFINITY;
   return [
     r.regions?.clusterCount ?? inf,
@@ -181,7 +181,7 @@ export function verifyQualityKey(r) {
     r.pixel?.diffRatio ?? inf,
   ];
 }
-function lexLess(a, b) {
+function lexLess(a: any, b: any) {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const x = a[i] ?? Number.POSITIVE_INFINITY, y = b[i] ?? Number.POSITIVE_INFINITY;
     if (x < y) return true;
@@ -218,7 +218,7 @@ export function evaluateVerify(r, prev: Record<string, any> = {}, opts: Record<s
 }
 
 /** restore 编排器(纯确定性状态机, 绝不内置 LLM): 依据 session 给出当前阶段与下一步动作 */
-export function restoreAdvisor(session) {
+export function restoreAdvisor(session: any) {
   const s = session || {};
   if (!s.phases?.analyze) {
     return { phase: 'analyze', actions: ['MasterGo MCP 分页拉全各 section DSL 并聚合成一个 json(不可跳过 section)', '对本工具传 mode=analyze(design_path + session_path)生成 UI Truth 产物包与四闸门禁'] };

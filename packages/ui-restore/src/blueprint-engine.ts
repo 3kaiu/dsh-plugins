@@ -19,7 +19,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
   const ch = canvas.height;
 
   // 1. 节点几何归一化
-  const items = nodes.map((n, i) => {
+  const items = nodes.map((n: any, i: any) => {
     const ls = n.layoutStyle || {};
     const x = ls.relativeX ?? ls.x ?? n.x ?? 0;
     const y = ls.relativeY ?? ls.y ?? n.y ?? 0;
@@ -73,10 +73,10 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
   // 3. 全局包含聚合 (从小到大排序容器候选; 面积相同按 z-order/DSL 顺序)
   // 消歧策略: 面积升序保证子节点优先被"最小充分容器"吸收 (slack 最小), z-order 作次级排序保证确定性
   // absorbedMap 本身构成一棵森林 (parent -> 直接几何子节点), 递归结构化直接消费该森林
-  const zOrder = new Map(contentNodes.map((n, i) => [n.id, i]));
+  const zOrder = new Map(contentNodes.map((n: any, i: any) => [n.id, i]));
   const containerCandidates = contentNodes.filter(c => {
     return (c.type === 'FRAME' || c.type === 'GROUP' || (c.width > 50 && c.height > 30)) && !c.text;
-  }).sort((a, b) => ((a.width * a.height) - (b.width * b.height)) || ((zOrder.get(a.id) ?? 0) - (zOrder.get(b.id) ?? 0)));
+  }).sort((a: any, b: any) => ((a.width * a.height) - (b.width * b.height)) || ((zOrder.get(a.id) ?? 0) - (zOrder.get(b.id) ?? 0)));
 
   const absorbedMap = new Map(); // parentId -> [childItems]
   const assignedSet = new Set();
@@ -111,14 +111,14 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
   const MAX_STRUCTURE_DEPTH = 8;
 
   // 文本列聚合: 内部垂直排列的文本节点子集聚合为 ColumnGroup (作用于已结构化的子节点)
-  function aggregateTextColumn(container, children) {
+  function aggregateTextColumn(container: any, children: any) {
     const textKids = children.filter(c => (c.text || c.type === 'TEXT') && !c.isSyntheticGroup);
     const nonTextKids = children.filter(c => !((c.text || c.type === 'TEXT') && !c.isSyntheticGroup));
 
     if (textKids.length >= 2) {
       const xs = textKids.map(t => t.x ?? t.bbox?.x ?? 0);
       if ((Math.max(...xs) - Math.min(...xs)) <= 16) {
-        const sortedTexts = [...textKids].sort((a, b) => (a.y ?? a.bbox?.y ?? 0) - (b.y ?? b.bbox?.y ?? 0));
+        const sortedTexts = [...textKids].sort((a: any, b: any) => (a.y ?? a.bbox?.y ?? 0) - (b.y ?? b.bbox?.y ?? 0));
         const minY = sortedTexts[0].y ?? sortedTexts[0].bbox?.y ?? 0;
         const minX = Math.min(...xs);
         const colBBox = {
@@ -148,7 +148,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
           bbox: colBBox,
           children: sortedTexts,
         };
-        return [...nonTextKids, textColumnNode].sort((a, b) => (a.x ?? a.bbox?.x ?? 0) - (b.x ?? b.bbox?.x ?? 0));
+        return [...nonTextKids, textColumnNode].sort((a: any, b: any) => (a.x ?? a.bbox?.x ?? 0) - (b.x ?? b.bbox?.x ?? 0));
       }
     }
     return children;
@@ -365,7 +365,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   // 3. 递归将结构树序列化为紧凑蓝图
   let semanticRenameSeq = 0;
   let semanticRenames = 0;
-  function nodeToBlueprint(node) {
+  function nodeToBlueprint(node: any) {
     const exactStyles = extractExactStyles(node.raw || node, styles || {});
 
     const rawNode = node.raw || node;
@@ -480,7 +480,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   //     无重叠判定不满足(多列/交叠画布)时维持 roots 原样, 下游按绝对定位处理。
   const buildPageShell = (roots: any) => {
     if (roots.length < 2) return { tree: roots, pageShell: null };
-    const sorted = [...roots].sort((a, b) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0));
+    const sorted = [...roots].sort((a: any, b: any) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0));
     const hasBounds = sorted.every((r: any) => r.bounds);
     // 纵轴无重叠 -> flow column(section 节奏以逐对 spacing 精确表达)
     let flowable = hasBounds;
@@ -680,7 +680,7 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
     if (rawSvg) expect(id, 'svgKey', bp.svgKey === rawSvg);
   }
 
-  offenders.sort((a, b) => a.field.localeCompare(b.field) || String(a.id).localeCompare(String(b.id)));
+  offenders.sort((a: any, b: any) => a.field.localeCompare(b.field) || String(a.id).localeCompare(String(b.id)));
   const lostByField = {};
   for (const o of offenders) lostByField[o.field] = (lostByField[o.field] || 0) + 1;
   const totalLost = offenders.length + missingIds.length;
@@ -720,7 +720,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
   let pixelPerfectCount = 0;
   const offenders = [];
   // 扫描时携带祖先链, 用于定位责任容器与推断漂移原因
-  function scan(node, ancestors) {
+  function scan(node: any, ancestors: any) {
     if (node && node.id && originalMap.has(node.id)) {
       const orig = geom(originalMap.get(node.id));
       const rec = geom(node);
@@ -758,7 +758,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
     }
   }
   for (const root of reconstructedTree) scan(root, []);
-  offenders.sort((a, b) => b.delta - a.delta);
+  offenders.sort((a: any, b: any) => b.delta - a.delta);
   const pixelPerfectRatio = checkedCount > 0 ? round1(pixelPerfectCount / checkedCount) : 1;
   return {
     checkedCount,

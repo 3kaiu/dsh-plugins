@@ -29,7 +29,7 @@ export function listFiles(projectDir, maxDepth = 4) {
   return out.map((p: any) => path.relative(projectDir, p).split(path.sep).join('/'))
 }
 
-function push(list, name, confidence, evidence) {
+function push(list: any, name: any, confidence: any, evidence: any) {
   if (confidence <= 0) return
   const cur = list.find((c: any) => c.name === name)
   if (!cur || cur.confidence < confidence) {
@@ -38,7 +38,7 @@ function push(list, name, confidence, evidence) {
     if (i >= 0) list[i] = item
     else list.push(item)
   }
-  list.sort((a, b) => b.confidence - a.confidence)
+  list.sort((a: any, b: any) => b.confidence - a.confidence)
 }
 
 /**
@@ -46,7 +46,7 @@ function push(list, name, confidence, evidence) {
  * @param {string} projectDir 项目根
  * @returns {ProjectFacts}
  */
-export function detectProjectFacts(projectDir) {
+export function detectProjectFacts(projectDir: any) {
   const facts = {
     framework: [], language: [], styling: [], build: [], componentLibraries: [],
     entry: {} as Record<string, any>, notes: [],
