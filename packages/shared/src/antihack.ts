@@ -115,7 +115,7 @@ export function antiHackScan({ domDump, reference, treeStats, codeStats, project
 
   // 7. 内联样式 / !important
   {
-    const inlineCount = codeStats?.inlineStyleCount ?? countNodes(tree, n => {
+    const inlineCount = codeStats?.inlineStyleCount ?? countNodes(tree, (n: any) => {
       const s = n.computed || {}
       // 简化：若节点有 style 属性残留（domDump 阶段通常无），此处仅计数 codeStats
       return false
@@ -127,7 +127,7 @@ export function antiHackScan({ domDump, reference, treeStats, codeStats, project
 
   // 8. 大面积负 margin
   {
-    const negCount = codeStats?.negativeMarginCount ?? countNodes(tree, n => {
+    const negCount = codeStats?.negativeMarginCount ?? countNodes(tree, (n: any) => {
       const c = n.computed || {}
       const m = parseFloat(c.marginLeft) || parseFloat(c.marginTop) || parseFloat(c.margin) || 0
       return m < 0

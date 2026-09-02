@@ -8,9 +8,9 @@
 
 // 避免循环依赖，classify/annotate 由调用方注入（见 blueprintFromDsl 参数）
 
-function extractTypographyProfile(tree) {
+function extractTypographyProfile(tree: any) {
   const profile = {}
-  const walk = (nodes, path='') => {
+  const walk = (nodes: any, path='') => {
     for (const n of nodes) {
       const p = path ? `${path} > ${n.name||n.id}` : (n.name||n.id)
       const t = (n.text||'').trim()
@@ -122,7 +122,7 @@ export function buildBlueprint({ canvas, tree, styles, dsl, domDump, screenshotP
 
 function extractPalette(tree: any, styles: any) {
   const colors=[]
-  const walk=(nodes)=>{
+  const walk=(nodes: any)=>{
     for(const n of nodes){
       const cands=[n._color, n.textColor, n.fill, n.computed?.color, n.computed?.backgroundColor, n.computed?.borderColor]
       for(const s of cands){ if(s && typeof s==='string' && s.startsWith('#')) colors.push(s.toLowerCase()) }
