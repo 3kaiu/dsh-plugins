@@ -7,20 +7,20 @@
 
 export const GRADIENT_RE = /gradient|url\(|image-resource|\.png|\.jpe?g|\.webp/i
 
-export function round1(v) {
+export function round1(v: any) {
   return Math.round(v * 10) / 10
 }
 
-function nodeW(n) { return n._width ?? n.width ?? n._width ?? 0 }
-function nodeH(n) { return n._height ?? n.height ?? 0 }
-function nodeX(n) { return n._x ?? n.x ?? 0 }
-function nodeY(n) { return n._y ?? n.y ?? 0 }
-function nodeRot(n) { return n._rotation ?? n.rotation ?? n.rotate ?? 0 }
-function nodeColor(n) { return typeof n._color === 'string' ? n._color : typeof n._color === 'string' ? n._color : '' }
-function nodeEffect(n) { return n._effect ?? n.effect ?? n._shadow ?? null }
-function nodeRadius(n) { return n._radius ?? n.borderRadius ?? n.radius ?? null }
+function nodeW(n: any) { return n._width ?? n.width ?? n._width ?? 0 }
+function nodeH(n: any) { return n._height ?? n.height ?? 0 }
+function nodeX(n: any) { return n._x ?? n.x ?? 0 }
+function nodeY(n: any) { return n._y ?? n.y ?? 0 }
+function nodeRot(n: any) { return n._rotation ?? n.rotation ?? n.rotate ?? 0 }
+function nodeColor(n: any) { return typeof n._color === 'string' ? n._color : typeof n._color === 'string' ? n._color : '' }
+function nodeEffect(n: any) { return n._effect ?? n.effect ?? n._shadow ?? null }
+function nodeRadius(n: any) { return n._radius ?? n.borderRadius ?? n.radius ?? null }
 
-export function isBackgroundRect(n, canvasOrRect, maybeCanvas = null) {
+export function isBackgroundRect(n: any, canvasOrRect: any, maybeCanvas: any = null) {
   // 兼容两种调用：isBackgroundRect(n, canvas) 与 isBackgroundRect(n, rect, canvas)
   let canvas
   if (maybeCanvas) canvas = maybeCanvas
@@ -43,13 +43,13 @@ export function isBackgroundRect(n, canvasOrRect, maybeCanvas = null) {
   return false
 }
 
-export function isContainerCandidate(n) {
+export function isContainerCandidate(n: any) {
   if (n.type !== 'FRAME' && n.type !== 'GROUP' && n.type !== 'INSTANCE') return false
   if (Math.abs(nodeRot(n)) > 0.5) return false
   return true
 }
 
-export function clusterBandsAdaptive(items, canvas, tol = 2) {
+export function clusterBandsAdaptive(items: any, canvas: any, tol: any = 2) {
   const sorted = [...items].sort((a: any, b: any) => nodeY(a) - nodeY(b))
   const bands = []
   for (const n of sorted) {
@@ -74,7 +74,7 @@ export function clusterBandsAdaptive(items, canvas, tol = 2) {
   return bands
 }
 
-export function clusterCols(items, tol = 12) {
+export function clusterCols(items: any, tol: any = 12) {
   const sorted = [...items].sort((a: any, b: any) => nodeX(a) - nodeX(b))
   const cols = []
   for (const n of sorted) {
@@ -92,7 +92,7 @@ export function clusterCols(items, tol = 12) {
   return cols
 }
 
-export function bandBBox(band) {
+export function bandBBox(band: any) {
   const minX = Math.min(...band.items.map((n: any) => nodeX(n)))
   const minY = Math.min(...band.items.map((n: any) => nodeY(n)))
   const maxX = Math.max(...band.items.map((n: any) => nodeX(n) + nodeW(n)))
@@ -100,20 +100,20 @@ export function bandBBox(band) {
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
-export function bandSize(band) {
+export function bandSize(band: any) {
   const b = bandBBox(band)
   return { width: b.width, height: b.height }
 }
 
-export function bandMinX(band) {
+export function bandMinX(band: any) {
   return Math.min(...band.items.map((n: any) => nodeX(n)))
 }
 
-export function bandMinY(band) {
+export function bandMinY(band: any) {
   return Math.min(...band.items.map((n: any) => nodeY(n)))
 }
 
-export function colBBox(items) {
+export function colBBox(items: any) {
   const minX = Math.min(...items.map((n: any) => nodeX(n)))
   const minY = Math.min(...items.map((n: any) => nodeY(n)))
   const maxX = Math.max(...items.map((n: any) => nodeX(n) + nodeW(n)))
@@ -121,7 +121,7 @@ export function colBBox(items) {
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
-export function colSize(items) {
+export function colSize(items: any) {
   const b = colBBox(items)
   return { width: b.width, height: b.height }
 }
