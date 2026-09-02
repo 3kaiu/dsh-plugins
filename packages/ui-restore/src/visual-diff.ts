@@ -17,7 +17,7 @@ import { round2 } from "./numeric.ts"
 // 在长页上会稀释绝对偏差(500px 错位仍≈0.97), 跨稿不可比(审计修订)。
 const POS_SIM_CAP_PX = 64
 /** 解码 PNG buffer -> {width, height, data(RGBA)}（带明确错误信息，防上游截屏/IO 损坏静默透传） */
-export function decodePng(buf) {
+export function decodePng(buf: any) {
   try { return PNG.sync.read(buf) } catch(e){
     throw new Error(`decodePng: PNG 解码失败（文件损坏或非 PNG）: ${String((e as Error).message).slice(0,120)}`)
   }
@@ -27,7 +27,7 @@ export function decodePng(buf) {
  * 像素级对比 (comparePng)
  * @returns {{width,height,diffPixels,diffRatio,diffPng:Buffer}}
  */
-export function comparePng(bufA, bufB, opts: Record<string, any> = {}) {
+export function comparePng(bufA: any, bufB: any, opts: Record<string, any> = {}) {
   const threshold = opts.threshold != null ? opts.threshold : 0.1
   const a = decodePng(bufA)
   const b = decodePng(bufB)
@@ -145,8 +145,8 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
 
   const regions = clusters.slice(0, top).map((c) => {
     if (!nodes) return c
-    const selfArea = (b) => Math.max(b.width * b.height, 1)
-    const interArea = (n) => {
+    const selfArea = (b: any) => Math.max(b.width * b.height, 1)
+    const interArea = (n: any) => {
       const b = n.bounds
       const w = Math.min(b.x + b.width, c.x + c.width) - Math.max(b.x, c.x)
       const h = Math.min(b.y + b.height, c.y + c.height) - Math.max(b.y, c.y)
@@ -154,7 +154,7 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
     }
     // 候选评分 = 相交面积 × 覆盖率(交集/自身面积): 小节点与差异区完全重叠得分高,
     // 大背景/蒙版节点仅局部重叠被降权 —— 否则候选恒被大节点霸占
-    const score = (n) => {
+    const score = (n: any) => {
       const ia = interArea(n)
       return ia > 0 ? ia * (ia / selfArea(n.bounds)) : 0
     }
@@ -177,13 +177,13 @@ export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
 }
 
 /** Sørensen-Dice 系数(字符 bigram): D2C 的文本相似度定义 */
-export function textSimilarity(s1, s2) {
+export function textSimilarity(s1: any, s2: any) {
   s1 = String(s1 ?? "").toLowerCase().replace(/\s+/g, "")
   s2 = String(s2 ?? "").toLowerCase().replace(/\s+/g, "")
   if (!s1 && !s2) return 1
   if (!s1 || !s2) return 0
   if (s1 === s2) return 1
-  const grams = (s) => {
+  const grams = (s: any) => {
     const m = new Map()
     for (let i = 0; i < s.length - 1; i++) {
       const g = s.slice(i, i + 2)
