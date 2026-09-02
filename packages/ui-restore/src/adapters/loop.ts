@@ -134,8 +134,8 @@ export function buildPatchRequests(locateResult: any, classifyErrors: any, opts:
       allowedNodes: locateResult.allowedNodes,
       context: {
         regions: locateResult.mapping.map((m: any) => m.region),
-        candidates: locateResult.mapping.flatMap((m) => m.candidates || []),
-        domHints: locateResult.mapping.flatMap((m) => m.domHints || []),
+        candidates: locateResult.mapping.flatMap((m: any) => m.candidates || []),
+        domHints: locateResult.mapping.flatMap((m: any) => m.domHints || []),
         errors: classifyErrors || [],
       },
       meta: { iteration, gateFailed },
@@ -155,9 +155,9 @@ export function buildPatchRequests(locateResult: any, classifyErrors: any, opts:
       allowedNodes: nodeIds,
       context: {
         regions: grp.regions,
-        candidates: grp.regions.flatMap((r) => []),
+        candidates: grp.regions.flatMap((r: any) => []),
         domHints: grp.domHints.slice(0, 5),
-        blueprintNodes: nodeIds.map((id: any) => locateResult.mapping.flatMap((m) => m.nodes).find((n: any) => n.id === id)).filter(Boolean),
+        blueprintNodes: nodeIds.map((id: any) => locateResult.mapping.flatMap((m: any) => m.nodes).find((n: any) => n.id === id)).filter(Boolean),
         errors: relatedErrors,
       },
       meta: { iteration, gateFailed },

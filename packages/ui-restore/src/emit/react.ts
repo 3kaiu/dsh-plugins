@@ -31,7 +31,7 @@ export function emitReact(bp, plan, assets, profile, opts: Record<string, any> =
   const componentName = opts.componentName || pascal(opts.baseName) || 'Restore'
   const ctx = {
     contractById: plan.byId,
-    assetByNode: new Map((assets?.assets || []).filter((a: any) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
+    assetByNode: new Map((assets?.assets || []).filter((a: any) => a.status === 'resolved').flatMap((a: any) => [[a.id, a], [a.key, a]])),
     fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f: any) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)

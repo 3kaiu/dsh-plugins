@@ -114,7 +114,7 @@ export function blueprintRegion(bp: any, sel: any) {
   };
   const roots = [...(bp.tree || []), ...(bp.floatings || [])]
     // 合成页面壳(page_shell)覆盖全画布, 直接判定会让任意矩形命中整页 — 剥壳后按其子树分别判定
-    .flatMap((r) => (r.isSyntheticGroup && Array.isArray(r.children) ? r.children : [r]))
+    .flatMap((r: any) => (r.isSyntheticGroup && Array.isArray(r.children) ? r.children : [r]))
     .map(pick).filter(Boolean);
   roots.forEach(countAll);
   return { sel: structuredClone(sel), canvas: bp.canvas ? { ...bp.canvas } : null, nodes: roots, count: total };

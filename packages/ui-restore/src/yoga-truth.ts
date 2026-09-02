@@ -143,7 +143,7 @@ export function verifyLayoutTruth(blueprint, opts: Record<string, any> = {}) {
   const offenderTotal = checked.reduce((s: any, r: any) => s + r.offenders.length, 0)
   const maxDelta = round2(checked.reduce((m: any, r: any) => Math.max(m, r.maxDelta), 0))
   const worst = checked
-    .flatMap((r) => r.offenders.map((o: any) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
+    .flatMap((r: any) => r.offenders.map((o: any) => ({ ...o, delta: Math.max(o.dx, o.dy) })))
     .sort((a: any, b: any) => b.delta - a.delta)
     .slice(0, 8)
 
