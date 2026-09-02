@@ -22,7 +22,7 @@ import { flag, hasFlag } from './args.ts';
 
 const [, , cmd, ...args] = process.argv;
 
-function printGateSummary(bp, v) {
+function printGateSummary(bp: any, v: any) {
   console.log('契约校验:', v.ok ? 'PASS' : `FAIL ${JSON.stringify(v.errors.slice(0, 3))}`);
   console.log('几何守恒:', bp.diffReport.verdict);
   console.log('样式守恒:', bp.styleDiffReport?.verdict || 'n/a');
@@ -31,7 +31,7 @@ function printGateSummary(bp, v) {
 }
 
 /** 蓝图管线公共段已上移 adapters/pipeline.buildBlueprint —— 本文件只做 CLI 参数搬运 */
-async function runBlueprint(designPath) {
+async function runBlueprint(designPath: any) {
   const scaleArg = flag(args, '--scale');
   const expectSections = flag(args, '--expect-sections');
   // scale/expectSections 优先级与原实现一致: CLI 显式参数 > 导出 meta 声明 > 不归一
@@ -42,7 +42,7 @@ async function runBlueprint(designPath) {
   return { bp, v, lint };
 }
 
-function printLint(lint) {
+function printLint(lint: any) {
   for (const c of lint.checks) console.log(`输入体检[${c.level}] ${c.check}: ${c.detail}`);
 }
 
@@ -60,7 +60,7 @@ async function main() {
     if (cmd === 'build') {
       // 一键产物包与 workflow/MCP 主入口完全同源(writeArtifactBundle, 含 INDEX.txt 阅读地图)
       const { files } = writeArtifactBundle(bp, v, lint, outDir, base);
-      const kb = (n) => `${Math.round(n / 102.4) / 10}KB`;
+      const kb = (n: any) => `${Math.round(n / 102.4) / 10}KB`;
       for (const f of ['checklist', 'tokens', 'assets', 'index']) console.log(`${f}: ${files[f]} (${kb(fs.statSync(files[f]).size)})`);
     } else {
       const bpPath = path.join(outDir, `${base}.blueprint.json`);
@@ -210,7 +210,7 @@ async function main() {
     const check = canMerge(projectDir);
     if (!check.ok) console.log(`! 预检: ${check.reasons.join('; ')}`);
     const files = [];
-    const walk = (dir, base='')=>{
+    const walk = (dir: any, base: any='')=>{
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name);
         const abs = path.join(dir, e.name);
@@ -242,7 +242,7 @@ async function main() {
     if (assetsPath && fs.existsSync(assetsPath)) {
       const raw = JSON.parse(fs.readFileSync(assetsPath,'utf8'));
       const list = raw.vectors || raw.assets || [];
-      assets = { summary: { missing: list.filter((v)=>!v.svg && !v.path && !v.src).length, total: list.length } };
+      assets = { summary: { missing: list.filter((v: any)=>!v.svg && !v.path && !v.src).length, total: list.length } };
     }
     const gate = evaluateGate({ pixel, regions, blueprint: bp, contract, assets, allowMissingEvidence: Boolean(pixelOnly) });
     const score = computeScore({ pixel, regions, blueprint: bp, contract, assets });

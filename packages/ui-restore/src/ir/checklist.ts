@@ -18,7 +18,7 @@ export function restorationChecklist(bp) {
   const texts = []
   const vectorMap = new Map() // svgKey -> {name, ids:Set}
   const images = []
-  const walk = (n) => {
+  const walk = (n: any) => {
     if (!n || typeof n !== 'object') return
     if (typeof n.text === 'string' && n.text !== '') {
       texts.push({

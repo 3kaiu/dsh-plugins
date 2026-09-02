@@ -62,7 +62,7 @@ export function classifyError(e) {
  *   纯几何容器 → LAYOUT
  * severity 沿用 diffToCorrections 的 major/minor/noise。
  */
-export function classifyRegions(regions, bp) {
+export function classifyRegions(regions: any, bp: any) {
   const out = []
   for (const r of regions?.regions || []) {
     const severity = r.markedSeverity || 'minor'
@@ -89,9 +89,9 @@ export function classifyRegions(regions, bp) {
   return out
 }
 
-function hasSvgSource(n) { return Boolean(n.svgResolved || n.svg) }
-function findNode(bp, id) {
-  const walk = (n) => {
+function hasSvgSource(n: any) { return Boolean(n.svgResolved || n.svg) }
+function findNode(bp: any, id: any) {
+  const walk = (n: any) => {
     if (!n || typeof n !== 'object') return null
     if (n.id === id) return n
     for (const c of n.children || []) { const hit = walk(c); if (hit) return hit }
