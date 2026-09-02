@@ -76,7 +76,7 @@ export function planGeneration(bp, profile, opts: Record<string, any> = {}) {
   const warnings = []
   const flexMin = opts.flexMinConfidence ?? FLEX_MIN_CONFIDENCE
 
-  const decide = (n) => {
+  const decide = (n: any) => {
     const ly = n.layout || {}
     // layout: 设计语义 → 实现策略
     let strategy = 'absolute'

@@ -7,10 +7,10 @@
 import fs from 'node:fs'
 
 /** 严格读 JSON: 缺文件/坏 JSON 直接 throw(调用方决定报错语义)。MCP 入口用它包一层 confineUnder。 */
-export const readJsonStrict = (p) => JSON.parse(fs.readFileSync(p, 'utf8'))
+export const readJsonStrict = (p: any) => JSON.parse(fs.readFileSync(p, 'utf8'))
 
 /** 宽容读 JSON: 任何失败(缺文件/坏 JSON)返回 null。用于探测式扫描(detect.ts)。 */
-export const readJsonTolerant = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return null } }
+export const readJsonTolerant = (p: any) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return null } }
 
 /** 宽容读文本: 失败返回空串。 */
-export const readTextTolerant = (p) => { try { return fs.readFileSync(p, 'utf8') } catch { return '' } }
+export const readTextTolerant = (p: any) => { try { return fs.readFileSync(p, 'utf8') } catch { return '' } }

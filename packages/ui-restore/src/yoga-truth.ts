@@ -125,7 +125,7 @@ export function verifyLayoutTruth(blueprint, opts: Record<string, any> = {}) {
   const tolerance = opts.tolerance != null ? opts.tolerance : 0.04
   if (!blueprint) return null
   const results = []
-  const walk = (node) => {
+  const walk = (node: any) => {
     if (!node || typeof node !== "object") return
     const kids = Array.isArray(node.children) ? node.children : []
     const ly = node.layout || {}

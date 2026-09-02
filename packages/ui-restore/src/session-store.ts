@@ -9,7 +9,7 @@ import path from 'node:path'
 /**
  * 读会话。缺文件时: create=true 则写入初始骨架并返回(restore CLI 语义), 否则返回 null(MCP 语义)。
  */
-export function loadSession(p, { create = false }: Record<string, any> = {}) {
+export function loadSession(p: any, { create = false }: Record<string, any> = {}) {
   if (!p) return null
   if (!fs.existsSync(p)) {
     if (!create) return null
@@ -24,7 +24,7 @@ export function loadSession(p, { create = false }: Record<string, any> = {}) {
 /**
  * 合并写会话: 缺文件以 {createdAt} 骨架起底, 深浅合并 patch, 盖 updatedAt, 自动建父目录。
  */
-export function saveSession(p, patch) {
+export function saveSession(p: any, patch: any) {
   const s = { ...(loadSession(p) || { createdAt: new Date().toISOString() }), ...patch, updatedAt: new Date().toISOString() }
   fs.mkdirSync(path.dirname(path.resolve(p)), { recursive: true })
   fs.writeFileSync(p, JSON.stringify(s, null, 1))

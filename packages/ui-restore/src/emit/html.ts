@@ -16,7 +16,7 @@ export function emitPreviewHtml(bp, plan, assets, profile, opts: Record<string, 
   const ctx = {
     contractById: plan.byId,
     assetByNode: new Map((assets?.assets || []).filter((a) => a.status === 'resolved').flatMap((a) => [[a.id, a], [a.key, a]])),
-    fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f) => `'${f}'`).join(', '),
+    fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f: any) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
   const mapEntries = []
