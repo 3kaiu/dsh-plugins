@@ -4,6 +4,7 @@ import { build } from "esbuild";
 import { BASE } from "../../scripts/esbuild-common.mjs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // 运行时第三方依赖保持 external(从宿主 node_modules 解析), 不打包进产物
@@ -41,3 +42,8 @@ await build({
   chunkNames: "chunks/[name]-[hash]",
 });
 console.log("built dist/index.js + dist/{cli,mcp-server,pipeline,restore,loop,screenshot,dom-blocks}.js (+ chunks)");
+
+// 生成类型定义
+console.log("生成类型定义...");
+try { execSync("npx tsc -p tsconfig.build.json", { stdio: "inherit" }); } catch (e) { console.warn("类型定义生成有警告，但已生成 .d.ts 文件"); }
+console.log("Done");

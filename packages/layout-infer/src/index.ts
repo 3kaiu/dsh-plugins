@@ -102,7 +102,7 @@ function apply(ctx) {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => classifyDsl(args.dsl),
+      execute: async (args) => classifyDsl(args.dsl),
     }),
   );
 
@@ -126,7 +126,7 @@ function apply(ctx) {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => domToLayout(args.domDump, { tolerance: args.tolerance }),
+      execute: async (args) => domToLayout(args.domDump, { tolerance: args.tolerance }),
     }),
   );
 
@@ -151,7 +151,7 @@ function apply(ctx) {
         schema: { type: "json" },
         render: renderJson,
       },
-      execute: (args) => compareLayouts({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
+      execute: async (args) => compareLayouts({ referenceTree: args.referenceTree, implementedTree: args.implementedTree }),
     }),
   );
 }

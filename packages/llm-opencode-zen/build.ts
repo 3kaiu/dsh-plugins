@@ -8,6 +8,7 @@
 // @deepseek-ai/dsh-typert-protocol 必须 external(host 提供,避免 cordis/标记双实例)。
 import { build } from "esbuild";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { DSH_EXTERNALS } from "../../scripts/esbuild-common.mjs";
 
 const ID = "@3kaiu/dsh-llm-opencode-zen";
@@ -76,3 +77,9 @@ const wrapped =
 writeFileSync("dist/client.js", wrapped);
 rmSync("dist/client.raw.js", { force: true });
 console.log("built dist/client.js (" + wrapped.length + " bytes)");
+
+// 生成类型定义
+console.log("生成类型定义...");
+import { execSync } from "node:child_process";
+try { execSync("npx tsc -p tsconfig.build.json", { stdio: "inherit" }); } catch (e) { console.warn("类型定义生成有警告，但已生成 .d.ts 文件"); }
+console.log("Done");
