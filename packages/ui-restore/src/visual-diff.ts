@@ -78,7 +78,7 @@ function cropTo(png: any, width: any, height: any) {
  *   allowCrop: 尺寸不一致时允许裁剪到公共区(默认 false, 硬失败防止静默漏检)
  * @returns {{width,height,markedPixels,markedRatio,clusterCount,regions:Array}}
  */
-export function diffRegions(bufA, bufB, opts: Record<string, any> = {}) {
+export function diffRegions(bufA: any, bufB: any, opts: Record<string, any> = {}) {
   const threshold = opts.threshold ?? 24
   const grid = opts.grid ?? 24
   const minPixels = opts.minPixels ?? 48
@@ -229,7 +229,7 @@ function colorSim(c1: any, c2: any) {
  *   canvasWidth/canvasHeight 已废弃(位置相似度改为尺寸无关的 px 制, 入参仅为兼容保留)
  * @returns {{blockMatchRate, matchedPairs, positionSimilarity, colorSimilarity, unmatchedDesign, unmatchedRender}}
  */
-export function blockMetrics(designBlocks, renderBlocks, ctx: Record<string, any> = {}) {
+export function blockMetrics(designBlocks: any, renderBlocks: any, ctx: Record<string, any> = {}) {
   // 贪心全局配对: 按 文本相似度 desc -> 中心距 asc
   const pairs = []
   for (const d of designBlocks) {
@@ -346,7 +346,7 @@ export function diffToCorrections(bp: any, diff: any) {
  * @param {object} [opts] {scale=1, background='#FFFFFF'}
  * @returns {{png:Buffer, width:number, height:number}}
  */
-export function renderGeometrySnapshot(bp, opts: Record<string, any> = {}) {
+export function renderGeometrySnapshot(bp: any, opts: Record<string, any> = {}) {
   const scale = opts.scale ?? 1
   const W = Math.round((bp?.canvas?.width ?? 375) * scale)
   const H = Math.round((bp?.canvas?.height ?? 812) * scale)
@@ -364,7 +364,7 @@ export function renderGeometrySnapshot(bp, opts: Record<string, any> = {}) {
   for (let i = 0; i < W * H; i++) {
     png.data[i * 4] = bg.r; png.data[i * 4 + 1] = bg.g; png.data[i * 4 + 2] = bg.b; png.data[i * 4 + 3] = 255
   }
-  const fillRect = (x0, y0, w0, h0, rgb, alpha = 1) => {
+  const fillRect = (x0: any, y0: any, w0: any, h0: any, rgb: any, alpha = 1) => {
     const x1 = Math.max(0, Math.round(x0 * scale)), y1 = Math.max(0, Math.round(y0 * scale))
     const x2 = Math.min(W, Math.ceil((x0 + w0) * scale)), y2 = Math.min(H, Math.ceil((y0 + h0) * scale))
     for (let y = y1; y < y2; y++) {

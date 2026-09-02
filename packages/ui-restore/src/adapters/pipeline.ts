@@ -19,7 +19,7 @@ import {
 import { readJsonStrict as readJson } from '../fs-util.ts';
 
 /** 蓝图管线公共段(scale 优先级: 显式参数 > 导出 meta 声明 > 不归一)。唯一实现 —— cli/mcp 一律薄转发到本模块(审计 P2 收敛: 原三处拷贝已出现行为分叉) */
-export async function buildBlueprint(designPath, opts: Record<string, any> = {}) {
+export async function buildBlueprint(designPath: any, opts: Record<string, any> = {}) {
   await initTextMetrics();
   const raw = readJson(designPath);
   const declaredScale = raw?.meta?.scale ?? raw?.meta?.canvas?.scale;
@@ -48,7 +48,7 @@ export function collectLeaves(bp: any) {
  * 共享产物包写盘: 分层产物 + INDEX.txt 阅读地图。
  * (审计修复: 原 analyzeDesign 不产 INDEX.txt, workflow/MCP 主入口与 SKILL §③ 承诺不符)
  */
-export function writeArtifactBundle(bp, v, lint, outDir, base) {
+export function writeArtifactBundle(bp: any, v: any, lint: any, outDir: any, base: any) {
   fs.mkdirSync(outDir, { recursive: true });
   const cl = restorationChecklist(bp);
   cl.gates.contract = v.ok ? 'PASS' : 'FAIL';  const files: Record<string, any> = {};
@@ -91,7 +91,7 @@ export function writeArtifactBundle(bp, v, lint, outDir, base) {
  * 分析阶段: 设计稿导出 → UI Truth(蓝图) + 分层产物包(含 INDEX.txt)。
  * @returns {{bp, contract, lint, files:Record<string,string>, summary}}
  */
-export async function analyzeDesign(designPath, opts: Record<string, any> = {}) {
+export async function analyzeDesign(designPath: any, opts: Record<string, any> = {}) {
   const { bp, v: contract, lint } = await buildBlueprint(designPath, opts);
   const outDir = opts.outDir || path.dirname(designPath);
   const base = path.basename(designPath).replace(/\.json$/, '');
@@ -198,7 +198,7 @@ function lexLess(a: any, b: any) {
  * @param {object} [prev] 既有 session(iteration/best/lastGuidance)
  * @param {object} [opts] {maxIterations=MAX_ITERATIONS}
  */
-export function evaluateVerify(r, prev: Record<string, any> = {}, opts: Record<string, any> = {}) {
+export function evaluateVerify(r: any, prev: Record<string, any> = {}, opts: Record<string, any> = {}) {
   const maxIter = opts.maxIterations ?? MAX_ITERATIONS;
   const iteration = (prev.iteration || 0) + 1;
   // 验收: BMR>=1 或矢量字形豁免(BMR<1 但几何干净且无待修指令, 与 SKILL §⑤ 一致); 无块级退回几何判据

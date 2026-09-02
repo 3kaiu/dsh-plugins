@@ -74,7 +74,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
   // 消歧策略: 面积升序保证子节点优先被"最小充分容器"吸收 (slack 最小), z-order 作次级排序保证确定性
   // absorbedMap 本身构成一棵森林 (parent -> 直接几何子节点), 递归结构化直接消费该森林
   const zOrder = new Map(contentNodes.map((n: any, i: any) => [n.id, i]));
-  const containerCandidates = contentNodes.filter(c => {
+  const containerCandidates = contentNodes.filter((c: any) => {
     return (c.type === 'FRAME' || c.type === 'GROUP' || (c.width > 50 && c.height > 30)) && !c.text;
   }).sort((a: any, b: any) => ((a.width * a.height) - (b.width * b.height)) || ((zOrder.get(a.id) ?? 0) - (zOrder.get(b.id) ?? 0)));
 
@@ -112,11 +112,11 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
 
   // 文本列聚合: 内部垂直排列的文本节点子集聚合为 ColumnGroup (作用于已结构化的子节点)
   function aggregateTextColumn(container: any, children: any) {
-    const textKids = children.filter(c => (c.text || c.type === 'TEXT') && !c.isSyntheticGroup);
-    const nonTextKids = children.filter(c => !((c.text || c.type === 'TEXT') && !c.isSyntheticGroup));
+    const textKids = children.filter((c: any) => (c.text || c.type === 'TEXT') && !c.isSyntheticGroup);
+    const nonTextKids = children.filter((c: any) => !((c.text || c.type === 'TEXT') && !c.isSyntheticGroup));
 
     if (textKids.length >= 2) {
-      const xs = textKids.map(t => t.x ?? t.bbox?.x ?? 0);
+      const xs = textKids.map((t: any) => t.x ?? t.bbox?.x ?? 0);
       if ((Math.max(...xs) - Math.min(...xs)) <= 16) {
         const sortedTexts = [...textKids].sort((a: any, b: any) => (a.y ?? a.bbox?.y ?? 0) - (b.y ?? b.bbox?.y ?? 0));
         const minY = sortedTexts[0].y ?? sortedTexts[0].bbox?.y ?? 0;
@@ -124,7 +124,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
         const colBBox = {
           x: minX,
           y: minY,
-          width: Math.max(...textKids.map(t => (t.x ?? t.bbox?.x ?? 0) + (t.width ?? t.bbox?.width ?? 0))) - minX,
+          width: Math.max(...textKids.map((t: any) => (t.x ?? t.bbox?.x ?? 0) + (t.width ?? t.bbox?.width ?? 0))) - minX,
           height: ((sortedTexts[sortedTexts.length - 1].y ?? 0) + (sortedTexts[sortedTexts.length - 1].height ?? 0)) - minY,
         };
         // 逐对间距: 行距不均匀时平均值会产生累积漂移(真值引擎可检出),
@@ -154,7 +154,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
     return children;
   }
 
-  function structureNode(item, depth = 0) {
+  function structureNode(item: any, depth = 0) {
     const kids = absorbedMap.get(item.id);
     if (!kids || kids.length === 0) {
       return { ...item, isContainer: false, children: [] };
@@ -206,7 +206,7 @@ function sanitizeDslNodes(nodes = [], canvas = { width: 375, height: 812 }) {
   if (!Array.isArray(nodes)) return [];
   // 展平: 子树相对坐标逐层累加为绝对坐标; 扁平输入(children 缺失/空)原样通过
   const flatNodes = [];
-  const walkFlat = (n, ox, oy, parentObj) => {
+  const walkFlat = (n: any, ox: any, oy: any, parentObj: any) => {
     if (!n || typeof n !== 'object') return;
     const ls = n.layoutStyle || {};
     const ax = (ls.relativeX ?? ls.x ?? n.x ?? 0) + ox;
@@ -389,7 +389,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
 
     // 文本节点细节
     if (node.text || node.type === 'TEXT') {
-      bp.text = Array.isArray(node.text) ? node.text.map(t => t.text).join('') : (typeof node.text === 'string' ? node.text : '');
+      bp.text = Array.isArray(node.text) ? node.text.map((t: any) => t.text).join('') : (typeof node.text === 'string' ? node.text : '');
       bp.fontSize = exactStyles.fontSize;
       bp.fontWeight = exactStyles.fontWeight;
       bp.lineHeight = exactStyles.lineHeight;

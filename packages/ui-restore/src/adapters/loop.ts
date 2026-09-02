@@ -109,7 +109,7 @@ export function locateRegions(opts: any) {
  * 定位结果 + 错误分类 → PatchRequest 列表
  * 默认按文件聚类：同一文件的节点合并为一个 request（减 LLM 调用次数）
  */
-export function buildPatchRequests(locateResult, classifyErrors, opts: Record<string, any> = {}) {
+export function buildPatchRequests(locateResult: any, classifyErrors: any, opts: Record<string, any> = {}) {
   const iteration = opts.iteration ?? 0
   const gateFailed = opts.gateFailed ?? []
   // 按 file 分组
