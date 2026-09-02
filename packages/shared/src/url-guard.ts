@@ -21,7 +21,7 @@ import path from 'node:path'
 const ALLOW_PRIVATE = () => process.env.UI_RESTORE_ALLOW_PRIVATE_URLS === '1'
 
 /** IPv6 字面量 → 8 组 16bit 整数(展开 :: 与点分 v4 尾部); 非法返回 null */
-function expandV6(low) {
+function expandV6(low: any) {
   const dc = low.indexOf('::')
   const headStr = dc >= 0 ? low.slice(0, dc) : low
   let tailStr = dc >= 0 ? low.slice(dc + 2) : ''
@@ -31,7 +31,7 @@ function expandV6(low) {
   let dotted = []
   if (tail.length && tail[tail.length - 1].includes('.')) {
     const seg = tail.pop().split('.').map(Number)
-    if (seg.length !== 4 || seg.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null
+    if (seg.length !== 4 || seg.some((n: any) => !Number.isInteger(n) || n < 0 || n > 255)) return null
     dotted = [((seg[0] << 8) | seg[1]).toString(16), ((seg[2] << 8) | seg[3]).toString(16)]
   }
   const groups = [...head, ...tail, ...dotted]
@@ -43,7 +43,7 @@ function expandV6(low) {
 }
 
 /** IPv4/IPv6 是否落在保留/内网段(loopback/私网/link-local/CGNAT/组播/未指定) */
-export function isReservedIp(ip) {
+export function isReservedIp(ip: any) {
   if (net.isIPv4(ip)) {
     const [a, b] = ip.split('.').map(Number)
     return (
@@ -80,7 +80,7 @@ export function isReservedIp(ip) {
  * 校验并归一 http(s) 目标; 内网/保留段/凭据/解析失败一律 throw(fail closed)。
  * 返回归一化 href。IP 字面量的解析在本地 getaddrinfo 完成, 不依赖网络。
  */
-export async function assertPublicHttpUrl(raw) {
+export async function assertPublicHttpUrl(raw: any) {
   let u
   try { u = new URL(String(raw)) } catch { throw new Error(`非法 URL: ${raw}`) }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error(`仅允许 http/https, 收到 ${u.protocol}`)
@@ -100,7 +100,7 @@ export async function assertPublicHttpUrl(raw) {
 }
 
 /** file:// 渲染目标: 本地产物渲染合法, 但拒绝敏感系统路径(LFI) */
-export function safeFileUrl(raw) {
+export function safeFileUrl(raw: any) {
   const abs = path.resolve(String(raw).replace(/^file:\/\//, ''))
   const SENSITIVE = ['/etc/', '/proc/', '/sys/', '/root/', '/private/etc/', '/windows/system32/']
   const lower = abs.toLowerCase()
@@ -112,7 +112,7 @@ export function safeFileUrl(raw) {
 }
 
 /** 渲染/导航目标统一入口: http(s) 走 DNS 级校验, 本地路径走 LFI 校验(异步) */
-export async function resolveRenderTarget(raw) {
+export async function resolveRenderTarget(raw: any) {
   const s = String(raw)
   if (/^https?:\/\//i.test(s)) return assertPublicHttpUrl(s)
   return safeFileUrl(s)

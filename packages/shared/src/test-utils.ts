@@ -4,7 +4,7 @@
 //   import { mockFetch, mockCtx } from "@3kaiu/dsh-plugin-kit/test-utils";
 
 /** 注入一个固定的 fetch mock;返回原 fetch 以便恢复 */
-export function mockFetch(status, body, contentType = "application/json"): any {
+export function mockFetch(status: any, body: any, contentType: any = "application/json"): any {
   const original = globalThis.fetch;
   // mock 返回的是 Response 的鸭子形态(status/ok/headers/text), 非真实 Response 实例 —— 显式断言
   globalThis.fetch = (async () => ({
@@ -22,12 +22,12 @@ export function mockCtx(overrides: Record<string, any> = {}) {
   const ctx: any = {
     logger: { info() {}, warn() {}, error() {} },
     tools: {
-      register(def) {
+      register(def: any) {
         registered.push(def);
         return () => {};
       },
     },
-    get(name) {
+    get(name: any) {
       return overrides.services?.[name];
     },
     ...overrides,
@@ -39,7 +39,7 @@ export function mockCtx(overrides: Record<string, any> = {}) {
 /** 断言辅助: 收集失败,最后统一退出非零 */
 export function createChecker() {
   let failures = 0;
-  const check = (label, actual, expected) => {
+  const check = (label: any, actual: any, expected: any) => {
     const a = JSON.stringify(actual);
     const e = JSON.stringify(expected);
     if (a !== e) {

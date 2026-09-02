@@ -3,9 +3,9 @@
 // 输入：两棵标注树（annotate_layout / page_layout_tree 的 tree）
 // 输出：{ mismatches: [{path, prop, expected, actual, delta, priority}], stats: {meanDelta, maxDelta, mismatchedCount} }
 
-function flatten(tree, parentPath = '') {
+function flatten(tree: any, parentPath: any = '') {
   const out = []
-  const walk = (nodes, base) => {
+  const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
       out.push({ node: n, path })
@@ -16,7 +16,7 @@ function flatten(tree, parentPath = '') {
   return out
 }
 
-function getBbox(n) {
+function getBbox(n: any) {
   // 支持多种来源：rect / bbox / layoutStyle
   if (n.rect) return { x: n.rect.x ?? 0, y: n.rect.y ?? 0, w: n.rect.w ?? n.rect.width ?? 0, h: n.rect.h ?? n.rect.height ?? 0 }
   if (n.bbox) return { x: n.bbox.x ?? 0, y: n.bbox.y ?? 0, w: n.bbox.width ?? n.bbox.w ?? 0, h: n.bbox.height ?? n.bbox.h ?? 0 }
@@ -25,7 +25,7 @@ function getBbox(n) {
   return null
 }
 
-function scoreMatch(refNode, implNode) {
+function scoreMatch(refNode: any, implNode: any) {
   let s = 0
   if (refNode.name && implNode.name && refNode.name === implNode.name) s += 10
   if (refNode.type && implNode.type && refNode.type === implNode.type) s += 2

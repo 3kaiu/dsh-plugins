@@ -43,12 +43,12 @@ function extractTypographyProfile(tree: any) {
   return profile
 }
 
-function extractAssets(tree, styles) {
+function extractAssets(tree: any, styles: any) {
   const images=[]
   const icons=[]
   const fonts=new Set()
   const texts=[]
-  const walk=(nodes)=>{
+  const walk=(nodes: any)=>{
     for(const n of nodes){
       if (n.type==='TEXT' && n.text) texts.push(n.text)
       if (Array.isArray(n.rowTexts)) for(const t of n.rowTexts) texts.push(typeof t==='string'?t:t.text)
@@ -75,7 +75,7 @@ function extractAssets(tree, styles) {
   return { images, icons, fonts: [...fonts], texts: [...new Set(texts.filter(Boolean))].slice(0,200) }
 }
 
-function buildRegions(tree, canvas) {
+function buildRegions(tree: any, canvas: any) {
   // 按角色/P 优先级切 region（简化：顶层容器即 region）
   const regions=[]
   const roots = Array.isArray(tree)?tree:[tree]

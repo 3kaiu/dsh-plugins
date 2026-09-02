@@ -18,7 +18,7 @@ function readFileSafe(p: any) {
 }
 
 // 极简 PNG 尺寸探测（解析 IHDR），不依赖库
-function parsePngSize(buf) {
+function parsePngSize(buf: any) {
   if (!buf || buf.length < 24) return null
   // PNG 签名 89 50 4E 47 0D 0A 1A 0A
   if (buf[0] !== 0x89 || buf[1] !== 0x50) return null
@@ -30,7 +30,7 @@ function parsePngSize(buf) {
   } catch { return null }
 }
 
-function bufferDiff(a, b) {
+function bufferDiff(a: any, b: any) {
   if (!a || !b) return { pixelDiffRatio: 1, meanAbsDiff: 255, ssim: 0 }
   const len = Math.min(a.length, b.length)
   const maxLen = Math.max(a.length, b.length)
@@ -51,11 +51,11 @@ function bufferDiff(a, b) {
   return { pixelDiffRatio: Math.round(pixelDiffRatio * 1000) / 1000, meanAbsDiff: Math.round(meanAbsDiff * 10) / 10, ssim: Math.round(ssim * 1000) / 1000 }
 }
 
-function hashBuffer(buf) {
+function hashBuffer(buf: any) {
   return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 12)
 }
 
-function ensureDir(p) {
+function ensureDir(p: any) {
   try { fs.mkdirSync(path.dirname(p), { recursive: true }) } catch {}
 }
 
@@ -131,7 +131,7 @@ export function compareScreenshots({ reference, current, mode = 'strict', region
 }
 
 // 对齐检测（供 score 层调用）
-export function alignChecks(reference, current, mode) {
+export function alignChecks(reference: any, current: any, mode: any) {
   const refBuf = readFileSafe(reference), curBuf = readFileSafe(current)
   if (!refBuf || !curBuf) return { ok: false, reason: 'file missing' }
   const rs = parsePngSize(refBuf), cs = parsePngSize(curBuf)

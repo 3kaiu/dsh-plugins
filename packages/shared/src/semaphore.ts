@@ -11,12 +11,12 @@ export class Semaphore {
   active = 0;
   waiters = [];
 
-  constructor(max, errorFactory = (message) => new Error(message)) {
+  constructor(max: any, errorFactory: any = (message: any) => new Error(message)) {
     this.max = max;
     this.errorFactory = errorFactory;
   }
 
-  acquire(signal) {
+  acquire(signal: any) {
     // 已中止的 signal 两个分支都必须拒绝：
     // - 快路径会白占槽位去做必败工作；
     // - 入队后 abort 事件已发、监听永不触发 → promise 永不 settle、槽位永久泄漏。

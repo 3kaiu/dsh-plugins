@@ -10,7 +10,7 @@ const REGRESSION_LAYER_DROP = 0.05
 
 // 将各类工具输出归一化为 0..1 分数
 
-function structScoreFromCompare(compareLayoutsResult) {
+function structScoreFromCompare(compareLayoutsResult: any) {
   if (!compareLayoutsResult) return null
   const { matched = 0, missing = [], extra = [] } = compareLayoutsResult
   const denom = matched + missing.length
@@ -18,7 +18,7 @@ function structScoreFromCompare(compareLayoutsResult) {
   return Math.max(0, Math.min(1, matched / denom))
 }
 
-function geomScoreFromGeometry(compareGeometryResult, containerSize = 1440) {
+function geomScoreFromGeometry(compareGeometryResult: any, containerSize: any = 1440) {
   if (!compareGeometryResult) return null
   const { stats } = compareGeometryResult
   if (!stats) return null
@@ -29,14 +29,14 @@ function geomScoreFromGeometry(compareGeometryResult, containerSize = 1440) {
   return Math.max(0, Math.min(1, base - penalty))
 }
 
-function pixelScoreFromScreenshots(compareScreenshotsResult) {
+function pixelScoreFromScreenshots(compareScreenshotsResult: any) {
   if (!compareScreenshotsResult) return null
   const { ssim } = compareScreenshotsResult
   if (typeof ssim !== 'number') return null
   return Math.max(0, Math.min(1, ssim))
 }
 
-function typeScoreFromTypography(compareTypographyResult) {
+function typeScoreFromTypography(compareTypographyResult: any) {
   if (!compareTypographyResult) return null
   const { stats } = compareTypographyResult
   if (!stats) return null
@@ -45,7 +45,7 @@ function typeScoreFromTypography(compareTypographyResult) {
   return Math.max(0, Math.min(1, 1 - mismatched / Math.max(1, referenceTextNodes)))
 }
 
-function colorScoreFromPalette(comparePaletteResult) {
+function colorScoreFromPalette(comparePaletteResult: any) {
   if (!comparePaletteResult) return null
   const { stats } = comparePaletteResult
   if (!stats) return null
@@ -57,7 +57,7 @@ function colorScoreFromPalette(comparePaletteResult) {
   return Math.max(0, Math.min(1, 1 - failRate * 0.7 - dePenalty * 0.3))
 }
 
-function weightedTotal(layers) {
+function weightedTotal(layers: any) {
   let sum = 0, wsum = 0
   for (const k of ['struct','geom','pixel','type','color']) {
     const v = layers[k]
@@ -152,6 +152,6 @@ export function scoreReport({
 }
 
 // 便捷：从工具输出直接算总分（供 state/history 使用）
-export function quickScore(layers) {
+export function quickScore(layers: any) {
   return weightedTotal(layers)
 }

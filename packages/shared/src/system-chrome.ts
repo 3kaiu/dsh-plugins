@@ -13,14 +13,14 @@ const TIME_TEXT = /^\d{1,2}:\d{2}$/
  * @param {number} [absY] 节点画布绝对 Y(时间文本需位于顶部)
  * @returns {{kind:'system-chrome', confidence:number, reason:string[]}|null}
  */
-export function systemChromeOf(node, absY) {
+export function systemChromeOf(node: any, absY: any) {
   const name = node.name || ''
   if (CHROME_NAME.test(name)) {
     return { kind: 'system-chrome', confidence: 1, reason: [`命名含系统元素语义:"${name}"`] }
   }
   let text = ''
   if (typeof node.text === 'string') text = node.text
-  else if (Array.isArray(node.text)) text = node.text.map((t) => (t && t.text) || '').join('')
+  else if (Array.isArray(node.text)) text = node.text.map((t: any) => (t && t.text) || '').join('')
   if (node.type === 'TEXT' && TIME_TEXT.test(text.trim()) && (absY == null || absY < 100)) {
     return { kind: 'system-chrome', confidence: 0.9, reason: [`顶部时间文本"${text.trim()}"(状态栏内容)`] }
   }

@@ -36,7 +36,7 @@ export function detectRegression({ scores, history, current, previous }: Record<
   return { triggered, delta, reason }
 }
 
-export function stagnationCheck(history, opts: Record<string, any> = {}) {
+export function stagnationCheck(history: any, opts: Record<string, any> = {}) {
   const window = opts.window ?? 3
   const threshold = opts.threshold ?? 0.005
   if (!Array.isArray(history) || history.length < window) return { stalled: false }
@@ -61,6 +61,6 @@ export function rollbackPlan({ history, iteration, rollbackPoints }: Record<stri
   return { action: 'rollback', target: nearestClean, reason: `回滚到最近干净点 iteration ${nearestClean.iteration} (${nearestClean.git||'stash'})` }
 }
 
-export function markRejected(differences, rejectedPath) {
-  return differences.map(d => d.path === rejectedPath ? { ...d, rejected: true, note: '已回滚，避免重犯' } : d)
+export function markRejected(differences: any, rejectedPath: any) {
+  return differences.map((d: any) => d.path === rejectedPath ? { ...d, rejected: true, note: '已回滚，避免重犯' } : d)
 }
