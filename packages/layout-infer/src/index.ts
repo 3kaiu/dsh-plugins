@@ -11,9 +11,9 @@ const name = "dsh-layout-infer";
 const inject = ["tools"];
 
 
-const renderJson = (args, value) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
+const renderJson = (args: any, value: any) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
 
-function apply(ctx) {
+function apply(ctx: any) {
   ctx.tools.register(
     defineTool({
       name: "infer_layout",

@@ -1,10 +1,10 @@
 // 整树标注: 递归对每个容器反推布局语义 + 建议命名
 import { inferLayout } from '@3kaiu/dsh-plugin-kit'
 
-const round = (n) => Math.round((n || 0) * 100) / 100
+const round = (n: number): number => Math.round((n || 0) * 100) / 100
 
 // 语义命名(纯算法启发式): 文本优先, 其次按布局形态
-function suggestName(node, inferred) {
+function suggestName(node: any, inferred: any): string {
   const text = firstText(node, 0)
   if (text) return text.trim().slice(0, 24)
   if (inferred.position === 'absolute') return 'absolute-layer'
@@ -13,18 +13,18 @@ function suggestName(node, inferred) {
   return 'layer'
 }
 
-function firstText(node, depth) {
+function firstText(node: any, depth: number): string | null {
   if (depth > 3 || !node) return null
   if (node.type === 'TEXT') return node.text && node.text[0] && node.text[0].text
   for (const c of node.children || []) {
-    const t = firstText(c, depth + 1)
+    const t: string | null = firstText(c, depth + 1)
     if (t) return t
   }
   return null
 }
 
 // 递归标注一个节点树
-function annotate(nodes, stats) {
+function annotate(nodes: any[], stats: any): any[] {
   const result = []
   for (const node of nodes) {
     result.push(annotateNode(node, stats))
@@ -32,11 +32,11 @@ function annotate(nodes, stats) {
   return result
 }
 
-function annotateNode(node, stats) {
+function annotateNode(node: any, stats: any): any {
   const ls = node.layoutStyle || {}
   const kids = node.children || []
   stats.total++
-  const entry = {
+  const entry: any = {
     id: node.id,
     name: node.name ?? '',
     type: node.type,
@@ -47,7 +47,7 @@ function annotateNode(node, stats) {
 
   if (kids.length > 0) {
     stats.containers++
-    const kidsData = kids.map((k) => {
+    const kidsData = kids.map((k: any) => {
       const kls = k.layoutStyle || {}
       return {
         id: k.id,
@@ -83,7 +83,7 @@ function annotateNode(node, stats) {
   return entry
 }
 
-function annotateNodeList(kids, stats) {
+function annotateNodeList(kids: any[], stats: any): any[] {
   const out = []
   for (const k of kids) {
     out.push(annotateNode(k, stats))
