@@ -120,7 +120,7 @@ export function buildBlueprint({ canvas, tree, styles, dsl, domDump, screenshotP
   }
 }
 
-function extractPalette(tree, styles) {
+function extractPalette(tree: any, styles: any) {
   const colors=[]
   const walk=(nodes)=>{
     for(const n of nodes){

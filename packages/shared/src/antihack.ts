@@ -7,9 +7,9 @@
 // - codeStats：可选的仓库静态扫描结果（inlineStyleCount/importantCount/negativeMargins/mediaQuery等），若未提供则仅基于 DOM
 // 输出：{ violations: [{rule, value, threshold, severity, reason}], warnings: [...] , passed: boolean }
 
-function countNodes(tree, predicate) {
+function countNodes(tree: any, predicate: any) {
   let c = 0
-  const walk = (nodes) => {
+  const walk = (nodes: any) => {
     for (const n of nodes) {
       if (predicate(n)) c++
       if (n.children) walk(n.children)
@@ -18,9 +18,9 @@ function countNodes(tree, predicate) {
   walk(Array.isArray(tree) ? tree : [tree])
   return c
 }
-function flatten(tree) {
+function flatten(tree: any) {
   const out=[]
-  const walk=(nodes)=>{ for(const n of nodes){ out.push(n); if(n.children) walk(n.children)}}
+  const walk=(nodes: any)=>{ for(const n of nodes){ out.push(n); if(n.children) walk(n.children)}}
   walk(Array.isArray(tree)?tree:[tree])
   return out
 }
@@ -33,7 +33,7 @@ export function antiHackScan({ domDump, reference, treeStats, codeStats, project
   const tree = domDump?.tree || domDump || []
   const flat = Array.isArray(tree) ? flatten(tree) : []
   const total = treeStats?.total ?? flat.length ?? 0
-  const absolute = treeStats?.absolute ?? countNodes(tree, n=> n.layout?.position === 'absolute' || n.computed?.position === 'absolute' || n.computed?.position === 'fixed')
+  const absolute = treeStats?.absolute ?? countNodes(tree, (n: any) => n.layout?.position === 'absolute' || n.computed?.position === 'absolute' || n.computed?.position === 'fixed')
   const flex = treeStats?.flex ?? 0
 
   // 1. absolute/fixed 叶子占比

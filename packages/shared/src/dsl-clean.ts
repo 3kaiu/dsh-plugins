@@ -129,10 +129,10 @@ function clusterCols(items, tol = 12) {
 }
 
 function bandBBox(band) {
-  const minX = Math.min(...band.items.map((n) => n._x))
-  const minY = Math.min(...band.items.map((n) => n._y))
-  const maxX = Math.max(...band.items.map((n) => n._x + n._width))
-  const maxY = Math.max(...band.items.map((n) => n._y + n._height))
+  const minX = Math.min(...band.items.map((n: any) => n._x))
+  const minY = Math.min(...band.items.map((n: any) => n._y))
+  const maxX = Math.max(...band.items.map((n: any) => n._x + n._width))
+  const maxY = Math.max(...band.items.map((n: any) => n._y + n._height))
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
@@ -183,11 +183,11 @@ function bandRole(band, canvas) {
 
   // 几何特征 2: 多列重复网格 (Pad/大屏双列/多列卡片)
   if (band.items.length >= 2) {
-    const gridInfo = inferGridPattern(band.items.map((n) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
+    const gridInfo = inferGridPattern(band.items.map((n: any) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
     if (gridInfo) return 'grid-row'
     
     // 几何特征 3: 错位层叠卡片组 (扇形重叠)
-    const deckInfo = inferStaggeredDeck(band.items.map((n) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
+    const deckInfo = inferStaggeredDeck(band.items.map((n: any) => ({ x: n._x, y: n._y, width: n._width, height: n._height })))
     if (deckInfo) return 'card-deck'
   }
   // 全宽条
@@ -197,7 +197,7 @@ function bandRole(band, canvas) {
     return 'nav-bar'
   }
   // 大数字 hero: 高 ≥40 的纯数字文本
-  if (band.items.some((n) => /^\d+$/.test(firstText(n) || '') && n._height >= 40)) return 'hero'
+  if (band.items.some((n: any) => /^\d+$/.test(firstText(n) || '') && n._height >= 40)) return 'hero'
   // 贴纸卡: 内含"贴纸组"(有旋转子层)
   if (band.items.length === 1) {
     const n = band.items[0]
@@ -205,7 +205,7 @@ function bandRole(band, canvas) {
     if (band.items.some((x) => x._radius)) return 'card'
     if (/^[a-zA-Z\s]+$/.test(t) && n.type === 'GROUP') return 'sticker'
     if (n._effect && /shadow/i.test(String(n._effect))) {
-      if (n.children?.some((c) => c._rotation)) return 'sticker-card'
+      if (n.children?.some((c: any) => c._rotation)) return 'sticker-card'
       // 分段切换条: 矮带阴影 + 多段文本 (几何信号: 高≤48 且 rowTexts≥2)
       const rowTexts = (n._dsl && n._dsl.rowTexts) || []
       if (n._height <= 48 && rowTexts.length >= 2) return 'segmented-bar'
@@ -426,13 +426,13 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
   const stats = { total: nodes.length, offCanvas: 0, background: 0, sticker: 0, container: 0, band: 0 }
 
   // ---- 0. 分类 ----
-  const offCanvas = nodes.filter((n) => n._x + n._width > canvas.width + 8 || n._x < -8 || n._y < -8 || n._y + n._height > canvas.height + 8)
+  const offCanvas = nodes.filter((n: any) => n._x + n._width > canvas.width + 8 || n._x < -8 || n._y < -8 || n._y + n._height > canvas.height + 8)
   stats.offCanvas = offCanvas.length
-  let rest = nodes.filter((n) => !offCanvas.includes(n))
+  let rest = nodes.filter((n: any) => !offCanvas.includes(n))
 
-  const backgrounds = rest.filter((n) => isBackgroundRect(n, canvas))
+  const backgrounds = rest.filter((n: any) => isBackgroundRect(n, canvas))
   stats.background = backgrounds.length
-  rest = rest.filter((n) => !backgrounds.includes(n))
+  rest = rest.filter((n: any) => !backgrounds.includes(n))
 
   // ---- 1. 容器吸收 ----
   const absorbed = new Map()
@@ -443,7 +443,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
 
   for (const c of containers) {
     if (assigned.has(c.id) || absorbedContainers.has(c.id) || standaloneContainers.has(c.id)) continue
-    const kids = rest.filter((n) => {
+    const kids = rest.filter((n: any) => {
       if (n === c || assigned.has(n.id) || absorbedContainers.has(n.id) || standaloneContainers.has(n.id)) return false
       const inside = n._x >= c._x - 2 && n._y >= c._y - 2 && n._x + n._width <= c._x + c._width + 2 && n._y + n._height <= c._y + c._height + 2
       if (!inside) return false
@@ -463,10 +463,10 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
   }
 
   // ---- 2. 带状聚类 ----
-  const floaters = rest.filter((n) => !assigned.has(n.id) && !absorbedContainers.has(n.id) && !standaloneContainers.has(n.id))
-  const stickers = floaters.filter((n) => Math.abs(n._rotation) > 0.5)
+  const floaters = rest.filter((n: any) => !assigned.has(n.id) && !absorbedContainers.has(n.id) && !standaloneContainers.has(n.id))
+  const stickers = floaters.filter((n: any) => Math.abs(n._rotation) > 0.5)
   stats.sticker = stickers.length
-  const bandFloaters = floaters.filter((n) => !stickers.includes(n))
+  const bandFloaters = floaters.filter((n: any) => !stickers.includes(n))
   const bands = clusterBandsAdaptive(bandFloaters, canvas)
   stats.band = bands.length
 
@@ -481,7 +481,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
   }
 
   // 3b. 独立容器块(学习卡/贴纸卡/内容tabs 等)
-  const containerBlocks = rest.filter((n) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))
+  const containerBlocks = rest.filter((n: any) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))
   for (const c of containerBlocks) {
     const kids = absorbed.get(c.id) || []
     const role = detectContainerRole(c, kids)
@@ -550,7 +550,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
       const inner = band.items.slice(1).map((k) => leafToDsl(k, { x: n._x, y: n._y }))
       const out = containerToDsl({ id: n.id, name: semanticName(n, role, canvas), bbox: { x: n._x, y: n._y, width: n._width, height: n._height }, layout, children: inner, fill: undefined, _color: typeof n._color === 'string' ? n._color : undefined, effect: n._effect, radius: n._radius })
       // 状态栏/导航栏是容器: 保留原始 DSL 子节点
-      out.children = (n._dsl?.nodes?.[0]?.children || []).map((c) => c)
+      out.children = (n._dsl?.nodes?.[0]?.children || []).map((c: any) => c)
       children.push(out)
       continue
     }
@@ -653,20 +653,20 @@ function detectContainerRole(c, kids) {
 }
 
 function colBBox(items) {
-  const minX = Math.min(...items.map((n) => n._x))
-  const minY = Math.min(...items.map((n) => n._y))
-  const maxX = Math.max(...items.map((n) => n._x + n._width))
-  const maxY = Math.max(...items.map((n) => n._y + n._height))
+  const minX = Math.min(...items.map((n: any) => n._x))
+  const minY = Math.min(...items.map((n: any) => n._y))
+  const maxX = Math.max(...items.map((n: any) => n._x + n._width))
+  const maxY = Math.max(...items.map((n: any) => n._y + n._height))
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
 /** TabBar 构建: 全宽背景条 + icon/label 对 + home indicator(全部 absolute 定位, 保证几何精确) */
 function buildTabBar(band, canvas) {
-  const bg = band.items.find((n) => n._width >= canvas.width * 0.9)
-  const items = band.items.filter((n) => n !== bg && !n.name.includes('Home Indicator'))
-  const home = band.items.find((n) => n.name.includes('Home Indicator'))
-  const icons = items.filter((n) => n.type !== 'TEXT' && n._height <= 30 && n._width <= 40)
-  const labels = items.filter((n) => n.type === 'TEXT')
+  const bg = band.items.find((n: any) => n._width >= canvas.width * 0.9)
+  const items = band.items.filter((n: any) => n !== bg && !n.name.includes('Home Indicator'))
+  const home = band.items.find((n: any) => n.name.includes('Home Indicator'))
+  const icons = items.filter((n: any) => n.type !== 'TEXT' && n._height <= 30 && n._width <= 40)
+  const labels = items.filter((n: any) => n.type === 'TEXT')
 
   // icon/label 按 x 对齐配对
   const pairs = []

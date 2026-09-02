@@ -7,7 +7,7 @@
 // 文本内容只参与"存在性/粗粒度长度桶",不参与精确匹配 --
 // 列表项文本各不相同,正是需要归一化的部分。
 
-const round = (n) => Math.round((n || 0) * 100) / 100
+const round = (n: any) => Math.round((n || 0) * 100) / 100
 
 // 尺寸桶: 4px 容差,吸收设计稿 1-2px 的手工误差
 function sizeBucket(n) {
@@ -60,7 +60,7 @@ export function structureFingerprint(node, opts: Record<string, any> = {}) {
 
 function median(nums) {
   if (!nums.length) return null
-  const s = [...nums].sort((a, b) => a - b)
+  const s = [...nums].sort((a: any, b: any) => a - b)
   const mid = Math.floor(s.length / 2)
   return s.length % 2 ? s[mid] : round((s[mid - 1] + s[mid]) / 2)
 }
@@ -119,7 +119,7 @@ export function detectRepeatGroups(nodes, opts: Record<string, any> = {}) {
       groups.push({
         startIndex: i,
         count,
-        itemIds: items.map((n) => n.id),
+        itemIds: items.map((n: any) => n.id),
         ...measureGroup(items),
       })
     }
@@ -175,7 +175,7 @@ export function detectSharedComponents(trees, opts: Record<string, any> = {}) {
     if (sections.length >= minSections) candidates.push({ fp, instances, sections })
   }
   // 面积降序: 大组件优先成组,嵌套小容器随后被去重
-  candidates.sort((a, b) => {
+  candidates.sort((a: any, b: any) => {
     const area = (arr) => arr.reduce((s, i) => s + (i.width || 0) * (i.height || 0), 0) / arr.length
     return area(b.instances) - area(a.instances)
   })
@@ -271,7 +271,7 @@ function measureGroupBounds(members) {
   const spanX = Math.max(...xs) - Math.min(...xs)
   const spanY = Math.max(...ys) - Math.min(...ys)
   const axis = spanX >= spanY ? 'row' : 'column'
-  const sorted = [...members].sort((a, b) =>
+  const sorted = [...members].sort((a: any, b: any) =>
     axis === 'row' ? (a.bounds?.x ?? 0) - (b.bounds?.x ?? 0) : (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0))
   const gaps = []
   for (let i = 1; i < sorted.length; i++) {
@@ -287,7 +287,7 @@ function measureGroupBounds(members) {
 }
 
 function medianOf(nums) {
-  const s = [...nums].sort((a, b) => a - b)
+  const s = [...nums].sort((a: any, b: any) => a - b)
   const mid = Math.floor(s.length / 2)
   return s.length % 2 ? s[mid] : round((s[mid - 1] + s[mid]) / 2)
 }

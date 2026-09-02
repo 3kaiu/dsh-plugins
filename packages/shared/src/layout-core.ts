@@ -809,12 +809,12 @@ function bandRoleOf(band, canvas) {
   // 几何字段访问统一 _ 前缀优先并兜底缺省 0(与 cluster 内核约定一致):
   // undefined 参与数值比较产生 NaN(恒 false), 会静默误判角色 —— 此前
   // `first._y + first.height` 混用两套字段名即此类 bug。
-  const gw = (n) => n._width ?? n.width ?? 0
-  const gy = (n) => n._y ?? n.y ?? 0
-  const gh = (n) => n._height ?? n.height ?? 0
+  const gw = (n: any) => n._width ?? n.width ?? 0
+  const gy = (n: any) => n._y ?? n.y ?? 0
+  const gh = (n: any) => n._height ?? n.height ?? 0
   const first = band.items[0]
   // 带内含贴底全宽背景条(高度≤110) → TabBar(即使背景条未触发全宽条独立带规则)
-  const bottomBg = band.items.find((n) => gw(n) >= canvas.width * 0.9 && gy(n) + gh(n) >= canvas.height - 12 && gh(n) <= 110)
+  const bottomBg = band.items.find((n: any) => gw(n) >= canvas.width * 0.9 && gy(n) + gh(n) >= canvas.height - 12 && gh(n) <= 110)
   if (bottomBg && band.items.length >= 3) return ROLES.TAB_BAR
   if (band.fullWidth) {
     if (gy(first) <= 30) return ROLES.STATUS_BAR
@@ -834,10 +834,10 @@ function pairIconLabels(icons, labels, tol = 40) {
   const pairs = []
   const usedLabels = new Set()
   // 同 bandRoleOf: 几何访问 _ 前缀优先 + 0 兜底, 防 undefined→NaN 恒 false 误判
-  const gx = (n) => n._x ?? n.x ?? 0
-  const gw = (n) => n._width ?? n.width ?? 0
-  const gy = (n) => n._y ?? n.y ?? 0
-  const gh = (n) => n._height ?? n.height ?? 0
+  const gx = (n: any) => n._x ?? n.x ?? 0
+  const gw = (n: any) => n._width ?? n.width ?? 0
+  const gy = (n: any) => n._y ?? n.y ?? 0
+  const gh = (n: any) => n._height ?? n.height ?? 0
   for (const ic of icons) {
     let best = null
     let bestDist = Infinity
@@ -890,13 +890,13 @@ function reconstructHierarchy({ canvas, nodes }) {
     }
   })
 
-  const offCanvas = prepared.filter((n) => n._x + n._width > canvas.width + 8 || n._x < -8 || n._y < -8 || n._y + n._height > canvas.height + 8)
+  const offCanvas = prepared.filter((n: any) => n._x + n._width > canvas.width + 8 || n._x < -8 || n._y < -8 || n._y + n._height > canvas.height + 8)
   stats.offCanvas = offCanvas.length
-  const onCanvas = prepared.filter((n) => !offCanvas.includes(n))
+  const onCanvas = prepared.filter((n: any) => !offCanvas.includes(n))
 
-  const backgrounds = onCanvas.filter((n) => isBackgroundRect(n, canvas))
+  const backgrounds = onCanvas.filter((n: any) => isBackgroundRect(n, canvas))
   stats.background = backgrounds.length
-  let rest = onCanvas.filter((n) => !backgrounds.includes(n))
+  let rest = onCanvas.filter((n: any) => !backgrounds.includes(n))
 
   // 注意: 旋转贴纸组不在此处提前移除 —— 它们可能被卡片吸收
   // (贴纸卡内含 parking/LOVE/milk tea 等旋转贴纸), 吸收后再把
@@ -910,7 +910,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   const containers = rest.filter(isContainerCandidate).sort((a, b) => a._width * a._height - b._width * b._height)
   for (const c of containers) {
     if (assigned.has(c.id) || absorbedContainers.has(c.id) || standaloneContainers.has(c.id)) continue
-    const kids = rest.filter((n) => {
+    const kids = rest.filter((n: any) => {
       if (n === c || assigned.has(n.id) || absorbedContainers.has(n.id) || standaloneContainers.has(n.id)) return false
       // 旋转贴纸组(parking/LOVE 等)允许被卡片吸收: 用未旋转的轴对齐 bbox
       // 做包含判断, 吸收后角色标 sticker(见 buildLeaf 分支)
@@ -931,7 +931,7 @@ function reconstructHierarchy({ canvas, nodes }) {
 
   // 独立块(吸收容器 + 独立容器)转成容器节点
   const containerBlocks = []
-  for (const c of rest.filter((n) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))) {
+  for (const c of rest.filter((n: any) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))) {
     const kids = (absorbed.get(c.id) || []).map((id) => prepared.find((x) => x.id === id)).filter(Boolean)
     containerBlocks.push({
       id: c.id,
@@ -952,28 +952,28 @@ function reconstructHierarchy({ canvas, nodes }) {
   }
 
   // 剩余全部(容器 + 叶子)统一参与带状聚类; 被吸收的节点从顶层移除
-  const floaters = rest.filter((n) => !assigned.has(n.id) && !absorbedContainers.has(n.id) && !standaloneContainers.has(n.id))
+  const floaters = rest.filter((n: any) => !assigned.has(n.id) && !absorbedContainers.has(n.id) && !standaloneContainers.has(n.id))
 
   // 未被吸收的旋转节点 → 顶层 sticker(参与带状聚类前剔除)
-  const stickers = floaters.filter((n) => Math.abs(n._rotation || 0) > 0.5)
+  const stickers = floaters.filter((n: any) => Math.abs(n._rotation || 0) > 0.5)
   stats.sticker = stickers.length
-  const bandFloaters = floaters.filter((n) => !stickers.includes(n))
+  const bandFloaters = floaters.filter((n: any) => !stickers.includes(n))
 
   // ---- 2. 带状聚类 + 带内分组 ----
   const bands = clusterBandsAdaptive(bandFloaters, canvas)
   stats.band = bands.length
 
   const children = []
-  const pushNode = (n) => children.push(buildLeaf(n))
+  const pushNode = (n: any) => children.push(buildLeaf(n))
   for (const band of bands) {
     const role = bandRoleOf(band, canvas)
     // TabBar 特判: 全宽背景条 + icon/label 对
     if (role === ROLES.TAB_BAR) {
-      const bg = band.items.filter((n) => n._width >= canvas.width * 0.9)
-      const items = band.items.filter((n) => !bg.includes(n))
-      const icons = items.filter((n) => n.type !== 'TEXT' && n._height <= 30 && n._height >= 14 && n._width <= 40)
-      const labels = items.filter((n) => n.type === 'TEXT')
-      const restItems = items.filter((n) => !icons.includes(n) && !labels.includes(n))
+      const bg = band.items.filter((n: any) => n._width >= canvas.width * 0.9)
+      const items = band.items.filter((n: any) => !bg.includes(n))
+      const icons = items.filter((n: any) => n.type !== 'TEXT' && n._height <= 30 && n._height >= 14 && n._width <= 40)
+      const labels = items.filter((n: any) => n.type === 'TEXT')
+      const restItems = items.filter((n: any) => !icons.includes(n) && !labels.includes(n))
       const pairs = pairIconLabels(icons, labels)
       const tabItems = pairs.map((p) => ({
         id: 'synthetic:tab-item:' + p.icon.id,
@@ -988,7 +988,7 @@ function reconstructHierarchy({ canvas, nodes }) {
       }))
       const leftover = labels.filter((l) => !pairs.some((p) => p.label && p.label.id === l.id))
       const bgLeaf = bg.length > 0 ? { ...buildLeaf(bg[0]), role: ROLES.BACKGROUND } : null
-      const bandKids = [...tabItems, ...restItems.map((n) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height }))]
+      const bandKids = [...tabItems, ...restItems.map((n: any) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height }))]
       children.push({
         id: 'synthetic:tab-bar:' + band.items[0].id,
         name: 'tab-bar',
@@ -1012,7 +1012,7 @@ function reconstructHierarchy({ canvas, nodes }) {
       continue
     }
     // 多节点带: 委托 inferLayout 判定方向(row/column/absolute)
-    const relKids = band.items.map((n) => ({
+    const relKids = band.items.map((n: any) => ({
       id: n.id,
       x: n._x - bandMinX(band),
       y: n._y - bandMinY(band),
@@ -1035,7 +1035,7 @@ function reconstructHierarchy({ canvas, nodes }) {
       role: groupRole,
       bbox: bandBBox(band),
       layout,
-      children: clusterCols(band.items).map((c) => {
+      children: clusterCols(band.items).map((c: any) => {
         const sorted = [...c.items].sort((a, b) => a._y - b._y || a._x - b._x)
         if (sorted.length === 1) return buildLeaf(sorted[0])
         return {
@@ -1046,7 +1046,7 @@ function reconstructHierarchy({ canvas, nodes }) {
           bbox: colBBox(sorted),
           layout: inferLayout({
             container: colSize(sorted),
-            children: sorted.map((n) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height })),
+            children: sorted.map((n: any) => ({ id: n.id, x: n._x - bandMinX(band), y: n._y - bandMinY(band), width: n._width, height: n._height })),
           }),
           children: sorted.map(buildLeaf),
         }
@@ -1055,9 +1055,9 @@ function reconstructHierarchy({ canvas, nodes }) {
   }
 
   // ---- 最终树: 背景 + 独立块 + 带块按 y 排序 ----
-  const backgroundLeaves = backgrounds.map((n) => ({ ...buildLeaf(n), role: ROLES.BACKGROUND }))
-  const stickerLeaves = stickers.map((n) => ({ ...buildLeaf(n), role: ROLES.STICKER }))
-  const offCanvasLeaves = offCanvas.map((n) => ({ ...buildLeaf(n), role: ROLES.OFF_CANVAS }))
+  const backgroundLeaves = backgrounds.map((n: any) => ({ ...buildLeaf(n), role: ROLES.BACKGROUND }))
+  const stickerLeaves = stickers.map((n: any) => ({ ...buildLeaf(n), role: ROLES.STICKER }))
+  const offCanvasLeaves = offCanvas.map((n: any) => ({ ...buildLeaf(n), role: ROLES.OFF_CANVAS }))
   const allBlocks = [...backgroundLeaves, ...containerBlocks, ...children, ...stickerLeaves].sort((a, b) => a.bbox.y - b.bbox.y)
   const tree = [...allBlocks, ...offCanvasLeaves]
 

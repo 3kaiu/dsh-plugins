@@ -50,7 +50,7 @@ export function isContainerCandidate(n) {
 }
 
 export function clusterBandsAdaptive(items, canvas, tol = 2) {
-  const sorted = [...items].sort((a, b) => nodeY(a) - nodeY(b))
+  const sorted = [...items].sort((a: any, b: any) => nodeY(a) - nodeY(b))
   const bands = []
   for (const n of sorted) {
     const w = nodeW(n)
@@ -75,7 +75,7 @@ export function clusterBandsAdaptive(items, canvas, tol = 2) {
 }
 
 export function clusterCols(items, tol = 12) {
-  const sorted = [...items].sort((a, b) => nodeX(a) - nodeX(b))
+  const sorted = [...items].sort((a: any, b: any) => nodeX(a) - nodeX(b))
   const cols = []
   for (const n of sorted) {
     const x = nodeX(n)
@@ -93,10 +93,10 @@ export function clusterCols(items, tol = 12) {
 }
 
 export function bandBBox(band) {
-  const minX = Math.min(...band.items.map((n) => nodeX(n)))
-  const minY = Math.min(...band.items.map((n) => nodeY(n)))
-  const maxX = Math.max(...band.items.map((n) => nodeX(n) + nodeW(n)))
-  const maxY = Math.max(...band.items.map((n) => nodeY(n) + nodeH(n)))
+  const minX = Math.min(...band.items.map((n: any) => nodeX(n)))
+  const minY = Math.min(...band.items.map((n: any) => nodeY(n)))
+  const maxX = Math.max(...band.items.map((n: any) => nodeX(n) + nodeW(n)))
+  const maxY = Math.max(...band.items.map((n: any) => nodeY(n) + nodeH(n)))
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
@@ -106,18 +106,18 @@ export function bandSize(band) {
 }
 
 export function bandMinX(band) {
-  return Math.min(...band.items.map((n) => nodeX(n)))
+  return Math.min(...band.items.map((n: any) => nodeX(n)))
 }
 
 export function bandMinY(band) {
-  return Math.min(...band.items.map((n) => nodeY(n)))
+  return Math.min(...band.items.map((n: any) => nodeY(n)))
 }
 
 export function colBBox(items) {
-  const minX = Math.min(...items.map((n) => nodeX(n)))
-  const minY = Math.min(...items.map((n) => nodeY(n)))
-  const maxX = Math.max(...items.map((n) => nodeX(n) + nodeW(n)))
-  const maxY = Math.max(...items.map((n) => nodeY(n) + nodeH(n)))
+  const minX = Math.min(...items.map((n: any) => nodeX(n)))
+  const minY = Math.min(...items.map((n: any) => nodeY(n)))
+  const maxX = Math.max(...items.map((n: any) => nodeX(n) + nodeW(n)))
+  const maxY = Math.max(...items.map((n: any) => nodeY(n) + nodeH(n)))
   return { x: round1(minX), y: round1(minY), width: round1(maxX - minX), height: round1(maxY - minY) }
 }
 
