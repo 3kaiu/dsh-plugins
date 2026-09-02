@@ -29,11 +29,11 @@ const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 /** 机器命名检测: 设计工具自动生成的无语义名(编组 45/矩形 6509/容器 17/蒙版组 2/Frame 328…) */
 const MACHINE_NAME_RE = /^(编组|组|组合|矩形|矩形组|椭圆|直线|路径|蒙版|蒙版组|遮罩|容器|组件|框架|切片|帧|图层|形状|画板|页面|frame|group|rect(?:angle)?|oval|line|path|vector|layer|mask|slice|shape|ellipse|instance|component|section|artboard|canvas)[\s_#\-]*\d*(\s*copy\d*)*$/i
 
-function firstDescendantText(node, depth = 0) {
+function firstDescendantText(node: any, depth: any = 0) {
   if (!node || depth > 3) return null
   // text 双形态兼容: 字符串直读; runs 数组拼接(MasterGo 常态)
   const t = typeof node.text === 'string' ? node.text
-    : Array.isArray(node.text) ? node.text.map((r) => (r && r.text) || '').join('')
+    : Array.isArray(node.text) ? node.text.map((r: any) => (r && r.text) || '').join('')
     : null
   if (t && t.trim()) return t.trim()
   for (const c of Array.isArray(node.children) ? node.children : []) {
@@ -48,7 +48,7 @@ function firstDescendantText(node, depth = 0) {
  * 设计者命名原样保留; 机器名/空名合成为可读标签:
  * 首个后代文本 > 图标名(svgName) > 类型序号 —— 消除产物名字里 ~40% 的纯噪声。
  */
-function semanticNodeName(node, rawNode, seq) {
+function semanticNodeName(node: any, rawNode: any, seq: any) {
   const raw = String(rawNode?.name ?? node?.name ?? '').trim()
   if (raw && !MACHINE_NAME_RE.test(raw)) return raw
   const t = firstDescendantText(node)
@@ -68,7 +68,7 @@ function semanticNodeName(node, rawNode, seq) {
  *    [10,10,20,20])或无重复(如 [10,20,30])一律返回 null,
  *    避免把「第一个碰到的值」误当众数。
  */
-function mode(values) {
+function mode(values: any) {
   if (values.length === 0) return null
   if (values.length === 1) return values[0]
   const counts = new Map()
@@ -104,22 +104,22 @@ function inferLayout({ container, children, tolerance = null, absolutesWhitelist
   }
 
   // 旋转节点永远不参与 flex 推断(贴纸/装饰)
-  const rotated = kids.filter((k) => Math.abs(k.rotation || 0) > 0.5)
-  const stable = kids.filter((k) => Math.abs(k.rotation || 0) <= 0.5)
-  const absolutes = rotated.map((k) => k.id)
+  const rotated = kids.filter((k: any) => Math.abs(k.rotation || 0) > 0.5)
+  const stable = kids.filter((k: any) => Math.abs(k.rotation || 0) <= 0.5)
+  const absolutes = rotated.map((k: any) => k.id)
 
   if (stable.length === 0) {
     return { position: 'absolute', confidence: 0.5, absolutes: [...absolutes], reason: '全部子节点带旋转' }
   }
 
-  const centersX = stable.map((k) => k.x + k.width / 2)
-  const centersY = stable.map((k) => k.y + k.height / 2)
+  const centersX = stable.map((k: any) => k.x + k.width / 2)
+  const centersY = stable.map((k: any) => k.y + k.height / 2)
   const rangeX = Math.max(...centersX) - Math.min(...centersX)
   const rangeY = Math.max(...centersY) - Math.min(...centersY)
-  const xs = stable.map((k) => k.x)
-  const ys = stable.map((k) => k.y)
-  const maxRX = Math.max(...stable.map((k) => k.x + k.width))
-  const maxBY = Math.max(...stable.map((k) => k.y + k.height))
+  const xs = stable.map((k: any) => k.x)
+  const ys = stable.map((k: any) => k.y)
+  const maxRX = Math.max(...stable.map((k: any) => k.x + k.width))
+  const maxBY = Math.max(...stable.map((k: any) => k.y + k.height))
   const minX = Math.min(...xs)
   const minY = Math.min(...ys)
 
@@ -179,8 +179,8 @@ function inferLayout({ container, children, tolerance = null, absolutesWhitelist
   // 列布局的子元素可宽度不同(左/居中/右对齐);行布局的子元素可高度不同(顶/居中/底对齐)
   const topAligned = Math.max(...ys) - minY <= TOL_LOCAL
   const leftAligned = Math.max(...xs) - minX <= TOL_LOCAL
-  const minBY = Math.min(...stable.map((k) => k.y + k.height))
-  const minRX = Math.min(...stable.map((k) => k.x + k.width))
+  const minBY = Math.min(...stable.map((k: any) => k.y + k.height))
+  const minRX = Math.min(...stable.map((k: any) => k.x + k.width))
   const bottomAligned = maxBY - minBY <= TOL_LOCAL
   const rightAligned = maxRX - minRX <= TOL_LOCAL
   const centerXAligned = rangeX <= TOL_LOCAL
@@ -203,7 +203,7 @@ function inferLayout({ container, children, tolerance = null, absolutesWhitelist
     // 行列都不成立 → absolute(stack 语义), 几何由 bounds 差值守恒。
     // 注意(批3 归一裁决): kit 基底曾有 inferGrid wrap 回退, v2 正本刻意移除 ——
     // 抖动网格被伪判 wrap 后几何守恒失败("无伪 wrap"), 以 v2 语义为准。
-    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k) => k.id)], reason: '无行列对齐信号' }
+    return { position: 'absolute', confidence: 0.3, absolutes: [...absolutes, ...stable.map((k: any) => k.id)], reason: '无行列对齐信号' }
   }
 
   const main = isRow ? 'row' : 'column'
@@ -321,7 +321,7 @@ function inferLayout({ container, children, tolerance = null, absolutesWhitelist
 }
 
 /** 视觉保真验证: 模拟反写后的子元素位置,偏差超阈值 → 降级 absolute(视觉不变优先) */
-function maybeDowngrade(result, cw, ch, stable, absolutes, tolerance = TOL) {
+function maybeDowngrade(result: any, cw: any, ch: any, stable: any, absolutes: any, tolerance: any = TOL) {
   const sim = simulateFlex({ width: cw, height: ch }, result, stable)
   let maxDelta = 0
   for (let i = 0; i < sim.length && i < stable.length; i++) {
@@ -342,13 +342,13 @@ function maybeDowngrade(result, cw, ch, stable, absolutes, tolerance = TOL) {
  *  与 CSS 对齐:主轴/交叉轴的偏移都相对 content box 计算
  *  (content box = 容器尺寸 − 两侧 padding),而不是相对 border box。
  */
-function simulateFlex(container, inferred, kids) {
+function simulateFlex(container: any, inferred: any, kids: any) {
   const dir = inferred.flexDirection === 'row' ? 'row' : 'column'
   const pad = inferred.padding || [0, 0, 0, 0]
   // 不等间距: spacing 数组按相邻对(主轴排序)给出 per-pair gap;否则用统一 gap
   const spacing = Array.isArray(inferred.spacing) ? inferred.spacing : null
   const gap = inferred.gap || 0
-  const gapAt = (i) => (spacing ? (i > 0 && i - 1 < spacing.length ? spacing[i - 1] : 0) : gap)
+  const gapAt = (i: any) => (spacing ? (i > 0 && i - 1 < spacing.length ? spacing[i - 1] : 0) : gap)
   const mainSize = dir === 'row' ? container.width : container.height
   const crossSize = dir === 'row' ? container.height : container.width
   const mainDim = dir === 'row' ? 'width' : 'height'
@@ -386,7 +386,7 @@ function simulateFlex(container, inferred, kids) {
 }
 
 /** 单个子元素的交叉轴定位(CSS 语义: 相对 content box) */
-function placeIn(dir, k, mainPos, crossContent, padCrossStart, inferred) {
+function placeIn(dir: any, k: any, mainPos: any, crossContent: any, padCrossStart: any, inferred: any) {
   const crossDim = dir === 'row' ? 'height' : 'width'
   const size = k[crossDim] || 0
   let crossPos = padCrossStart
@@ -407,11 +407,11 @@ function placeIn(dir, k, mainPos, crossContent, padCrossStart, inferred) {
  *     子元素尺寸不齐 ≠ 拉伸,设计稿里显式尺寸差异是常态,
  *     误标 stretch 会诱导还原方写出错误布局)。
  */
-function inferCrossAlign(stable, isRow, tol) {
-  const crossStart = stable.map((k) => (isRow ? k.y : k.x))
-  const crossSize = stable.map((k) => (isRow ? k.height : k.width))
-  const crossEnd = crossStart.map((s, i) => s + crossSize[i])
-  const crossCenter = crossStart.map((s, i) => s + crossSize[i] / 2)
+function inferCrossAlign(stable: any, isRow: any, tol: any) {
+  const crossStart = stable.map((k: any) => (isRow ? k.y : k.x))
+  const crossSize = stable.map((k: any) => (isRow ? k.height : k.width))
+  const crossEnd = crossStart.map((s: any, i: any) => s + crossSize[i])
+  const crossCenter = crossStart.map((s: any, i: any) => s + crossSize[i] / 2)
   const spreadCenter = Math.max(...crossCenter) - Math.min(...crossCenter)
   if (spreadCenter <= tol) return 'center'
   if (Math.max(...crossStart) - Math.min(...crossStart) <= tol) return 'start'
@@ -424,7 +424,7 @@ function inferCrossAlign(stable, isRow, tol) {
  *  替代 Math.round 分组 key 的方案:浮点坐标(如 99.6 / 100.2)不再
  *  因四舍五入被拆成两行或误并成一行;只要相邻元素间距 <= tol 即同簇。
  */
-function clusterByAxis(items, posOf, sizeOf, tol) {
+function clusterByAxis(items: any, posOf: any, sizeOf: any, tol: any) {
   const sorted = [...items].sort((a, b) => posOf(a) - posOf(b))
   const clusters = []
   for (const k of sorted) {
@@ -442,9 +442,9 @@ function clusterByAxis(items, posOf, sizeOf, tol) {
 }
 
 /** 多列网格规律推导: 识别等宽/等高、均匀水平间隙的 N 列排列 (通用几何推导) */
-function inferGridPattern(children, tol = TOL) {
+function inferGridPattern(children: any, tol: any = TOL) {
   if (!children || children.length < 2) return null;
-  const rows = clusterByAxis(children, (k) => k.y, (k) => k.height, tol);
+  const rows = clusterByAxis(children, (k: any) => k.y, (k: any) => k.height, tol);
   if (rows.length === 0) return null;
   const firstRow = rows[0].items;
   if (firstRow.length >= 2) {
@@ -473,7 +473,7 @@ function inferGridPattern(children, tol = TOL) {
 }
 
 /** 错位/扇形层叠卡片推导: 识别局部重叠的一组尺寸相近卡片 (通用几何推导) */
-function inferStaggeredDeck(children, tol = TOL) {
+function inferStaggeredDeck(children: any, tol: any = TOL) {
   if (!children || children.length < 2) return null;
   const sorted = [...children].sort((a, b) => a.x - b.x);
   const widths = sorted.map((k) => k.width);
@@ -511,7 +511,7 @@ function inferStaggeredDeck(children, tol = TOL) {
 }
 
 /** 悬浮胶囊/浮层判定: 水平居中 + 距底部有间隙 + 紧凑尺寸 (通用几何推导) */
-function isFloatingCapsule(n, canvas) {
+function isFloatingCapsule(n: any, canvas: any) {
   if (!n || !canvas) return false;
   const w = n._width ?? n.width ?? 0;
   const h = n._height ?? n.height ?? 0;
@@ -527,7 +527,7 @@ function isFloatingCapsule(n, canvas) {
 }
 
 /** 视口断点自适应推导: 画布规格 -> 设备断点与基准画板尺寸 (通用几何推导) */
-function inferViewportMetadata(canvas) {
+function inferViewportMetadata(canvas: any) {
   const w = canvas?.width || 375;
   const h = canvas?.height || 812;
   const isCompact = w < 600;
@@ -550,7 +550,7 @@ function inferViewportMetadata(canvas) {
  * 通用 1:1 视觉样式属性直读与提取 (extractExactStyles)
  * 严格按照 MasterGo DSL 原始数据映射，禁止任何主观臆测与偏离
  */
-function extractExactStyles(node, styles: Record<string, any> = {}) {
+function extractExactStyles(node: any, styles: Record<string, any> = {}) {
   if (!node) return {};
   const out: Record<string, any> = {};
 
@@ -646,7 +646,7 @@ function extractExactStyles(node, styles: Record<string, any> = {}) {
 }
 
 /** paint 引用解析: "paint_xxx" → styles 表值(数组取首个); 支持 {url} 图片对象形态; 其余字符串原样返回 */
-function resolvePaintRef(ref, styles) {
+function resolvePaintRef(ref: any, styles: any) {
   if (ref == null || ref === '') return null
   if (typeof ref === 'string' && /^paint_/.test(ref)) {
     const def = styles && typeof styles === 'object' ? styles[ref] : null
@@ -663,7 +663,7 @@ function resolvePaintRef(ref, styles) {
 }
 
 /** 节点填充取值: _color 优先, 其次字面量 fill(paint 引用解析); 无则 null */
-function resolveFillValue(node, styles) {
+function resolveFillValue(node: any, styles: any) {
   if (typeof node._color === 'string' && node._color) return node._color
   if (typeof node.fill === 'string' && node.fill) return resolvePaintRef(node.fill, styles)
   return null
@@ -677,7 +677,7 @@ function resolveFillValue(node, styles) {
  *     颜色支持 #RGB/#RRGGBB/#RRGGBBAA/rgb()/rgba(); stop 缺省按序均布补齐
  * - 其余 → {type:'solid', value}
  */
-function parseNeutralFill(str) {
+function parseNeutralFill(str: any) {
   const s = String(str ?? '').trim()
   if (!s) return null
   if (/^url\(/i.test(s)) return { type: 'image', src: s }
@@ -699,7 +699,7 @@ function parseNeutralFill(str) {
 }
 
 /** 渐变方向词/角度 → 统一角度(度, 顺时针, 0=向上) */
-function parseGradientAngle(str) {
+function parseGradientAngle(str: any) {
   const t = String(str).trim().toLowerCase()
   const deg = t.match(/^(-?[0-9.]+)deg$/)
   if (deg) return round1(Number(deg[1]))
@@ -712,7 +712,7 @@ function parseGradientAngle(str) {
  * [{text, fontSize?, fontWeight?, lineHeight?, letterSpacing?}], 否则 null
  * (同质混排只留整串字段, 防冗余数据污染下游)。
  */
-function richTextRuns(node, styles) {
+function richTextRuns(node: any, styles: any) {
   if (!Array.isArray(node.text) || node.text.length < 2) return null
   const runs = []
   for (const t of node.text) {
@@ -723,12 +723,12 @@ function richTextRuns(node, styles) {
     runs.push({ text: t.text, ...s })
   }
   if (runs.length < 2) return null
-  const sig = (r) => JSON.stringify([r.fontSize, r.fontWeight, r.lineHeight, r.letterSpacing])
+  const sig = (r: any) => JSON.stringify([r.fontSize, r.fontWeight, r.lineHeight, r.letterSpacing])
   return new Set(runs.map(sig)).size > 1 ? runs : null
 }
 
 /** styles 表字体值 → 归一化样式字段(fontValToStyle) */
-function fontValToStyle(v) {
+function fontValToStyle(v: any) {
   const out: Record<string, any> = {}
   if (v.size != null) out.fontSize = round1(Number(v.size))
   if (v.weight != null && !isNaN(Number(v.weight))) out.fontWeight = Number(v.weight)
@@ -743,8 +743,8 @@ function fontValToStyle(v) {
  * 返回归一化 textStyle 形状({fontSize,fontWeight,lineHeight,letterSpacing,fontFamily}),
  * 无引用或表缺失时返回 null。
  */
-function resolveFontRef(node, styles) {
-  const ref = Array.isArray(node.text) ? node.text.find((t) => t && t.font)?.font : null;
+function resolveFontRef(node: any, styles: any) {
+  const ref = Array.isArray(node.text) ? node.text.find((t: any) => t && t.font)?.font : null;
   if (!ref || !styles || typeof styles !== 'object') return null;
   const def = styles[ref];
   const v = def && typeof def === 'object' ? (def.value || def) : null;
@@ -792,7 +792,7 @@ const ROLES = {
 }
 
 /** 归一化节点输入: 兼容 {x,y,width,height} / {layoutStyle:{relativeX,...}} */
-function normRect(n) {
+function normRect(n: any) {
   const ls = n.layoutStyle || {}
   const x = n.x != null ? n.x : ls.relativeX != null ? ls.relativeX : 0
   const y = n.y != null ? n.y : ls.relativeY != null ? ls.relativeY : 0
@@ -805,7 +805,7 @@ function normRect(n) {
 
 
 /** 带语义角色: 全宽条按位置(顶/底)区分, 否则按内容分布 */
-function bandRoleOf(band, canvas) {
+function bandRoleOf(band: any, canvas: any) {
   // 几何字段访问统一 _ 前缀优先并兜底缺省 0(与 cluster 内核约定一致):
   // undefined 参与数值比较产生 NaN(恒 false), 会静默误判角色 —— 此前
   // `first._y + first.height` 混用两套字段名即此类 bug。
@@ -830,7 +830,7 @@ function bandRoleOf(band, canvas) {
 }
 
 /** icon+label 配对(TabBar 项): 每个小方形图标 + 其下方最近的文本 */
-function pairIconLabels(icons, labels, tol = 40) {
+function pairIconLabels(icons: any, labels: any, tol: any = 40) {
   const pairs = []
   const usedLabels = new Set()
   // 同 bandRoleOf: 几何访问 _ 前缀优先 + 0 兜底, 防 undefined→NaN 恒 false 误判
@@ -873,7 +873,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   const stats = { total: nodes.length, offCanvas: 0, background: 0, sticker: 0, container: 0, band: 0, row: 0, column: 0, item: 0, section: 0 }
 
   // ---- 0. 归一化 + 分类 ----
-  const prepared = nodes.map((n, i) => {
+  const prepared = nodes.map((n: any, i: any) => {
     const r = normRect(n)
     const fill = typeof n._color === 'string' ? n._color : Array.isArray(n._color) ? String(n._color[0]) : ''
     return {
@@ -907,7 +907,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   const assigned = new Set() // 被吸收的子节点
   const absorbedContainers = new Set() // 吸收过子节点的容器(独立成块)
   const standaloneContainers = new Set() // 无子节点但有阴影/填充/圆角的容器(独立成块)
-  const containers = rest.filter(isContainerCandidate).sort((a, b) => a._width * a._height - b._width * b._height)
+  const containers = rest.filter(isContainerCandidate).sort((a: any, b: any) => a._width * a._height - b._width * b._height)
   for (const c of containers) {
     if (assigned.has(c.id) || absorbedContainers.has(c.id) || standaloneContainers.has(c.id)) continue
     const kids = rest.filter((n: any) => {
@@ -919,7 +919,7 @@ function reconstructHierarchy({ canvas, nodes }) {
       return n._width * n._height < c._width * c._height * 0.9
     })
     if (kids.length > 0) {
-      absorbed.set(c.id, kids.map((k) => k.id))
+      absorbed.set(c.id, kids.map((k: any) => k.id))
       for (const k of kids) assigned.add(k.id)
       absorbedContainers.add(c.id)
       stats.container++
@@ -932,7 +932,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   // 独立块(吸收容器 + 独立容器)转成容器节点
   const containerBlocks = []
   for (const c of rest.filter((n: any) => absorbedContainers.has(n.id) || standaloneContainers.has(n.id))) {
-    const kids = (absorbed.get(c.id) || []).map((id) => prepared.find((x) => x.id === id)).filter(Boolean)
+    const kids = (absorbed.get(c.id) || []).map((id: any) => prepared.find((x: any) => x.id === id)).filter(Boolean)
     containerBlocks.push({
       id: c.id,
       name: c.name || '',
@@ -942,10 +942,10 @@ function reconstructHierarchy({ canvas, nodes }) {
       layout: kids.length > 0
         ? inferLayout({
             container: { width: c._width, height: c._height },
-            children: kids.map((k) => ({ id: k.id, x: k._x - c._x, y: k._y - c._y, width: k._width, height: k._height, rotation: k._rotation })),
+            children: kids.map((k: any) => ({ id: k.id, x: k._x - c._x, y: k._y - c._y, width: k._width, height: k._height, rotation: k._rotation })),
           })
         : null,
-      children: kids.map((k) =>
+      children: kids.map((k: any) =>
         Math.abs(k._rotation || 0) > 0.5 ? { ...buildLeaf(k), role: ROLES.STICKER } : buildLeaf(k),
       ),
     })
@@ -1064,7 +1064,7 @@ function reconstructHierarchy({ canvas, nodes }) {
   return { tree, stats, warnings }
 }
 
-function buildLeaf(n) {
+function buildLeaf(n: any) {
   return {
     id: n.id,
     name: n.name || '',
@@ -1075,7 +1075,7 @@ function buildLeaf(n) {
   }
 }
 
-function buildContainer(n, role) {
+function buildContainer(n: any, role: any) {
   return {
     id: n.id,
     name: n.name || '',

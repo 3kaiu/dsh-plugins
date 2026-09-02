@@ -18,12 +18,12 @@ import { inferLayout } from './layout-core.ts'
 import { detectRepeatGroups } from './repeat.ts'
 import { systemChromeOf } from './system-chrome.ts'
 
-const round = (n) => Math.round((n || 0) * 100) / 100
+const round = (n: any) => Math.round((n || 0) * 100) / 100
 const ICON_NAME = /icon|ic[_-]|logo|glyph/i
 const IMAGE_NAME = /img|image|photo|avatar|banner|cover|thumbnail/i
 
 // 解析 fill 引用: "paint_755:01780" -> styles.paint_755:01780.value
-function paintValue(styles, fill) {
+function paintValue(styles: any, fill: any) {
   if (fill == null) return null
   if (typeof fill === 'string' && styles && styles[fill] && styles[fill].value != null) {
     return styles[fill].value
@@ -32,7 +32,7 @@ function paintValue(styles, fill) {
 }
 
 // paint 引用 -> 首个可用的 CSS 色值/渐变串
-function resolvePaint(styles, ref) {
+function resolvePaint(styles: any, ref: any) {
   const v = paintValue(styles, ref)
   if (Array.isArray(v)) return v[0] ?? null
   if (typeof v === 'string') return v
@@ -40,12 +40,12 @@ function resolvePaint(styles, ref) {
 }
 
 // PATH 节点 -> 可内联 SVG 字符串
-function svgOf(node, styles) {
+function svgOf(node: any, styles: any) {
   const ls = node.layoutStyle || {}
   const w = round(ls.width ?? 0)
   const h = round(ls.height ?? 0)
   const paths = (node.path || [])
-    .map((p) => {
+    .map((p: any) => {
       const fill = resolvePaint(styles, p.fill)
       return `<path d="${p.data}"${fill ? ` fill="${fill}"` : ''}/>`
     })
@@ -54,7 +54,7 @@ function svgOf(node, styles) {
 }
 
 // ---- 维度 1: 节点类别 kind ----
-function kindOf(node, styles) {
+function kindOf(node: any, styles: any) {
   const type = node.type
   const kids = node.children || []
   const paint = paintValue(styles, node.fill)
@@ -77,7 +77,7 @@ function kindOf(node, styles) {
 }
 
 // ---- 维度 2: 尺寸语义 sizing(内容撑开 vs 固定) ----
-function sizingOf(node) {
+function sizingOf(node: any) {
   const fi = node.flexContainerInfo
   if (fi && (fi.mainSizing || fi.crossSizing)) {
     const main = fi.mainSizing === 'auto' || fi.mainSizing === 'fixed' ? fi.mainSizing : null
@@ -108,7 +108,7 @@ function sizingOf(node) {
 }
 
 // ---- 维度 3: 定位语义 position(流式 vs 绝对) ----
-function positionOf(node, parentAbsolute) {
+function positionOf(node: any, parentAbsolute: any) {
   const ls = node.layoutStyle || {}
   if (ls.rotate) {
     return { position: 'absolute', confidence: 1, reason: [`rotation=${round(ls.rotate)}≠0,旋转装饰层`] }
@@ -120,7 +120,7 @@ function positionOf(node, parentAbsolute) {
 }
 
 // ---- 维度 4: 间距语义 spacing(容器级) ----
-function spacingOf(node) {
+function spacingOf(node: any) {
   const fi = node.flexContainerInfo
   const ls = node.layoutStyle || {}
   const kids = node.children || []
@@ -147,7 +147,7 @@ function spacingOf(node) {
   if (kids.length > 0 && ls.width && ls.height && (!fi || !fi.flexDirection)) {
     const inferred = inferLayout({
       container: { width: ls.width, height: ls.height },
-      children: kids.map((k) => {
+      children: kids.map((k: any) => {
         const kls = k.layoutStyle || {}
         return {
           id: k.id,
@@ -178,7 +178,7 @@ function spacingOf(node) {
 // ---- 切图决策 ----
 // export-png: 位图内容(IMAGE 类型 / url()/data:image 填充),需导出切图
 // code-draw: 纯色或简单渐变填充,代码可直接绘制,不切图
-function renderDecisionOf(node, styles) {
+function renderDecisionOf(node: any, styles: any) {
   const paintStr = JSON.stringify(paintValue(styles, node.fill) ?? '')
   if (/url\(|data:image|\.png|\.jpe?g|\.webp/i.test(paintStr)) {
     return { render: 'export-png', reason: '位图内容,需导出切图' }
@@ -192,14 +192,14 @@ function renderDecisionOf(node, styles) {
 }
 
 // 切图建议文件名: 语义名 + 画板后缀(窄板 _phone / 宽板 _tablet)
-function suggestAssetFileName(node, canvasWidth) {
+function suggestAssetFileName(node: any, canvasWidth: any) {
   const base = (node.name || 'image').replace(/[^\w\u4e00-\u9fa5-]+/g, '_').replace(/^_+|_+$/g, '') || 'image'
   const suffix = canvasWidth != null && canvasWidth >= 700 ? '_tablet' : '_phone'
   return `${base}${suffix}.png`
 }
 
 // ---- 资产收集 ----
-function collectAssets(node, styles, assets, canvasWidth) {
+function collectAssets(node: any, styles: any, assets: any, canvasWidth: any) {
   const ls = node.layoutStyle || {}
   if (node.type === 'PATH' || Array.isArray(node.path)) {
     assets.inlineSvg.push({
@@ -226,7 +226,7 @@ function collectAssets(node, styles, assets, canvasWidth) {
     assets.texts.push({
       id: node.id,
       name: node.name || '',
-      text: node.text.map((t) => t.text ?? '').join(''),
+      text: node.text.map((t: any) => t.text ?? '').join(''),
     })
   }
 }
@@ -234,9 +234,9 @@ function collectAssets(node, styles, assets, canvasWidth) {
 // ---- 重复结构(repeater)标注 ----
 // 预扫描原始节点树: 同父兄弟中连续同构(结构指纹相同)且数量>=3 的段标记为重复组。
 // 组内首项携带 repeat 元数据,其余项仅标 repeatItem,供 codegen 生成列表循环。
-function buildRepeatMap(nodes, map) {
+function buildRepeatMap(nodes: any, map: any) {
   for (const group of detectRepeatGroups(nodes || [])) {
-    group.itemIds.forEach((id, idx) => {
+    group.itemIds.forEach((id: any, idx: any) => {
       if (id == null) return
       if (idx === 0) {
         map.set(id, {
@@ -260,7 +260,7 @@ function buildRepeatMap(nodes, map) {
 }
 
 // ---- 递归分类 ----
-function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth) {
+function classifyNode(node: any, styles: any, stats: any, assets: any, parentAbsolute: any, unresolved: any, repeatMap: any, parentAbsY: any, canvasWidth: any) {
   const ls = node.layoutStyle || {}
   const kids = node.children || []
   const absY = (parentAbsY || 0) + (ls.relativeY || 0)
@@ -335,14 +335,14 @@ function classifyNode(node, styles, stats, assets, parentAbsolute, unresolved, r
   return entry
 }
 
-function classifyNodes(nodes, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth) {
+function classifyNodes(nodes: any, styles: any, stats: any, assets: any, parentAbsolute: any, unresolved: any, repeatMap: any, parentAbsY: any, canvasWidth: any) {
   const out = []
   for (const n of nodes || []) out.push(classifyNode(n, styles, stats, assets, parentAbsolute, unresolved, repeatMap, parentAbsY, canvasWidth))
   return out
 }
 
 // ---- 入口 ----
-export function classifyDsl(dsl) {
+export function classifyDsl(dsl: any) {
   const styles = (dsl && dsl.styles) || {}
   const nodes = dsl && dsl.nodes ? dsl.nodes : Array.isArray(dsl) ? dsl : []
   const stats = {
@@ -364,7 +364,7 @@ export function classifyDsl(dsl) {
   const repeatMap = new Map()
   buildRepeatMap(nodes, repeatMap)
   // 画板宽度: 顶层节点最大宽度(用于切图 _phone/_tablet 命名建议)
-  const canvasWidth = nodes.reduce((m, n) => Math.max(m, (n.layoutStyle && n.layoutStyle.width) || 0), 0) || null
+  const canvasWidth = nodes.reduce((m: any, n: any) => Math.max(m, (n.layoutStyle && n.layoutStyle.width) || 0), 0) || null
   const tree = classifyNodes(nodes, styles, stats, assets, false, unresolved, repeatMap, 0, canvasWidth)
   return { stats, tree, assets, unresolved }
 }
