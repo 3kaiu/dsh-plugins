@@ -14,7 +14,7 @@ export const DEFAULT_COOLDOWN_MS = 60000;
 export const PERSIST_DEBOUNCE_MS = 5000;
 
 /** 会话 → 稳定不透明的 bucket key(sha256 哈希,避免明文 session id 外泄) */
-export function sessionKeyOf(sessionId, projectId) {
+export function sessionKeyOf(sessionId: any, projectId: any) {
   if (sessionId === void 0 || sessionId === null)
     return `ses_${createHash("sha256").update(`default:${projectId}`).digest("base64url").slice(0, 16)}`;
   return `ses_${createHash("sha256").update(String(sessionId)).digest("base64url").slice(0, 16)}`;
@@ -36,7 +36,7 @@ export class QuotaTracker {
   projectId = `proj_${randomBytes(12).toString("base64url")}`;
   lastPersistAt = 0;
 
-  constructor(file, now = () => Date.now()) {
+  constructor(file: any, now: any = () => Date.now()) {
     this.file = file;
     this.now = now;
     try {
@@ -59,27 +59,27 @@ export class QuotaTracker {
     }
   }
 
-  configurePacing(pacing) {
+  configurePacing(pacing: any) {
     if (pacing !== void 0 && pacing !== null) this.pacing = pacing;
   }
 
   /** 记录一次请求时间戳(供 pacing 预算使用) */
-  markRequest(sessionId) {
+  markRequest(sessionId: any) {
     const bucket = this.sessionBucket(sessionId);
     const now = this.now();
     const window = Math.max(this.pacing.windowMs * 2, 1000);
-    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
+    const times = (this.requestTimes[bucket] ?? []).filter((t: any) => now - t < window);
     times.push(now);
     this.requestTimes[bucket] = times;
   }
 
   /** 发送前需要等待的毫秒数(0 = 立即发送);滚动窗口预算,避免触发服务端限流 */
-  pacingDelayMs(sessionId) {
+  pacingDelayMs(sessionId: any) {
     if (!this.pacing.enabled) return 0;
     const bucket = this.sessionBucket(sessionId);
     const now = this.now();
     const window = Math.max(this.pacing.windowMs, 1000);
-    const times = (this.requestTimes[bucket] ?? []).filter((t) => now - t < window);
+    const times = (this.requestTimes[bucket] ?? []).filter((t: any) => now - t < window);
     if (times.length < this.pacing.maxRequests) return 0;
     const oldest = Math.min(...times);
     const wait = Math.min(oldest + window - now, this.pacing.maxHoldMs);
@@ -91,7 +91,7 @@ export class QuotaTracker {
     this.persist(true);
   }
 
-  recordUsage(usage) {
+  recordUsage(usage: any) {
     this.requests += 1;
     this.totalInputTokens += usage.inputTokens;
     this.totalOutputTokens += usage.outputTokens;
@@ -100,7 +100,7 @@ export class QuotaTracker {
     this.persist();
   }
 
-  recordLimit(retryAfterMs, sessionId) {
+  recordLimit(retryAfterMs: any, sessionId: any) {
     this.rateLimited += 1;
     this.sessionCooldowns[this.sessionBucket(sessionId)] =
       this.now() + (retryAfterMs ?? DEFAULT_COOLDOWN_MS);
@@ -108,13 +108,13 @@ export class QuotaTracker {
     this.persist(true);
   }
 
-  cooldownRemainingMs(sessionId) {
+  cooldownRemainingMs(sessionId: any) {
     this.pruneCooldowns();
     const until = this.sessionCooldowns[this.sessionBucket(sessionId)] ?? 0;
     return Math.max(0, until - this.now());
   }
 
-  sessionBucket(sessionId) {
+  sessionBucket(sessionId: any) {
     if (sessionId === void 0 || sessionId === null) return "default";
     return sessionKeyOf(sessionId, this.projectId);
   }
@@ -167,6 +167,6 @@ export class QuotaTracker {
   }
 }
 
-export function createQuotaTracker(file, now) {
+export function createQuotaTracker(file: any, now: any) {
   return new QuotaTracker(file, now);
 }

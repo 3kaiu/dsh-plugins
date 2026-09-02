@@ -5,14 +5,14 @@
 // DOM 自带层级，无需容器吸收/带状聚类，只需按树聚合 + 每容器 computed 直读或 inferLayout 几何验证
 import { inferLayout } from './layout-core.ts'
 
-function parsePx(v) {
+function parsePx(v: any) {
   if (v == null) return null
   const n = parseFloat(String(v))
   return Number.isFinite(n) ? n : null
 }
 
 // "12px" | "12px 24px" | "12px 24px 12px 24px" -> [top,right,bottom,left]
-function parsePadding(pad) {
+function parsePadding(pad: any) {
   if (!pad) return null
   const parts = String(pad).trim().split(/\s+/).map(parsePx).filter(n => n != null)
   if (parts.length === 0) return null
@@ -22,7 +22,7 @@ function parsePadding(pad) {
   return [parts[0], parts[1], parts[2], parts[3]]
 }
 
-function parseGap(gap) {
+function parseGap(gap: any) {
   if (gap == null) return null
   // gap may be "8px" or "8px 16px" (row-gap column-gap)
   const parts = String(gap).trim().split(/\s+/).map(parsePx).filter(n => n != null)
@@ -30,7 +30,7 @@ function parseGap(gap) {
   return parts[0]
 }
 
-function isVisibleNode(n) {
+function isVisibleNode(n: any) {
   if (n.visible === false) return false
   const r = n.rect
   if (!r) return false
@@ -40,7 +40,7 @@ function isVisibleNode(n) {
   return true
 }
 
-function suggestName(node, inferred) {
+function suggestName(node: any, inferred: any) {
   const text = node.text?.trim()?.slice(0, 24)
   if (text) return text
   if (inferred?.position === 'absolute') return 'absolute-layer'
@@ -49,7 +49,7 @@ function suggestName(node, inferred) {
   return node.tag || node.role || 'layer'
 }
 
-function domNodeToInternal(node, parentRect, tolerance, counter = { n: 0 }) {
+function domNodeToInternal(node: any, parentRect: any, tolerance: any, counter: any = { n: 0 }) {
   const rect = node.rect || {}
   const x = (rect.x ?? rect.left ?? 0) - (parentRect ? (parentRect.x ?? 0) : 0)
   const y = (rect.y ?? rect.top ?? 0) - (parentRect ? (parentRect.y ?? 0) : 0)
@@ -57,7 +57,7 @@ function domNodeToInternal(node, parentRect, tolerance, counter = { n: 0 }) {
   const h = rect.h ?? rect.height ?? 0
   const filteredChildren = (node.children || []).filter(isVisibleNode)
   // 递归
-  const internalChildren = filteredChildren.map(c => domNodeToInternal(c, rect, tolerance, counter))
+  const internalChildren = filteredChildren.map((c: any) => domNodeToInternal(c, rect, tolerance, counter))
   // computed 直读
   const comp = node.computed || {}
   let layout = null
@@ -90,7 +90,7 @@ function domNodeToInternal(node, parentRect, tolerance, counter = { n: 0 }) {
       suggestedName = suggestName(node, layout)
     } else {
       // 几何反推
-      const kidsForInfer = internalChildren.map(c => ({
+      const kidsForInfer = internalChildren.map((c: any) => ({
         id: c.id,
         x: c.rectRelative.x,
         y: c.rectRelative.y,
@@ -120,14 +120,14 @@ function domNodeToInternal(node, parentRect, tolerance, counter = { n: 0 }) {
   }
 }
 
-function buildTree(domDump, tolerance) {
+function buildTree(domDump: any, tolerance: any) {
   const viewport = domDump.viewport || { width: 1440, height: 900 }
   const roots = Array.isArray(domDump.tree) ? domDump.tree : Array.isArray(domDump) ? domDump : [domDump]
   const visibleRoots = roots.filter(isVisibleNode)
-  const tree = visibleRoots.map(n => domNodeToInternal(n, null, tolerance))
+  const tree = visibleRoots.map((n: any) => domNodeToInternal(n, null, tolerance))
   // stats
   let total = 0, containers = 0, flex = 0, absolute = 0
-  const walk = (nodes) => {
+  const walk = (nodes: any) => {
     for (const n of nodes) {
       total++
       if (n.children && n.children.length > 0) {
@@ -143,11 +143,11 @@ function buildTree(domDump, tolerance) {
 }
 
 // 对外：输入 domDump，输出与 annotate_layout 同构的标注树
-export function domToLayout(domDump, opts: Record<string, any> = {}) {
+export function domToLayout(domDump: any, opts: Record<string, any> = {}) {
   const tolerance = opts.tolerance ?? 2
   const result = buildTree(domDump, tolerance)
   // 转换为 annotate 风格的输出：每节点 {id,name,type,layout,suggestedName,children}
-  const mapNode = (n) => ({
+  const mapNode = (n: any) => ({
     id: n.id,
     name: n.name,
     type: n.type,

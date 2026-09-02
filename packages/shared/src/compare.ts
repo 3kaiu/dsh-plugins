@@ -3,9 +3,9 @@
 // 输入：两棵标注树（annotate_layout / domToLayout 输出的 tree 数组）
 // 输出：{ matched, missing, extra, mismatches: [{path,prop,expected,actual,delta,priority,confidence}] }
 
-function flatten(tree, parentPath = '') {
+function flatten(tree: any, parentPath: any = '') {
   const out = []
-  const walk = (nodes, base) => {
+  const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
       out.push({ node: n, path })
@@ -16,7 +16,7 @@ function flatten(tree, parentPath = '') {
   return out
 }
 
-function layoutProps(layout) {
+function layoutProps(layout: any) {
   if (!layout) return {}
   return {
     flexDirection: layout.flexDirection ?? null,
@@ -27,13 +27,13 @@ function layoutProps(layout) {
   }
 }
 
-function priorityForProp(prop) {
+function priorityForProp(prop: any) {
   if (prop === 'flexDirection' || prop === 'missing' || prop === 'extra') return 'P0'
   if (prop === 'gap' || prop === 'padding' || prop === 'alignItems' || prop === 'justifyContent') return 'P1'
   return 'P2'
 }
 
-function deltaValue(expected, actual) {
+function deltaValue(expected: any, actual: any) {
   if (typeof expected === 'number' && typeof actual === 'number') return Math.abs(expected - actual)
   if (Array.isArray(expected) && Array.isArray(actual)) {
     const len = Math.max(expected.length, actual.length)
@@ -44,7 +44,7 @@ function deltaValue(expected, actual) {
   return expected === actual ? 0 : 1
 }
 
-function scoreMatch(refNode, implNode) {
+function scoreMatch(refNode: any, implNode: any) {
   let s = 0
   if (refNode.name && implNode.name && refNode.name === implNode.name) s += 10
   if (refNode.type && implNode.type && refNode.type === implNode.type) s += 2

@@ -4,9 +4,9 @@
 // 排版档案形态：{ typographyProfile: { heading:{family,size,weight,lineHeight,letterSpacing,color}, body:{...} } }
 // 但最通用的输入是两棵树，自动提取文本节点的排版属性后逐对比较
 
-function flatten(tree, parentPath = '') {
+function flatten(tree: any, parentPath: any = '') {
   const out = []
-  const walk = (nodes, base) => {
+  const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
       out.push({ node: n, path })
@@ -17,7 +17,7 @@ function flatten(tree, parentPath = '') {
   return out
 }
 
-function getTypography(n) {
+function getTypography(n: any) {
   // 优先 computed，其次 font / textColor 等 DSL 字段
   const comp = n.computed || {}
   const font = n.font || {}
@@ -32,11 +32,11 @@ function getTypography(n) {
   const lsRaw = comp.letterSpacing ?? font.letterSpacing ?? null
   const letterSpacing = lsRaw != null ? parseFloat(String(lsRaw)) : null
   const color = comp.color || n.textColor || n._color || null
-  const text = (n.text || (Array.isArray(n.rowTexts) ? n.rowTexts.map(t => typeof t === 'string' ? t : t.text).join('') : '') || '').trim()
+  const text = (n.text || (Array.isArray(n.rowTexts) ? n.rowTexts.map((t: any) => typeof t === 'string' ? t : t.text).join('') : '') || '').trim()
   return { family, size, weight, lineHeight, letterSpacing, color, text }
 }
 
-function isTextNode(n) {
+function isTextNode(n: any) {
   const t = getTypography(n)
   if (t.text) return true
   if (n.type === 'TEXT') return true
@@ -44,7 +44,7 @@ function isTextNode(n) {
   return false
 }
 
-function scoreMatch(refNode, implNode) {
+function scoreMatch(refNode: any, implNode: any) {
   let s = 0
   if (refNode.name && implNode.name && refNode.name === implNode.name) s += 10
   const rt = getTypography(refNode).text
@@ -55,7 +55,7 @@ function scoreMatch(refNode, implNode) {
   return s
 }
 
-function normalizeWeight(w) {
+function normalizeWeight(w: any) {
   if (w == null) return null
   const map = { thin: 100, extralight: 200, light: 300, regular: 400, normal: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800, black: 900 }
   const key = String(w).toLowerCase().trim()
@@ -64,7 +64,7 @@ function normalizeWeight(w) {
   return Number.isFinite(n) ? n : null
 }
 
-function colorDelta(c1, c2) {
+function colorDelta(c1: any, c2: any) {
   if (!c1 || !c2) return null
   if (String(c1).toLowerCase() === String(c2).toLowerCase()) return 0
   return 1 // 颜色不等记 1，后续 palette 层用 ΔE 精算

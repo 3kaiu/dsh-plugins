@@ -10,7 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 
-function readFileSafe(p) {
+function readFileSafe(p: any) {
   try {
     if (!fs.existsSync(p)) return null
     return fs.readFileSync(p)

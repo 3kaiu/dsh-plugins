@@ -5,7 +5,7 @@
 
 // --- 颜色解析 ---
 
-function parseColor(str) {
+function parseColor(str: any) {
   if (!str || typeof str !== 'string') return null
   const s = str.trim().toLowerCase()
   // hex #rgb #rrggbb #rrggbbaa
@@ -31,7 +31,7 @@ function toHex({ r, g, b }) {
 
 // --- RGB -> XYZ -> Lab ---
 
-function srgbToLinear(c) {
+function srgbToLinear(c: any) {
   const cs = c / 255
   return cs <= 0.04045 ? cs / 12.92 : Math.pow((cs + 0.055) / 1.055, 2.4)
 }
@@ -46,17 +46,17 @@ function rgbToXyz({ r, g, b }) {
 function xyzToLab({ X, Y, Z }) {
   const Xn=95.047, Yn=100, Zn=108.883
   const xr=X/Xn, yr=Y/Yn, zr=Z/Zn
-  const f = t => t > 0.008856 ? Math.pow(t, 1/3) : (7.787*t + 16/116)
+  const f = (t: any) => t > 0.008856 ? Math.pow(t, 1/3) : (7.787*t + 16/116)
   const fx=f(xr), fy=f(yr), fz=f(zr)
   const L = 116*fy - 16
   const a = 500*(fx - fy)
   const b = 200*(fy - fz)
   return { L, a, b }
 }
-function rgbToLab(rgb) { return xyzToLab(rgbToXyz(rgb)) }
+function rgbToLab(rgb: any) { return xyzToLab(rgbToXyz(rgb)) }
 
 // --- CIEDE2000 (简化实现，参考 Sharma et al. 2005) ---
-function ciede2000(lab1, lab2) {
+function ciede2000(lab1: any, lab2: any) {
   const L1=lab1.L, a1=lab1.a, b1=lab1.b
   const L2=lab2.L, a2=lab2.a, b2=lab2.b
   const kL=1, kC=1, kH=1
@@ -99,14 +99,14 @@ function ciede2000(lab1, lab2) {
   return Math.sqrt(termL*termL + termC*termC + termH*termH + Rt*termC*termH)
 }
 
-function deltaE(rgb1, rgb2) {
+function deltaE(rgb1: any, rgb2: any) {
   const lab1=rgbToLab(rgb1), lab2=rgbToLab(rgb2)
   return ciede2000(lab1, lab2)
 }
 
 // --- 提取调色板 ---
 
-function collectColorsFromNode(n, out) {
+function collectColorsFromNode(n: any, out: any) {
   const candidates = []
   if (n._color) candidates.push(n._color)
   if (n.fill) candidates.push(n.fill)
@@ -133,9 +133,9 @@ function collectColorsFromNode(n, out) {
   }
 }
 
-function extractPaletteFromTree(tree) {
+function extractPaletteFromTree(tree: any) {
   const colors = []
-  const walk = (nodes) => {
+  const walk = (nodes: any) => {
     for (const n of nodes) {
       collectColorsFromNode(n, colors)
       if (n.children) walk(n.children)
@@ -153,7 +153,7 @@ function extractPaletteFromTree(tree) {
   return sorted
 }
 
-function expandPalette(palette) {
+function expandPalette(palette: any) {
   // palette 可能是 hex 字符串数组 或 {color,count} 或 styles 映射
   if (!palette) return []
   if (Array.isArray(palette)) {
