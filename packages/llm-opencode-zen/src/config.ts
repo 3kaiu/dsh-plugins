@@ -26,7 +26,7 @@ const BASE_URL_ENV = "OPENCODE_ZEN_BASE_URL";
 // 任意主机值即构成凭据/对话外泄面（settings 与 env 双入口都可注入）。
 // 策略：必须为合法 URL；仅允许 https（本地回环放行 http 便于开发代理）；
 // 拒绝携带 userinfo（user:pass@）的 URL —— 凭据不得经由 URL 夹带。
-export function assertSafeBaseURL(value) {
+export function assertSafeBaseURL(value: any): string {
   const raw = String(value ?? "");
   let parsed;
   try {
@@ -91,9 +91,9 @@ const Config = z.object({
   userAgent: z.string().default(OPENCODE_UA),
 });
 
-function resolveModels(models) {
+function resolveModels(models: any) {
   const seen = new Set();
-  return (models ?? []).map((model) => {
+  return (models ?? []).map((model: any) => {
     if (model.id.length === 0) throw new Error("llm-opencode-zen: catalog model ids must be non-empty");
     if (model.name !== void 0 && model.name.length === 0)
       throw new Error(`llm-opencode-zen: catalog model "${model.id}" has an empty name`);
@@ -114,7 +114,7 @@ function resolveModels(models) {
   });
 }
 
-function resolveAdapterOptions(config, environment) {
+function resolveAdapterOptions(config: any, environment: any) {
   if (config.thinking === "disabled" && config.reasoningEffort !== void 0 && config.reasoningEffort !== "off")
     throw new Error("llm-opencode-zen: only reasoningEffort \"off\" can be configured when thinking is disabled");
   if (config.defaultContextWindow !== void 0 && (!Number.isInteger(config.defaultContextWindow) || config.defaultContextWindow <= 0))

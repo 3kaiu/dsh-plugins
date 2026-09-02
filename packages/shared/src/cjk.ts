@@ -11,6 +11,6 @@
 export const CJK_WIDE_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F]/
 
 /** 文本是否含 CJK 全角字符(排版宽度/分词估算/字体回退判定用) */
-export function isCjkText(s) {
+export function isCjkText(s: any) {
   return CJK_WIDE_RE.test(String(s ?? ''))
 }

@@ -4,13 +4,13 @@ const MODELS_DEV_PROVIDER = "opencode";
 const DEFAULT_CATALOG_REFRESH_MS = 3600000;
 const CATALOG_ERROR_TTL_MS = 60000;
 
-async function fetchJson(url, headers) {
+async function fetchJson(url: string, headers: any) {
   const response = await fetch(url, { headers });
   if (!response.ok) throw new Error(`HTTP ${response.status} ${url}`);
   return response.json();
 }
 
-function toCatalogEntry(id, meta) {
+function toCatalogEntry(id: string, meta: any) {
   return {
     id,
     name: meta.name ?? id,
@@ -22,25 +22,25 @@ function toCatalogEntry(id, meta) {
   };
 }
 
-function orderCatalog(models, preferredModel) {
-  const indexed = models.map((model, index) => ({ model, index }));
-  indexed.sort((a, b) => {
+function orderCatalog(models: any[], preferredModel: any) {
+  const indexed = models.map((model: any, index: number) => ({ model, index }));
+  indexed.sort((a: any, b: any) => {
     if (a.model.id === preferredModel && b.model.id !== preferredModel) return -1;
     if (b.model.id === preferredModel && a.model.id !== preferredModel) return 1;
     if ((a.model.deprecated ?? false) !== (b.model.deprecated ?? false))
       return a.model.deprecated ? 1 : -1;
     return a.index - b.index;
   });
-  return indexed.map((entry) => entry.model);
+  return indexed.map((entry: any) => entry.model);
 }
 
-async function fetchFreeModels(baseURL, apiKey) {
+async function fetchFreeModels(baseURL: string, apiKey: string) {
   assertSafeBaseURL(baseURL); // 目录请求同样携带 Bearer key，使用点处校验
   const [live, meta] = await Promise.all([
     fetchJson(`${baseURL}/models`, { Authorization: `Bearer ${apiKey}` }),
     fetchJson(MODELS_DEV_URL, {}),
   ]);
-  const servedIds = new Set((live?.data ?? []).map((entry) => entry?.id).filter(Boolean));
+  const servedIds = new Set((live?.data ?? []).map((entry: any) => entry?.id).filter(Boolean));
   const metas: Record<string, any> = meta?.[MODELS_DEV_PROVIDER]?.models ?? {};
   const models = Object.entries(metas)
     .filter(([id, m]) => servedIds.has(id) && Number(m?.cost?.input) === 0 && Number(m?.cost?.output) === 0)
@@ -55,7 +55,7 @@ function resetCatalogCache() {
   catalogCache.clear();
 }
 
-async function freeModelCatalog(baseURL, apiKey, refreshMs) {
+async function freeModelCatalog(baseURL: string, apiKey: string, refreshMs: number) {
   const now = Date.now();
   const hit = catalogCache.get(baseURL);
   if (hit !== void 0) {

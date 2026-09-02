@@ -1,11 +1,11 @@
 import { LlmError, contentHasImage } from "@deepseek-ai/dsh-llm";
 
-function reasoningEffort(effort) {
+function reasoningEffort(effort: any) {
   if (effort === "off" || effort === "low" || effort === "high" || effort === "max") return effort;
   throw new LlmError(`OpenCode Zen does not support reasoning effort "${effort}"`, "UNSUPPORTED_REASONING_EFFORT");
 }
 
-function resolveThinking(options, defaults) {
+function resolveThinking(options: any, defaults: any) {
   if (options.purpose === "session-title") return "off";
   const effort = options.reasoningEffort === void 0 ? defaults.reasoningEffort : reasoningEffort(options.reasoningEffort);
   if (defaults.thinking === "disabled" && effort !== void 0 && effort !== "off")
@@ -13,19 +13,19 @@ function resolveThinking(options, defaults) {
   return effort;
 }
 
-function flattenText(blocks) {
-  return blocks.filter((b) => b.type === "text").map((b) => b.text).join("");
+function flattenText(blocks: any) {
+  return blocks.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
 }
 
-function assertTextOnly(blocks) {
+function assertTextOnly(blocks: any) {
   if (contentHasImage(blocks))
     throw new LlmError("The OpenCode Zen adapter does not support image content.", "UNSUPPORTED_CONTENT");
 }
 
-function serializeAssistant(message) {
+function serializeAssistant(message: any) {
   const text = flattenText(message.content);
-  const reasoning = message.content.filter((b) => b.type === "reasoning").map((b) => b.text).join("");
-  const toolCalls = message.content.filter((b) => b.type === "tool-call").map((b) => ({
+  const reasoning = message.content.filter((b: any) => b.type === "reasoning").map((b: any) => b.text).join("");
+  const toolCalls = message.content.filter((b: any) => b.type === "tool-call").map((b: any) => ({
     id: b.id,
     type: "function",
     function: { name: b.name, arguments: b.arguments },
@@ -38,7 +38,7 @@ function serializeAssistant(message) {
   };
 }
 
-function serializeMessages(messages) {
+function serializeMessages(messages: any[]) {
   const wire = [];
   for (const message of messages) {
     assertTextOnly(message.content);
@@ -50,7 +50,7 @@ function serializeMessages(messages) {
       wire.push(serializeAssistant(message));
       continue;
     }
-    const toolResults = message.content.filter((b) => b.type === "tool-result");
+    const toolResults = message.content.filter((b: any) => b.type === "tool-result");
     const text = flattenText(message.content);
     if (text.length > 0 || toolResults.length === 0)
       wire.push({ role: "user", content: text });
@@ -64,9 +64,9 @@ function serializeMessages(messages) {
   return wire;
 }
 
-function serializeTools(tools) {
+function serializeTools(tools: any) {
   if (tools === void 0 || tools.length === 0) return void 0;
-  return tools.map((tool) => ({
+  return tools.map((tool: any) => ({
     type: "function",
     function: {
       name: tool.name,
@@ -76,7 +76,7 @@ function serializeTools(tools) {
   }));
 }
 
-function buildWireRequest(messages, options, tools, reasoning) {
+function buildWireRequest(messages: any[], options: any, tools: any, reasoning: any) {
   const maxTokens = options.purpose === "session-title"
     ? Math.min(options.maxTokens, 64)
     : options.maxTokens;

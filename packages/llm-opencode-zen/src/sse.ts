@@ -5,7 +5,7 @@ const DONE = "[DONE]";
 const STREAM_IDLE_TIMEOUT_CODE = "STREAM_IDLE_TIMEOUT";
 const MAX_REQUEST_ATTEMPTS = 2;
 
-async function* parseSse(stream, onComment) {
+async function* parseSse(stream: any, onComment: any) {
   const events = stream
     .pipeThrough(new TextDecoderStream())
     .pipeThrough(new EventSourceParserStream({ onComment }));
@@ -16,7 +16,7 @@ async function* parseSse(stream, onComment) {
   throw new LlmError("SSE stream ended without [DONE]", "STREAM_CLOSED");
 }
 
-function mapFinishReason(reason) {
+function mapFinishReason(reason: any) {
   switch (reason) {
     case "stop": return { kind: "stop" };
     case "tool_calls": return { kind: "tool-calls" };
@@ -31,7 +31,7 @@ function mapFinishReason(reason) {
   }
 }
 
-function mapUsage(usage) {
+function mapUsage(usage: any) {
   const cacheRead = usage.prompt_tokens_details?.cached_tokens ?? usage.prompt_cache_hit_tokens;
   const reasoning = usage.completion_tokens_details?.reasoning_tokens;
   return {
@@ -44,7 +44,7 @@ function mapUsage(usage) {
 
 const TOOL_ARGS_MALFORMED_CODE = "TOOL_ARGS_MALFORMED";
 
-function repairByClosure(text) {
+function repairByClosure(text: string) {
   let result = "";
   let inString = false;
   let escaped = false;
@@ -90,7 +90,7 @@ function repairByClosure(text) {
   }
 }
 
-function firstCompleteValue(text) {
+function firstCompleteValue(text: string) {
   const start = text.search(/[{[]/);
   if (start < 0) return { ok: false, text };
   let inString = false;
@@ -133,7 +133,7 @@ function firstCompleteValue(text) {
   return { ok: false, text };
 }
 
-function repairToolArguments(text) {
+function repairToolArguments(text: string) {
   try {
     JSON.parse(text);
     return { ok: true, text };
@@ -153,20 +153,20 @@ function repairToolArguments(text) {
   return { ok: false, text };
 }
 
-function isCjkChar(ch) {
+function isCjkChar(ch: string) {
   // 区间与 @3kaiu/dsh-plugin-kit cjk.CJK_WIDE_RE 正典保持一致(llm 刻意不依赖 kit, 独立内联)。
   // 2026-08-29 修复: 原 [3400-4DBF]+[4E00-9FFF] 漏假名(3040-30FF)/兼容表意(F900-FAFF)/
   // 全角形式(FF00-FFEF)/CJK 标点(3000-303F), 中日韩混合文本的 token 估算系统性偏低。
   const code = ch.codePointAt(0);
   return (
-    (code >= 0x2e80 && code <= 0x9fff) ||
-    (code >= 0xf900 && code <= 0xfaff) ||
-    (code >= 0xff00 && code <= 0xffef) ||
-    (code >= 0x3000 && code <= 0x303f)
+    (code! >= 0x2e80 && code! <= 0x9fff) ||
+    (code! >= 0xf900 && code! <= 0xfaff) ||
+    (code! >= 0xff00 && code! <= 0xffef) ||
+    (code! >= 0x3000 && code! <= 0x303f)
   );
 }
 
-function estimateCharsToTokens(text) {
+function estimateCharsToTokens(text: string) {
   let cjk = 0;
   for (const ch of text) {
     if (isCjkChar(ch)) cjk += 1;
@@ -174,7 +174,7 @@ function estimateCharsToTokens(text) {
   return cjk + Math.floor((text.length - cjk) / 4);
 }
 
-function estimateUsage(inputText, outputText, reasoningText) {
+function estimateUsage(inputText: any, outputText: any, reasoningText: any) {
   const usage: { inputTokens: number; outputTokens: number; reasoningTokens?: number } = {
     inputTokens: estimateCharsToTokens(inputText),
     outputTokens: estimateCharsToTokens(outputText),
@@ -184,7 +184,7 @@ function estimateUsage(inputText, outputText, reasoningText) {
   return usage;
 }
 
-function closeBlock(block) {
+function closeBlock(block: any) {
   switch (block.kind) {
     case "text": return { type: "text", text: block.text };
     case "reasoning": return { type: "reasoning", text: block.text };
@@ -198,17 +198,17 @@ function closeBlock(block) {
 }
 
 // estimateInput 是惰性估算闭包(() => number), 由 requestStream 传 `() => estimateInputText(messages)`
-async function* translate(events, context: { estimateInput?: (() => number) | null } = {}) {
+async function* translate(events: any, context: { estimateInput?: (() => number) | null } = {}) {
   const { estimateInput = null } = context;
   let nextIndex = 0;
-  let textBlock;
-  let reasoningBlock;
+  let textBlock: any;
+  let reasoningBlock: any;
   const toolBlocks = new Map();
-  const order = [];
+  const order: any[] = [];
   let pendingFinish;
   let pendingUsage;
 
-  const open = (kind) => {
+  const open = (kind: any) => {
     const block = { index: nextIndex++, kind, text: "" };
     order.push(block);
     return block;

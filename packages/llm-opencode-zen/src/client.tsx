@@ -11,7 +11,7 @@ import { createElement as h, useCallback, useEffect, useState } from "react";
 const LOCALE_NS = "llm-opencode-zen-ui";
 
 //#region RPC 通道
-async function rpc(method, args = {}) {
+async function rpc(method: string, args = {}) {
   const body = {
     type: "client-request",
     rpcId: crypto.randomUUID(),
@@ -102,18 +102,18 @@ const okStyle = {
 } as const;
 //#endregion
 
-function formatTokens(n) {
+function formatTokens(n: any) {
   if (n === void 0 || n === null) return "?";
   return n >= 1000 ? `${Math.round(n / 1000)}K` : String(n);
 }
 
 export function ZenModelsTab() {
-  const [models, setModels] = useState([]);
-  const [checked, setChecked] = useState({});
-  const [mode, setMode] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [okNote, setOkNote] = useState("");
+  const [models, setModels] = useState<any[]>([]);
+  const [checked, setChecked] = useState<any>({});
+  const [mode, setMode] = useState<any>(null);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [okNote, setOkNote] = useState<string>("");
 
   const fetchList = useCallback(async () => {
     setBusy(true);
@@ -124,12 +124,12 @@ export function ZenModelsTab() {
       setModels(result.models ?? []);
       setMode(result.catalogMode ?? null);
       const all = {};
-      for (const m of result.models ?? []) all[m.id] = true;
+      for (const m of result.models ?? []) (all as any)[m.id] = true;
       setChecked(all);
       if ((result.models ?? []).length === 0)
         setError("目录为空:免费模型拉取失败或网络不可用,可检查后重试");
     } catch (e) {
-      setError(String(e?.message ?? e));
+      setError(String((e as any)?.message ?? e));
     } finally {
       setBusy(false);
     }
@@ -148,7 +148,7 @@ export function ZenModelsTab() {
       setOkNote(`已写入 ${result.applied} 个免费模型到配置(catalog=custom),配置卡已刷新`);
       setMode("custom");
     } catch (e) {
-      setError(String(e?.message ?? e));
+      setError(String((e as any)?.message ?? e));
     } finally {
       setBusy(false);
     }
@@ -175,7 +175,7 @@ export function ZenModelsTab() {
           h("input", {
             type: "checkbox",
             checked: checked[m.id] === true,
-            onChange: (ev) => setChecked((prev) => ({ ...prev, [m.id]: ev.target.checked })),
+            onChange: (ev) => setChecked((prev: any) => ({ ...prev, [m.id]: ev.target.checked })),
           }),
           h("span", { style: idStyle }, m.id),
           m.deprecated && h("span", { style: noteStyle }, "deprecated"),
@@ -194,7 +194,7 @@ export function ZenModelsTab() {
 // (与官方「模型」「插件」同级的 settings.section slot,左侧导航直接可见)
 export const inject = ["slots", "locale"];
 
-export function apply(ctx) {
+export function apply(ctx: any) {
   ctx.effect(
     () =>
       ctx.locale.register(LOCALE_NS, {

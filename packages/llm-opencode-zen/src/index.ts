@@ -45,10 +45,10 @@ import {
   resolveAdapterOptions, assertSafeBaseURL } from "./config.ts";
 
 //#region telemetry
-const DSH_HOME = process.env.DSH_HOME?.length > 0 ? process.env.DSH_HOME : join(homedir(), ".dsh");
+const DSH_HOME = process.env.DSH_HOME!?.length > 0 ? process.env.DSH_HOME! : join(homedir(), ".dsh");
 // DSH_QUOTA_FILE 可覆盖 usage 文件路径(测试隔离 / 多实例部署)
 const QUOTA_FILE =
-  process.env.DSH_QUOTA_FILE?.length > 0 ? process.env.DSH_QUOTA_FILE : join(DSH_HOME, "storages", "llm-opencode-zen-usage.json");
+  process.env.DSH_QUOTA_FILE!?.length > 0 ? process.env.DSH_QUOTA_FILE! : join(DSH_HOME!, "storages", "llm-opencode-zen-usage.json");
 
 const quota = new QuotaTracker(QUOTA_FILE);
 
@@ -56,7 +56,7 @@ const quota = new QuotaTracker(QUOTA_FILE);
 //#endregion
 
 //#region adapter
-function providerRetryAfterMs(header) {
+function providerRetryAfterMs(header: any) {
   if (!header) return void 0;
   const delay = Number(header);
   if (Number.isFinite(delay) && delay > 0) return delay * 1000;
@@ -71,7 +71,7 @@ function providerRetryAfterMs(header) {
 //
 // ⚠️ 脆弱性声明: 见 config.ts 的 OPENCODE_UA 定义；此处复用导入的常量。
 
-function formatDuration(ms, locale = "zh") {
+function formatDuration(ms: any, locale = "zh") {
   if (!Number.isFinite(ms) || ms <= 0) return locale === "en" ? "shortly" : "稍后";
   const totalSeconds = Math.ceil(ms / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -94,7 +94,7 @@ function formatDuration(ms, locale = "zh") {
   return parts.length > 0 ? parts.join(" ") : "1 分钟以内";
 }
 
-function rateLimitMessage(ms, locale, apiKeyEnv) {
+function rateLimitMessage(ms: any, locale: any, apiKeyEnv: any) {
   const wait = formatDuration(ms, locale);
   if (locale === "en") {
     return `OpenCode Zen free quota exhausted; rate-limited for about ${wait}. Set env ${apiKeyEnv} for a higher quota.`;
@@ -102,12 +102,12 @@ function rateLimitMessage(ms, locale, apiKeyEnv) {
   return `OpenCode Zen 免费额度已用尽，当前处于限流状态，约 ${wait} 后可恢复使用；如需更高额度，可设置环境变量 ${apiKeyEnv}`;
 }
 
-function requestId(headers) {
+function requestId(headers: any) {
   const value = headers.get("x-request-id") ?? headers.get("x-opencode-request-id");
   return value === null || value === void 0 || value.length === 0 ? void 0 : ProviderRequestId(value);
 }
 
-function httpErrorCode(status, error) {
+function httpErrorCode(status: any, error: any) {
   if (status === 401 || status === 403) return "AUTH";
   if (status === 402) return QUOTA_EXCEEDED_CODE;
   if (status === 429) return "RATE_LIMITED";
@@ -120,14 +120,14 @@ function httpErrorCode(status, error) {
 // dsh-llm 错误谓词契约：入参是"provider error 的 code/type/message 拼接成的一个字符串"。
 // 这里把解析出的 JSON error 对象摊平成该字符串；直接传对象会让 RegExp.test
 // 永远命中 "[object Object]"，上下文超限等错误将被误分类为 PROVIDER_ERROR。
-function providerErrorDetail(error) {
+function providerErrorDetail(error: any) {
   if (error == null) return "";
   if (typeof error === "string") return error;
   if (typeof error !== "object") return String(error);
   return [error.code, error.type, error.message].filter((v) => v != null).join(" ");
 }
 
-function opencodeHeaders(sessionId, userAgent, projectId) {
+function opencodeHeaders(sessionId: any, userAgent: any, projectId: any) {
   return {
     "user-agent": userAgent,
     "x-opencode-client": "cli",
@@ -137,15 +137,15 @@ function opencodeHeaders(sessionId, userAgent, projectId) {
   };
 }
 
-function estimateInputText(messages) {
-  return messages.map((message) => [
+function estimateInputText(messages: any) {
+  return messages.map((message: any) => [
     typeof message.content === "string" ? message.content : "",
     message.reasoning_content ?? "",
-    ...(message.tool_calls ?? []).map((call) => call.function?.arguments ?? ""),
+    ...(message.tool_calls ?? []).map((call: any) => call.function?.arguments ?? ""),
   ].join("")).join("\n");
 }
 
-function modelInfo(provider, model) {
+function modelInfo(provider: any, model: any) {
   return {
     provider,
     id: model.id,
@@ -158,19 +158,19 @@ function modelInfo(provider, model) {
 class OpenCodeZenAdapter extends LlmAdapter {
   config;
   semaphore;
-  constructor(config, semaphore) {
+  constructor(config: any, semaphore: any) {
     super();
     this.config = config;
     this.semaphore = semaphore;
   }
 
-  providerRetryPolicy(_provider) {
+  providerRetryPolicy(_provider: any) {
     return this.config.options().retryPolicy;
   }
 
   // 解析当前生效的模型目录:custom = 配置的静态目录;auto = 动态拉取免费模型,
   // 拉取失败(离线/源不可用)时回退到静态目录并告警一次。
-  async catalogModels(settings) {
+  async catalogModels(settings: any) {
     if (settings.catalog !== "auto") return settings.models;
     try {
       const apiKey = await this.config.resolveApiKey(settings);
@@ -184,18 +184,19 @@ class OpenCodeZenAdapter extends LlmAdapter {
     }
   }
 
-  async findModel(settings, modelId) {
+  async findModel(settings: any, modelId: any) {
     const models = await this.catalogModels(settings);
-    return models.find((entry) => entry.id === modelId);
+    return models.find((entry: any) => entry.id === modelId);
   }
 
-  async listModels(provider) {
+  async listModels(provider: any) {
     const settings = this.config.options();
     const models = orderCatalog(await this.catalogModels(settings), settings.defaultModel);
     return Promise.resolve(models.map((model) => modelInfo(provider, model)));
   }
 
-  async resolveModel(provider, model, _signal) {
+  // @ts-ignore - override with compatible any signature
+  override async resolveModel(provider: any, model: any, _signal: any) {
     const connection = this.config.options();
     const configured = await this.findModel(connection, model);
     const contextWindow = configured?.contextWindow ?? connection.defaultContextWindow;
@@ -232,7 +233,7 @@ class OpenCodeZenAdapter extends LlmAdapter {
     });
   }
 
-  async *requestStream(options, connection, apiKey, payload, watchdog, effort, estimateInput) {
+  async *requestStream(options: any, connection: any, apiKey: any, payload: any, watchdog: any, effort: any, estimateInput: any) {
     quota.markRequest(options.sessionId);
     const headers = {
       "Content-Type": "application/json",
@@ -300,7 +301,8 @@ class OpenCodeZenAdapter extends LlmAdapter {
     yield* translate(chunks, { estimateInput });
   }
 
-  async *stream(options) {
+  // @ts-ignore - override with compatible any signature
+  override async *stream(options: any) {
     const settings = this.config.options();
     // 请求时再校验：settings 可被 replace 动态改写；未设时回退公共端点
     // （connection 后续用于 `${baseURL}/chat/completions` 拼接，undefined 会产生非法请求 URL）
@@ -393,13 +395,13 @@ class OpenCodeZenAdapter extends LlmAdapter {
             if (code === "RATE_LIMITED") {
               // 429 = 服务端判定该 IP/项目已限流，降 effort 重试不会解除限流，
               // 反而白打一次请求并可能加重限流。直接记录冷却并抛出。
-              quota.recordLimit(error.failure?.providerRetryAfterMs, options.sessionId);
+              quota.recordLimit(((error as any).failure?.providerRetryAfterMs), options.sessionId);
               throw error;
             }
             if (code === QUOTA_EXCEEDED_CODE) {
               // 402 = 免费额度耗尽（Payment Required）。同样记录冷却避免连续白打，
               // 让外层 retryPolicy 等待冷却后重试整轮。
-              quota.recordLimit(error.failure?.providerRetryAfterMs, options.sessionId);
+              quota.recordLimit(((error as any).failure?.providerRetryAfterMs), options.sessionId);
               quota.recordQuotaExceeded();
               throw error;
             }
@@ -436,10 +438,10 @@ class OpenCodeZenAdapter extends LlmAdapter {
 //     (catalog=custom + models 全量字段,走 schema 校验/持久化/变更广播,
 //      浏览器端配置卡即时刷新,无需重启)
 // 注意:SRC 描述符从方法源码解析参数名,此文件构建时禁止 minify。
-let activeAdapter = null;
+let activeAdapter: any = null;
 
 class ZenModelsGateway extends TypertRemoteService {
-  constructor(ctx) {
+  constructor(ctx: any) {
     super(ctx, "zenModels");
   }
 
@@ -463,7 +465,7 @@ class ZenModelsGateway extends TypertRemoteService {
   }
 
   @Remote("applyFree")
-  async applyFree(models) {
+  async applyFree(models: any) {
     if (!Array.isArray(models) || models.length === 0)
       throw new Error("请至少选择一个模型");
     if (activeAdapter === null) throw new Error("llm-opencode-zen adapter is not ready");
@@ -484,7 +486,8 @@ class ZenModelsGateway extends TypertRemoteService {
       };
     });
     // 官方写回通道:schema 校验 + yaml 持久化 + revision 广播(浏览器配置卡即时刷新)
-    await this.ctx.get("settings").update(NS, {
+    // @ts-ignore - ctx is guaranteed to exist
+    await this.ctx!!.get("settings").update(NS, {
       catalog: "custom",
       ...(settings.defaultModel !== void 0 && section.some((m) => m.id === settings.defaultModel)
         ? {}
@@ -498,10 +501,10 @@ class ZenModelsGateway extends TypertRemoteService {
 //#endregion
 
 //#region plugin registration
-function apply(ctx, config) {
+function apply(ctx: any, config: any) {
   let current = () => config;
-  let lastRaw;
-  let lastGood;
+  let lastRaw: any;
+  let lastGood: any;
 
   const options = () => {
     const raw = current();
@@ -521,7 +524,7 @@ function apply(ctx, config) {
   };
   options();
 
-  const resolveApiKey = async (connection) => {
+  const resolveApiKey = async (connection: any) => {
     const ref = connection.apiKeyEnv;
     const credentials = ctx.get("credentials");
     if (credentials !== void 0) {
@@ -539,7 +542,7 @@ function apply(ctx, config) {
   const adapter = new OpenCodeZenAdapter({
     options,
     resolveApiKey,
-    warn: (message, cause) => {
+    warn: (message: string, cause: any) => {
       ctx.logger.warn(message);
       if (cause !== void 0) ctx.logger.warn(cause);
     },
