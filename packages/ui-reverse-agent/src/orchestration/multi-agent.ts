@@ -14,9 +14,9 @@ export function classifyByExpert(mismatches: any) {
     const prop = m.prop || m.property || ''
     let assigned = false
     for (const [key, exp] of Object.entries(EXPERTS)) {
-      if (exp.props.includes(prop)) { byExpert[key].push(m); assigned = true; break }
+      if (exp.props.includes(prop)) { (byExpert as any)[key].push(m); assigned = true; break }
     }
-    if (!assigned) byExpert.unknown.push(m)
+    if (!assigned) (byExpert as any).unknown.push(m)
   }
   return byExpert
 }
@@ -37,7 +37,7 @@ export function mergeExpertResults(results: any) {
   // results: [{expert, score, changes}]
   const totalScore = results.reduce((a: any, r: any) => a + (r.score?.total ?? 0), 0) / (results.length || 1)
   const allChanges = results.flatMap((r: any) => r.changes || [])
-  const byExpert = {}
-  for (const r of results) byExpert[r.expert] = r
+  const byExpert: any = {}
+  for (const r of results) (byExpert as any)[r.expert] = r
   return { totalScore: Math.round(totalScore*1000)/1000, byExpert, allChanges, summary: `${results.length} experts merged S ${Math.round(totalScore*1000)/1000}` }
 }

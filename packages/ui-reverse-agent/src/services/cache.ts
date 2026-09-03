@@ -11,7 +11,7 @@ export function hashOf(obj: any) {
   return createHash('md5').update(s).digest('hex').slice(0, 8)
 }
 
-export function cacheKey({ kind, dslHash, viewport, state, tolerance }) {
+export function cacheKey({ kind, dslHash, viewport, state, tolerance }: any) {
   const vp = typeof viewport === 'string' ? viewport : `${viewport?.width}x${viewport?.height}`
   return `${kind}:${dslHash}:${vp}:${state || 'default'}:t${tolerance ?? 2}`
 }

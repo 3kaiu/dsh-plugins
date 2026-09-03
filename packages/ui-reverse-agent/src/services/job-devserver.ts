@@ -21,7 +21,7 @@ function detectTerminal(ctx: any) {
 export class JobDevServer {
   // JS 动态字段风格: 构造器内赋值
   opts;
-  ctx;
+  ctx: any;
   inner;
   jobId = null;
   mode = 'raw';
@@ -61,7 +61,7 @@ export class JobDevServer {
       const port = this.opts.port || await this.inner.detectPort()
       this.inner.url = `http://localhost:${port}`
       this.inner.port = port
-      await this.inner.waitForHealth(this.inner.url, timeoutMs)
+      await this.inner.waitForHealth(this.inner.url, timeoutMs, 3)
       return { url: this.inner.url, pid: null, jobId: this.jobId, mode: 'job' }
     } catch (e) {
       // Jobs 启动失败则回退 raw

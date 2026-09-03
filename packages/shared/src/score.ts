@@ -61,7 +61,7 @@ function weightedTotal(layers: any) {
   let sum = 0, wsum = 0
   for (const k of ['struct','geom','pixel','type','color']) {
     const v = layers[k]
-    if (typeof v === 'number') { sum += v * (W[k] ?? 0); wsum += (W[k] ?? 0) }
+    if (typeof v === 'number') { sum += v * ((W as any)[k] ?? 0); wsum += ((W as any)[k] ?? 0) }
   }
   if (wsum === 0) return 0
   return sum / wsum * (Object.keys(W).length / (Object.keys(W).length)) // wsum 已为 1，简化
@@ -101,7 +101,7 @@ export function scoreReport({
   } else if (present.length < 5) {
     // 部分层缺失：按已有权重归一
     let sum = 0, wsum = 0
-    for (const [k,v] of present) { sum += v * (W[k] ?? 0); wsum += (W[k] ?? 0) }
+    for (const [k,v] of present) { sum += v * ((W as any)[k] ?? 0); wsum += ((W as any)[k] ?? 0) }
     total = wsum > 0 ? sum / wsum : 0
   } else {
     total = weightedTotal(layers)

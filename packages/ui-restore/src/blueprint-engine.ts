@@ -13,7 +13,7 @@ import { measurerInfo, predictTextLayout } from './text-metrics.ts'
 import { verifyLayoutTruth } from './yoga-truth.ts'
 import { resolveDesignScale, applyDesignScale } from './scale.ts'
 
-function reverseInferSemanticLayout({ canvas, nodes = [] }) {
+function reverseInferSemanticLayout({ canvas, nodes = [] }: any) {
   if (!canvas || nodes.length === 0) return { root: null, tree: [], backgrounds: [], floatings: [], gridInfo: null, structuredTree: [] };
   const cw = canvas.width;
   const ch = canvas.height;
@@ -129,7 +129,7 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
         };
         // 逐对间距: 行距不均匀时平均值会产生累积漂移(真值引擎可检出),
         // 非均匀 -> 输出 spacing 数组精确编码每一行间距; 均匀 -> 单一 gap
-        const pairGaps = [];
+        const pairGaps: any[] = [];
         for (let i = 1; i < sortedTexts.length; i++) {
           const prev = sortedTexts[i - 1];
           const cur = sortedTexts[i];
@@ -202,10 +202,10 @@ function reverseInferSemanticLayout({ canvas, nodes = [] }) {
  * 过滤 0px 极细线、NaN/null、重叠重复幽灵图层 (Ghost Layers)、负尺寸异常
  * 防御性展平: 嵌套树输入自动转为扁平绝对坐标(契约要求扁平, 嵌套直传曾静默丢子树)
  */
-function sanitizeDslNodes(nodes = [], canvas = { width: 375, height: 812 }) {
+function sanitizeDslNodes(nodes: any[] = [], canvas: any = { width: 375, height: 812 }) {
   if (!Array.isArray(nodes)) return [];
   // 展平: 子树相对坐标逐层累加为绝对坐标; 扁平输入(children 缺失/空)原样通过
-  const flatNodes = [];
+  const flatNodes: any[] = [];
   const walkFlat = (n: any, ox: any, oy: any, parentObj: any) => {
     if (!n || typeof n !== 'object') return;
     const ls = n.layoutStyle || {};
@@ -293,7 +293,7 @@ function neutralLayoutOf(layoutInfo: Record<string, any> = {}, exactStyles: Reco
  * 输出为技术栈中立规范: 布局/视觉全部是纯数据, 代码生成由下游按目标栈完成
  * ============================================================================
  */
-function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null }) {
+function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null }: any) {
   // 0. 倍率归一(@2x/@3x 画板 → @1x 逻辑像素): 必须在推理前做 ——
   //    管线全部容差(TOL/带聚类/胶囊几何)按逻辑像素标定, 事后缩放蓝图会语义失配。
   //    归一实际发生时, canvas.scale 记录溯源事实({factor, source, confidence?})。
@@ -307,7 +307,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
       width: round1((canvas.width || 0) * f),
       height: round1((canvas.height || 0) * f),
     };
-    scaleMeta = { factor: resolvedScale.factor, source: resolvedScale.source };
+    scaleMeta = { factor: resolvedScale.factor, source: resolvedScale.source, confidence: undefined as any };
     if (resolvedScale.source === 'inferred') scaleMeta.confidence = resolvedScale.confidence;
   }
 
@@ -517,7 +517,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
   const { tree: blueprintTreeOut, pageShell } = buildPageShell(blueprintTree);
 
   // 4. 全局回验门禁: 蓝图树 vs 清洗后原节点逐 id 比对绝对几何
-  let diffReport: any = autoHealingLayoutDiff(cleanNodes, [...blueprintTree, ...floatingsBlueprint]);
+  let diffReport: any = autoHealingLayoutDiff(cleanNodes, [...blueprintTree, ...floatingsBlueprint] as any);
 
   // 4.5 回验驱动降级: delta>2px 的子树不再信任其 flex 指令,
   // 责任容器(position 漂移)降级 absolute/Stack,尺寸漂移保持 directive 但标注供下游警惕
@@ -551,7 +551,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
       const kids = Array.isArray(bp.children) ? bp.children : [];
       if (badIds.has(bp.id) && (ly.role === "row" || ly.role === "column") && kids.length >= 2 && typeof ly.gap === "number") {
         const isRow = ly.role === "row";
-        const pairs = [];
+        const pairs: any[] = [];
         let ok = true;
         for (let i = 1; i < kids.length; i++) {
           const p = kids[i - 1].bounds, c = kids[i].bounds;
@@ -645,7 +645,7 @@ function generateCodeBlueprint({ canvas, nodes = [], styles = null, scale = null
  * @param {object} styles dsl.styles 引用表
  * @param {Set} exemptIds 不参与比对的 id(如背景层, 蓝图中单独输出)
  */
-function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<string, any> = {}, exemptIds = new Set()) {
+function verifyStyleConservation(originalNodes: any[] = [], roots: any[] = [], styles: Record<string, any> = {}, exemptIds: any = new Set()) {
   const origMap = new Map();
   for (const n of originalNodes) if (n && n.id) origMap.set(n.id, n);
   const bpMap = new Map();
@@ -653,10 +653,10 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
   roots.forEach(walk);
 
   // 树完整性: 原 id 未出现在蓝图(且非豁免) → 丢失
-  const missingIds = [];
+  const missingIds: any[] = [];
   for (const [id] of origMap) if (!bpMap.has(id) && !exemptIds.has(id)) missingIds.push(id);
 
-  const offenders = [];
+  const offenders: any[] = [];
   let checkedFacts = 0;
   const expect = (id: any, field: any, ok: any) => { checkedFacts++; if (!ok) offenders.push({ id, field }); };
   for (const [id, orig] of origMap) {
@@ -681,7 +681,7 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
   }
 
   offenders.sort((a: any, b: any) => a.field.localeCompare(b.field) || String(a.id).localeCompare(String(b.id)));
-  const lostByField = {};
+  const lostByField: Record<string, any> = {};
   for (const o of offenders) lostByField[o.field] = (lostByField[o.field] || 0) + 1;
   const totalLost = offenders.length + missingIds.length;
   return {
@@ -699,7 +699,7 @@ function verifyStyleConservation(originalNodes = [], roots = [], styles: Record<
  * 5. 端侧自愈与 1:1 误差闭环门禁 (autoHealingLayoutDiff)
  * 在算法输出前，在内存中自发比对每个图元绝对坐标，最大误差 <= 0.04px
  */
-function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
+function autoHealingLayoutDiff(originalNodes: any[] = [], reconstructedTree: any[] = []) {
   const originalMap = new Map();
   for (const n of originalNodes) {
     if (n && n.id) originalMap.set(n.id, n);
@@ -718,7 +718,7 @@ function autoHealingLayoutDiff(originalNodes = [], reconstructedTree = []) {
   let maxDelta = 0;
   let checkedCount = 0;
   let pixelPerfectCount = 0;
-  const offenders = [];
+  const offenders: any[] = [];
   // 扫描时携带祖先链, 用于定位责任容器与推断漂移原因
   function scan(node: any, ancestors: any) {
     if (node && node.id && originalMap.has(node.id)) {

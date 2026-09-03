@@ -2,7 +2,7 @@
 // animation — 动效还原与校验（transition/animation 的提取与对比）
 
 export function extractAnimations(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       const anim = n.computed?.animation || n.effect?.animation || n.style?.animation

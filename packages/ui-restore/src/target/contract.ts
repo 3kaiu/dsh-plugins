@@ -70,10 +70,10 @@ const FLEX_MIN_CONFIDENCE = 0.7
 
 /** 蓝图(子树) + Target Profile → Generation Plan */
 export function planGeneration(bp: any, profile: any, opts: Record<string, any> = {}) {
-  const items = []
+  const items: any[] = []
   const fontMap = new Map()
-  const unresolvedAssets = []
-  const warnings = []
+  const unresolvedAssets: any[] = []
+  const warnings: any[] = []
   const flexMin = opts.flexMinConfidence ?? FLEX_MIN_CONFIDENCE
 
   const decide = (n: any) => {

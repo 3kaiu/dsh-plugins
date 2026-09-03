@@ -8,8 +8,8 @@
 
 // 避免循环依赖，classify/annotate 由调用方注入（见 blueprintFromDsl 参数）
 
-function extractTypographyProfile(tree: any) {
-  const profile = {}
+function extractTypographyProfile(tree: any): Record<string, any> {
+  const profile: Record<string, any> = {}
   const walk = (nodes: any, path='') => {
     for (const n of nodes) {
       const p = path ? `${path} > ${n.name||n.id}` : (n.name||n.id)
@@ -44,10 +44,10 @@ function extractTypographyProfile(tree: any) {
 }
 
 function extractAssets(tree: any, styles: any) {
-  const images=[]
-  const icons=[]
-  const fonts=new Set()
-  const texts=[]
+  const images: any[] = []
+  const icons: any[] = []
+  const fonts=new Set<string>()
+  const texts: any[] = []
   const walk=(nodes: any)=>{
     for(const n of nodes){
       if (n.type==='TEXT' && n.text) texts.push(n.text)
@@ -77,7 +77,7 @@ function extractAssets(tree: any, styles: any) {
 
 function buildRegions(tree: any, canvas: any) {
   // 按角色/P 优先级切 region（简化：顶层容器即 region）
-  const regions=[]
+  const regions: any[] = []
   const roots = Array.isArray(tree)?tree:[tree]
   for (const n of roots) {
     const role = n.role || n.name || 'region'
@@ -121,7 +121,7 @@ export function buildBlueprint({ canvas, tree, styles, dsl, domDump, screenshotP
 }
 
 function extractPalette(tree: any, styles: any) {
-  const colors=[]
+  const colors: string[] = []
   const walk=(nodes: any)=>{
     for(const n of nodes){
       const cands=[n._color, n.textColor, n.fill, n.computed?.color, n.computed?.backgroundColor, n.computed?.borderColor]
@@ -144,7 +144,7 @@ function extractPalette(tree: any, styles: any) {
 }
 
 // 供 ui-reverse-agent 感知层复用的 DSL→标注树封装
-export async function blueprintFromDsl({ dsl, classifyFn, annotateFn, cleanFn }) {
+export async function blueprintFromDsl({ dsl, classifyFn, annotateFn, cleanFn }: { dsl: any; classifyFn: any; annotateFn: any; cleanFn: any }) {
   // 尝试多种 DSL 形态
   // 1. 已为标准 DSL（有 root）
   if (dsl?.root) {

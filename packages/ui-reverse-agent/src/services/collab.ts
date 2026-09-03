@@ -1,7 +1,7 @@
 'use strict'
 // collab — 协同（设计师/开发者实时评论与批注）
 
-export function createComment({ author, text, path, pos }) {
+export function createComment({ author, text, path, pos }: any) {
   return { id: `c-${Date.now().toString(36)}`, author, text, path, pos, at: new Date().toISOString(), resolved: false }
 }
 

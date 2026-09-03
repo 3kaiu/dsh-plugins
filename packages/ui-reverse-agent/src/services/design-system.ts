@@ -33,7 +33,7 @@ export function generateDesignSystem(blueprint: any) {
 }
 
 function collectSpacings(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       if (n.computed?.gap) out.push(parseInt(n.computed.gap,10))

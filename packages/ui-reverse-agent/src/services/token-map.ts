@@ -39,15 +39,15 @@ export function mapTypographyTokens(blueprintProfile: Record<string, any>, proje
  * @param deltaEThreshold 3（doc13 色差阈值）
  */
 export function mapPaletteTokens(blueprintPalette: any, projectPalette = [], deltaEThreshold = 3) {
-  const projHex = projectPalette.map(c => typeof c === 'string' ? c : c.hex)
+  const projHex = projectPalette.map(c => typeof c === 'string' ? c : (c as any).hex)
   const mappings = []
   for (const bp of blueprintPalette) {
-    const hex = bp.hex || bp
+    const hex = (bp as any).hex || bp
     // 用 comparePalette 的 ΔE 计算最近
     let best = null, bestDeltaE = Infinity
     for (const ph of projHex) {
       try {
-        const res = comparePalette({ referencePalette: [hex], implementedPalette: [ph], deltaEThreshold: 100 })
+        const res: any = comparePalette({ referencePalette: [hex], implementedPalette: [ph], deltaEThreshold: 100 } as any)
         // comparePalette 返回 colors[0].deltaE（或 mismatches/extra 兼容）
         const dE = res.colors?.[0]?.deltaE ?? res.mismatches?.[0]?.deltaE ?? res.deltaE ?? 100
         const deltaE = typeof dE === 'number' ? dE : 100

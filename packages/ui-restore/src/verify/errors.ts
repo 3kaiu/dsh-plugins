@@ -50,7 +50,7 @@ export function classifyError(e: any) {
     expected: e.expected ?? null,
     actual: e.actual ?? null,
     confidence: e.confidence ?? 1,
-    repair: REPAIR_STRATEGY[e.category],
+    repair: (REPAIR_STRATEGY as any)[e.category],
   }
 }
 
@@ -90,13 +90,13 @@ export function classifyRegions(regions: any, bp: any) {
 }
 
 function hasSvgSource(n: any) { return Boolean(n.svgResolved || n.svg) }
-function findNode(bp: any, id: any) {
-  const walk = (n: any) => {
+function findNode(bp: any, id: any): any {
+  const walk = (n: any): any => {
     if (!n || typeof n !== 'object') return null
     if (n.id === id) return n
-    for (const c of n.children || []) { const hit = walk(c); if (hit) return hit }
+    for (const c of n.children || []) { const hit: any = walk(c); if (hit) return hit }
     return null
   }
-  for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) { const hit = walk(r); if (hit) return hit }
+  for (const r of [...(bp?.tree || []), ...(bp?.floatings || [])]) { const hit: any = walk(r); if (hit) return hit }
   return null
 }

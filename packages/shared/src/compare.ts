@@ -3,8 +3,8 @@
 // 输入：两棵标注树（annotate_layout / domToLayout 输出的 tree 数组）
 // 输出：{ matched, missing, extra, mismatches: [{path,prop,expected,actual,delta,priority,confidence}] }
 
-function flatten(tree: any, parentPath: any = '') {
-  const out = []
+function flatten(tree: any, parentPath: any = ''): any[] {
+  const out: any[] = []
   const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
@@ -60,7 +60,7 @@ function scoreMatch(refNode: any, implNode: any) {
   return s
 }
 
-export function compareLayouts({ referenceTree, implementedTree }) {
+export function compareLayouts({ referenceTree, implementedTree }: { referenceTree: any; implementedTree: any }) {
   const refFlat = flatten(Array.isArray(referenceTree) ? referenceTree : [referenceTree])
   const implFlat = flatten(Array.isArray(implementedTree) ? implementedTree : [implementedTree])
 
@@ -93,10 +93,10 @@ export function compareLayouts({ referenceTree, implementedTree }) {
 
     // 逐属性比较
     const refL = layoutProps(ref.layout)
-    const implL = layoutProps(best.layout)
-    for (const prop of ['flexDirection', 'gap', 'padding', 'alignItems', 'justifyContent']) {
-      const exp = refL[prop]
-      const act = implL[prop]
+    const implL = layoutProps(best!.layout)
+    for (const prop of ['flexDirection', 'gap', 'padding', 'alignItems', 'justifyContent'] as const) {
+      const exp = (refL as any)[prop]
+      const act = (implL as any)[prop]
       // 两边都 null 视为一致
       if (exp == null && act == null) continue
       const same = JSON.stringify(exp) === JSON.stringify(act)
@@ -114,7 +114,7 @@ export function compareLayouts({ referenceTree, implementedTree }) {
     }
   }
 
-  const extra = []
+  const extra: any[] = []
   implFlat.forEach(({ node: impl, path }, idx) => {
     if (!usedImpl.has(idx)) extra.push({ path, priority: 'P2', reason: 'implemented node not in reference' })
   })

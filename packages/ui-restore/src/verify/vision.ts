@@ -2,6 +2,7 @@
 // 触发条件：确定性验证报「有问题但说不清原因」——即 gate FAIL 但 classifyRegions 置信度低/无候选/全 unmatched
 // 机制：region 成对裁图(真值 vs 渲染) → vision LLM → 语义诊断(类别/描述) 回灌 PatchRequest
 
+// @ts-ignore
 import { PNG } from "pngjs"
 import { decodePng } from "../visual-diff.ts"
 import type { GateResult } from "./gate.ts"

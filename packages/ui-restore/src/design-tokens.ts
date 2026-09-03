@@ -64,7 +64,7 @@ export function extractDesignTokens(blueprint: any, opts: Record<string, any> = 
   const fontSizes = new Collector(), fontWeights = new Collector(), lineHeights = new Collector()
   const radii = new Collector()
   const shadows = new Map() // 序列化签名 -> {value, count}
-  const aliases = []
+  const aliases: any[] = []
 
   const visit = (node: any) => {
     if (!node || typeof node !== "object") return
@@ -105,7 +105,7 @@ export function extractDesignTokens(blueprint: any, opts: Record<string, any> = 
     radius: radii.names("radius"),
   }
   // 组内查找需隔离: 直接用 name 列表建 per-group map
-  const groupMap = (list: any) => new Map(list.map(({ value, token }) => [String(value), token]))
+  const groupMap = (list: any) => new Map(list.map(({ value, token }: any) => [String(value), token]))
   const mTextColor = groupMap(named.textColor), mBgColor = groupMap(named.bgColor)
   const mFontSize = groupMap(named.fontSize), mFontWeight = groupMap(named.fontWeight)
   const mLineHeight = groupMap(named.lineHeight), mRadius = groupMap(named.radius)
@@ -128,8 +128,8 @@ export function extractDesignTokens(blueprint: any, opts: Record<string, any> = 
     delete a._col; delete a._raw; delete a._sig
   }
 
-  const tokens = {}
-  const put = (name: any, def: any) => { tokens[name] = def }
+  const tokens: Record<string, any> = {}
+  const put = (name: any, def: any) => { (tokens as any)[name] = def }
   for (const { value, token } of named.textColor) put(token, { $type: "color", "$value": String(value) })
   for (const { value, token } of named.bgColor) put(token, { $type: "color", "$value": String(value) })
   for (const { value, token } of named.fontSize) put(token, { $type: "dimension", "$value": dim(value) })

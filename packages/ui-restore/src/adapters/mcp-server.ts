@@ -60,7 +60,7 @@ server.tool(
     truth_blocks: z.string().optional().describe('真值文本块清单 json(可选, 与 render_blocks 成对启用块级 blockMatchRate)'),
     render_blocks: z.string().optional().describe('渲染文本块清单 json(可选, 与 truth_blocks 成对; 区域附带 domHints 渲染侧交叉引用)'),
   },
-  async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }) => {
+  async ({ mode, design_path, out_dir, scale, expect_sections, truth_png, render_png, blueprint_path, truth_blocks, render_blocks, session_path }: any) => {
     const sessionAbs = session_path ? confineUnder(session_path) : null;
     const loadSession = () => (sessionAbs ? loadSessionFile(sessionAbs) : null);
     const saveSession = (patch: any) => (sessionAbs ? saveSessionFile(sessionAbs, patch) : null);
@@ -140,7 +140,7 @@ server.tool(
     out_dir: z.string().optional().describe('产物目录(默认设计稿同目录)'),
     scale: z.string().optional().describe('画布倍率归一: 正数(如 2 = @2x 画板)或 auto(启发式检测); 缺省取导出 meta 声明, 否则原样'),
   },
-  async ({ design_path, out_dir, scale }) => {
+  async ({ design_path, out_dir, scale }: any) => {
     // 单一实现(审计收敛): 蓝图构建统一走 pipeline.buildBlueprint
     const designAbs = confineUnder(design_path);
     const { bp, v } = await buildBlueprint(designAbs, { scale: scale ?? undefined });
@@ -170,7 +170,7 @@ server.tool(
     rect: z.string().optional().describe('画布绝对矩形 "x,y,width,height"'),
     ids: z.string().optional().describe('节点 id 列表, 逗号分隔'),
   },
-  async ({ blueprint_path, rect, ids }) => {
+  async ({ blueprint_path, rect, ids }: any) => {
     const bp = readJson(blueprint_path);
     const sel = rect
       ? (() => { const [x, y, width, height] = rect.split(',').map(Number); return { x, y, width, height }; })()
@@ -185,7 +185,7 @@ server.tool(
   'ui_restore_verify',
   '校验蓝图契约(BlueprintSchema v1)并做 Yoga 标准求解真值回验',
   { blueprint_path: z.string() },
-  async ({ blueprint_path }) => {
+  async ({ blueprint_path }: any) => {
     const bp = readJson(blueprint_path);
     const v = validateBlueprint(bp);
     const t = verifyLayoutTruth(bp);
@@ -207,7 +207,7 @@ server.tool(
     render_blocks: z.string().optional(),
     canvas: z.string().optional().describe('WxH, 默认取真值图尺寸'),
   },
-  async ({ truth_png, render_png, blueprint_path, truth_blocks, render_blocks, canvas }) => {
+  async ({ truth_png, render_png, blueprint_path, truth_blocks, render_blocks, canvas }: any) => {
     const pT = readBuf(truth_png), pR = readBuf(render_png);
     const pixel = comparePng(pT, pR);
     const out: Record<string, any> = { pixel: { diffPixels: pixel.diffPixels, diffRatio: pixel.diffRatio } };
@@ -222,7 +222,7 @@ server.tool(
     }
     if (blueprint_path) {
       const bp = readJson(blueprint_path);
-      const leaves = [];
+      const leaves: any[] = [];
       const walk = (n: any) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
       for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
       const regions = diffRegions(pT, pR, { nodes: leaves });
@@ -237,7 +237,7 @@ server.tool(
   'ui_restore_tokens',
   '蓝图 → DTCG 设计 token(颜色/字号/字重/圆角/阴影去重) + 节点别名表',
   { blueprint_path: z.string() },
-  async ({ blueprint_path }) => {
+  async ({ blueprint_path }: any) => {
     const bp = readJson(blueprint_path);
     // 别名表按需全量输出(蓝图内嵌的 designTokens 不含 aliases 防膨胀)
     const dt = extractDesignTokens(bp, { includeAliases: true });
@@ -254,7 +254,7 @@ server.tool(
     styling: z.string().optional().describe('显式覆盖样式方案'),
     framework: z.string().optional().describe('显式覆盖框架'),
   },
-  async ({ project_dir, out_path, styling, framework }) => {
+  async ({ project_dir, out_path, styling, framework }: any) => {
     const { analyzeProject, saveProfile } = await import('../index.ts');
     const projectAbs = confineUnder(project_dir);
     const r = analyzeProject(projectAbs, { overrides: { styling: styling || undefined, framework: framework || undefined } });
@@ -276,7 +276,7 @@ server.tool(
     base_name: z.string().optional().describe('组件名，缺省 Restore'),
     serializer: z.enum(['react','vue','flutter','miniprogram','tailwind','html']).optional().describe('强制 serializer id，缺省按 profile 自动解析；热插拔新增 id 需同步扩展本枚举'),
   },
-  async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }) => {
+  async ({ blueprint_path, project_dir, profile_path, assets_path, out_subdir, base_name, serializer }: any) => {
     const { loadProfile, resolveProfile, planGeneration, resolveAssets, emitPreviewHtml, ensureBuiltins, resolveAdapterAsync } = await import('../index.ts');
     const bp = readJson(blueprint_path);
     const projectAbs = confineUnder(project_dir);
@@ -312,13 +312,13 @@ server.tool(
     assets_path: z.string().optional(),
     pixel_only: z.boolean().optional(),
   },
-  async ({ truth_png, render_png, blueprint_path, assets_path, pixel_only }) => {
+  async ({ truth_png, render_png, blueprint_path, assets_path, pixel_only }: any) => {
     const pT = readBuf(truth_png), pR = readBuf(render_png);
     const pixel = comparePng(pT, pR);
     let regions = null, blueprint = null, contract = null, assets = null;
     if (blueprint_path) {
       blueprint = readJson(blueprint_path);
-      const leaves = [];
+      const leaves: any[] = [];
       const walk = (n: any) => { if (!n || typeof n !== 'object') return; if (!Array.isArray(n.children) || !n.children.length) leaves.push(n); else n.children.forEach(walk); };
       for (const r of [...(blueprint.tree || []), ...(blueprint.floatings || [])]) walk(r);
       regions = diffRegions(pT, pR, { nodes: leaves.map((n: any) => ({ id: n.id, name: n.name || '', text: typeof n.text === 'string' ? n.text : undefined, bounds: n.bounds })) });
@@ -343,13 +343,13 @@ server.tool(
     from_dir: z.string().optional().describe('生成目录，缺省 <project>/restore'),
     on_conflict: z.enum(['rename','skip','overwrite']).optional(),
   },
-  async ({ project_dir, from_dir, on_conflict }) => {
+  async ({ project_dir, from_dir, on_conflict }: any) => {
     const { mergeIntoProject, canMerge } = await import('../index.ts');
     const projectAbs = confineUnder(project_dir);
     const srcDir = from_dir ? confineUnder(from_dir) : path.join(projectAbs, 'restore');
     if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);
     const check = canMerge(projectAbs);
-    const files = [];
+    const files: any[] = [];
     const walk = (dir: any, base = '') => {
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name);

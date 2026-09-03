@@ -29,7 +29,7 @@ const ROTATION_KEY = 'rotation' // 节点带旋转 → 强制 absolute
 /** 机器命名检测: 设计工具自动生成的无语义名(编组 45/矩形 6509/容器 17/蒙版组 2/Frame 328…) */
 const MACHINE_NAME_RE = /^(编组|组|组合|矩形|矩形组|椭圆|直线|路径|蒙版|蒙版组|遮罩|容器|组件|框架|切片|帧|图层|形状|画板|页面|frame|group|rect(?:angle)?|oval|line|path|vector|layer|mask|slice|shape|ellipse|instance|component|section|artboard|canvas)[\s_#\-]*\d*(\s*copy\d*)*$/i
 
-function firstDescendantText(node: any, depth: any = 0) {
+function firstDescendantText(node: any, depth: any = 0): any {
   if (!node || depth > 3) return null
   // text 双形态兼容: 字符串直读; runs 数组拼接(MasterGo 常态)
   const t = typeof node.text === 'string' ? node.text
@@ -37,7 +37,7 @@ function firstDescendantText(node: any, depth: any = 0) {
     : null
   if (t && t.trim()) return t.trim()
   for (const c of Array.isArray(node.children) ? node.children : []) {
-    const t2 = firstDescendantText(c, depth + 1)
+    const t2: any = firstDescendantText(c, depth + 1)
     if (t2) return t2
   }
   return null
@@ -93,7 +93,7 @@ function mode(values: any) {
  * @param {{width:number,height:number}} opts.container
  * @param {Array<{id:string,x:number,y:number,width:number,height:number,rotation?:number}>} opts.children
  */
-function inferLayout({ container, children, tolerance = null, absolutesWhitelist = null }) {
+function inferLayout({ container, children, tolerance = null, absolutesWhitelist = null }: any) {
   const TOL_LOCAL = tolerance != null ? tolerance : TOL
   const cw = container.width
   const ch = container.height
@@ -604,8 +604,8 @@ function extractExactStyles(node: any, styles: Record<string, any> = {}) {
   const fillRaw = resolveFillValue(node, styles)
   if (fillRaw) {
     const parsed = parseNeutralFill(fillRaw)
-    if (parsed.type === 'solid') out.color = parsed.value
-    else out.fill = parsed
+    if (parsed && parsed.type === 'solid') out.color = parsed.value
+    else if (parsed) out.fill = parsed
   }
 
   // 4.6 描边 (MasterGo 平铺字段 strokeColor/strokeWidth/strokeAlign/strokeType; 颜色支持 paint 引用)
@@ -703,7 +703,7 @@ function parseGradientAngle(str: any) {
   const t = String(str).trim().toLowerCase()
   const deg = t.match(/^(-?[0-9.]+)deg$/)
   if (deg) return round1(Number(deg[1]))
-  const dir = { 'to top': 0, 'to right': 90, 'to bottom': 180, 'to left': 270, 'to top right': 45, 'to bottom right': 135, 'to bottom left': 225, 'to top left': 315 }
+  const dir: Record<string, number> = { 'to top': 0, 'to right': 90, 'to bottom': 180, 'to left': 270, 'to top right': 45, 'to bottom right': 135, 'to bottom left': 225, 'to top left': 315 }
   return dir[t] != null ? dir[t] : 180
 }
 
@@ -868,8 +868,8 @@ function pairIconLabels(icons: any, labels: any, tol: any = 40) {
  * @param {Array} opts.nodes 兄弟节点(绝对坐标或 layoutStyle)
  * @returns {{tree:Array, stats:object, warnings:Array}}
  */
-function reconstructHierarchy({ canvas, nodes }) {
-  const warnings = []
+function reconstructHierarchy({ canvas, nodes }: any) {
+  const warnings: any[] = []
   const stats = { total: nodes.length, offCanvas: 0, background: 0, sticker: 0, container: 0, band: 0, row: 0, column: 0, item: 0, section: 0 }
 
   // ---- 0. 归一化 + 分类 ----

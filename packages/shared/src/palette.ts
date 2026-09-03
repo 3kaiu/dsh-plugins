@@ -25,7 +25,7 @@ function parseColor(str: any) {
   return null
 }
 
-function toHex({ r, g, b }) {
+function toHex({ r, g, b }: any) {
   return '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('')
 }
 
@@ -35,7 +35,7 @@ function srgbToLinear(c: any) {
   const cs = c / 255
   return cs <= 0.04045 ? cs / 12.92 : Math.pow((cs + 0.055) / 1.055, 2.4)
 }
-function rgbToXyz({ r, g, b }) {
+function rgbToXyz({ r, g, b }: any) {
   const R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b)
   // sRGB D65
   const X = R * 0.4124564 + G * 0.3575761 + B * 0.1804375
@@ -43,7 +43,7 @@ function rgbToXyz({ r, g, b }) {
   const Z = R * 0.0193339 + G * 0.1191920 + B * 0.9503041
   return { X: X*100, Y: Y*100, Z: Z*100 }
 }
-function xyzToLab({ X, Y, Z }) {
+function xyzToLab({ X, Y, Z }: any) {
   const Xn=95.047, Yn=100, Zn=108.883
   const xr=X/Xn, yr=Y/Yn, zr=Z/Zn
   const f = (t: any) => t > 0.008856 ? Math.pow(t, 1/3) : (7.787*t + 16/116)
@@ -134,7 +134,7 @@ function collectColorsFromNode(n: any, out: any) {
 }
 
 function extractPaletteFromTree(tree: any) {
-  const colors = []
+  const colors: any[] = []
   const walk = (nodes: any) => {
     for (const n of nodes) {
       collectColorsFromNode(n, colors)
@@ -171,13 +171,13 @@ function expandPalette(palette: any) {
   return []
 }
 
-export function comparePalette({ referenceTree, implementedTree, referencePalette, implementedPalette, deltaEThreshold = 3 }) {
+export function comparePalette({ referenceTree, implementedTree, referencePalette, implementedPalette, deltaEThreshold = 3 }: any) {
   let refPal = referencePalette ? expandPalette(referencePalette) : (referenceTree ? expandPalette(extractPaletteFromTree(referenceTree)) : [])
   let implPal = implementedPalette ? expandPalette(implementedPalette) : (implementedTree ? expandPalette(extractPaletteFromTree(implementedTree)) : [])
 
   if (refPal.length === 0 && implPal.length === 0) return { colors: [], stats: { meanDeltaE: 0, maxDeltaE: 0, fails: 0, total:0 } }
   // 若实现侧为空但有参考色，报 missing
-  const colors=[]
+  const colors: any[] = []
   let sum=0, max=0, fails=0
   for (const ref of refPal) {
     let best=null, bestDelta=Infinity

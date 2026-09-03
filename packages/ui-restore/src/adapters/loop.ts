@@ -262,7 +262,7 @@ export function verifyOnce(opts: any) {
   const renderBuf = fs.readFileSync(opts.renderPng)
   const bp = opts.blueprint || (opts.bpPath ? JSON.parse(fs.readFileSync(opts.bpPath, 'utf8')) : null)
   const pixel = comparePng(truthBuf, renderBuf, { threshold: 0.1 })
-  let regions = null
+  let regions: any = null
   if (bp) {
     const leaves = collectLeaves(bp)
     regions = diffRegions(truthBuf, renderBuf, { nodes: leaves, grid: opts.grid, top: opts.top })
@@ -273,7 +273,7 @@ export function verifyOnce(opts: any) {
     const bR = JSON.parse(fs.readFileSync(opts.blocksRender, 'utf8'))
     const [W, H] = [pixel.width, pixel.height]
     blocks = blockMetrics(bT, bR, { designImg: decodePng(truthBuf), renderImg: decodePng(renderBuf), canvasWidth: W, canvasHeight: H })
-    blocks = { blockMatchRate: blocks.blockMatchRate, matchedPairs: blocks.matchedPairs, positionSimilarity: blocks.positionSimilarity, colorSimilarity: blocks.colorSimilarity }
+    blocks = { blockMatchRate: blocks.blockMatchRate, matchedPairs: blocks.matchedPairs, positionSimilarity: blocks.positionSimilarity, colorSimilarity: blocks.colorSimilarity } as any
   }
   const contract = bp ? validateBlueprint(bp) : null
   const gate = evaluateGate({ pixel, regions, blocks, blueprint: bp, contract, assets: opts.assets || null, thresholds: opts.thresholds })
@@ -395,7 +395,7 @@ export async function runConvergeLoop(opts: any) {
             confidence: vd.confidence,
             repair: { firstAction: `Vision诊断: ${vd.detail}` },
             source: 'vision',
-          })
+          } as any)
         }
       } catch (e) {
         // Vision 失败不阻断主流程

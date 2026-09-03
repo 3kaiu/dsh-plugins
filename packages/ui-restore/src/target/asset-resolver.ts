@@ -71,7 +71,7 @@ export function resolveAssets(bp: any, plan: any, opts: Record<string, any> = {}
   let deduped = 0
 
   // image 节点(带 crop/transform 的位图): identity= node.fill.src ?? nodeId
-  const imageNodes = []
+  const imageNodes: any[] = []
   const walk = (n: any) => {
     if (!n || typeof n !== 'object') return
     if (n.fill?.type === 'image') imageNodes.push(n)
@@ -104,7 +104,7 @@ export function resolveAssets(bp: any, plan: any, opts: Record<string, any> = {}
     const hit = idx.svg.get(ua.key)
     if (ua.key && fileByKey.has(`svg:${ua.key}`)) {
       deduped++
-      const prev = assets.find((a: any) => a.kind === 'svg' && a.key === ua.key)
+      const prev: any = assets.find((a: any) => a.kind === 'svg' && a.key === ua.key)
       if (prev) assets.push({ id: ua.nodeId, kind: 'svg', key: ua.key, status: 'resolved', file: prev.file, dedupOf: prev.id, reference: prev.reference, rawSvg: (prev as any).rawSvg || (prev as any).svg, svg: (prev as any).svg || (prev as any).rawSvg })
       continue
     }

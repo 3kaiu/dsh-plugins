@@ -15,9 +15,9 @@ import { round2 } from '../numeric.ts'
  */
 export function restorationChecklist(bp: any) {
   if (!bp || typeof bp !== 'object') return null
-  const texts = []
+  const texts: any[] = []
   const vectorMap = new Map() // svgKey -> {name, ids:Set}
-  const images = []
+  const images: any[] = []
   const walk = (n: any) => {
     if (!n || typeof n !== 'object') return
     if (typeof n.text === 'string' && n.text !== '') {

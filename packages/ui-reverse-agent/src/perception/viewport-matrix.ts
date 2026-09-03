@@ -19,7 +19,7 @@ export const DEFAULT_STATES = ['default', 'hover', 'active', 'disabled']
  * @returns [{viewport, state, key}]
  */
 export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_STATES }: Record<string, any> = {}) {
-  const vps = viewports.map((v: any) => typeof v === 'string' ? { name: v, ...(VIEWPORTS[v] || VIEWPORTS.desktop), nameStr: v } : v)
+  const vps = viewports.map((v: any) => typeof v === 'string' ? { name: v, ...((VIEWPORTS as any)[v] || VIEWPORTS.desktop), nameStr: v } : v)
   const out = []
   for (const vp of vps) {
     for (const st of states) {
@@ -36,12 +36,12 @@ export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_S
  */
 export function aggregateMatrixScores(results: any, { weights = { desktop: 1, tablet: 0.8, mobile: 0.6 } }: Record<string, any> = {}) {
   if (!results.length) return { aggregate: 0, byViewport: {}, worst: null, best: null }
-  const byViewport = {}
+  const byViewport: Record<string, any> = {}
   let weightedSum = 0, weightSum = 0
   let worst = null, best = null
   for (const r of results) {
     const vpName = r.viewport?.name || r.viewport || 'unknown'
-    const w = weights[vpName] ?? 1
+    const w = (weights as any)[vpName] ?? 1
     const total = r.score?.total ?? r.total ?? 0
     if (!byViewport[vpName]) byViewport[vpName] = { scores: [], avg: 0, min: Infinity, max: -Infinity }
     byViewport[vpName].scores.push(total)

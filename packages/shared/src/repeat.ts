@@ -107,7 +107,7 @@ export function detectRepeatGroups(nodes: any, opts: Record<string, any> = {}) {
   const min = opts.min || 3
   const list = nodes || []
   const fps = list.map(structureFingerprint)
-  const groups = []
+  const groups: any[] = []
   let i = 0
   while (i < list.length) {
     let j = i
@@ -169,7 +169,7 @@ export function detectSharedComponents(trees: any, opts: Record<string, any> = {
   })
 
   // 候选: 出现在 >= minSections 个不同 section
-  const candidates = []
+  const candidates: any[] = []
   for (const [fp, instances] of byFp) {
     const sections = [...new Set(instances.map((i: any) => i.sectionIndex))]
     if (sections.length >= minSections) candidates.push({ fp, instances, sections })
@@ -198,7 +198,7 @@ export function detectSharedComponents(trees: any, opts: Record<string, any> = {
       sections: liveSections,
       itemWidth: round(live[0].width || 0),
       itemHeight: round(live[0].height || 0),
-      instances: live.map(({ sectionIndex, id, name, x, y }) => ({ sectionIndex, id, name, x: round(x), y: round(y) })),
+      instances: live.map(({ sectionIndex, id, name, x, y }: any) => ({ sectionIndex, id, name, x: round(x), y: round(y) })),
     })
   }
   return reported
@@ -218,7 +218,7 @@ export function detectSharedComponents(trees: any, opts: Record<string, any> = {
 export function detectSiblingComponentGroups(roots: any, opts: Record<string, any> = {}) {
   const minCount = opts.minCount ?? 2
   const minArea = opts.minArea ?? 64
-  const groups = []
+  const groups: any[] = []
   let seq = 0
   const walk = (nodes: any) => {
     if (!Array.isArray(nodes) || nodes.length < minCount) {

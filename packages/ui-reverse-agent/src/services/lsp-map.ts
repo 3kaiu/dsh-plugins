@@ -24,7 +24,7 @@ export function detectLsp(ctx: any) {
  * @param candidates [{file, snippet, score}] 来自 grep/glob 或 LSP 的候选
  * @returns {component, css, asset, confidence, reason}
  */
-export function mapSingleNode(blueprintNode: any, candidates = []) {
+export function mapSingleNode(blueprintNode: any, candidates: any[] = []) {
   if (!candidates.length) {
     return { blueprintNode, component: null, css: null, asset: null, confidence: 0, reason: 'unmapped — 无候选', status: 'unmapped' }
   }
@@ -72,7 +72,7 @@ export function mapBlueprint(blueprint: any, candidatesByNode = new Map()) {
 }
 
 function flattenBlueprint(tree: any) {
-  const out = []
+  const out: any[] = []
   const walk = (nodes: any) => {
     for (const n of (Array.isArray(nodes) ? nodes : [nodes])) {
       out.push(n)

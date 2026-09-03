@@ -3,7 +3,7 @@
 // 输出：{traceId, spans:[{name,start,end,dur,attrs}]}
 
 export function createTracer(traceId = `ui-${Date.now().toString(36)}`) {
-  const spans = []
+  const spans: any[] = []
   return {
     traceId,
     start(name: any, attrs: Record<string, any> = {}) {

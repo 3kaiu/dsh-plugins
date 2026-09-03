@@ -2,12 +2,12 @@
 // custom-rules — 用户自定义设计系统 lint 规则引擎（Phase2/5 的可扩展校验）
 // 输入：rules [{id, prop, test:(value)=>boolean, message}]，输出：violations
 
-export function defineRule({ id, prop, test, message, severity = 'warning' }) {
+export function defineRule({ id, prop, test, message, severity = 'warning' }: any) {
   return { id, prop, test, message, severity }
 }
 
-export function checkCustomRules({ prop, value, path }, rules = []) {
-  const violations = []
+export function checkCustomRules({ prop, value, path }: any, rules: any[] = []) {
+  const violations: any[] = []
   for (const r of rules) {
     if (r.prop && r.prop !== prop && r.prop !== '*') continue
     try {

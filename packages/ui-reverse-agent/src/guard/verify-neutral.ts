@@ -3,7 +3,7 @@
 // 输入：neutralTree（或 blueprint）+ 实现侧 DOM dump / 截图采样
 // 输出：与 anti_hack_scan 互补的确定性断言（几何/文本命中/溢出/重叠/样式探针）
 
-export function verifyNeutral({ neutral, blueprint, domDump = null, implementedTree, tolerance = 2 }) {
+export function verifyNeutral({ neutral, blueprint, domDump = null, implementedTree, tolerance = 2 }: any) {
   const root = neutral?.root || blueprint?.tree && { children: blueprint.tree } || null
   const canvas = neutral?.meta?.canvas || blueprint?.canvas || { width: 1440, height: 900 }
   const violations = []
@@ -70,7 +70,7 @@ export function verifyNeutral({ neutral, blueprint, domDump = null, implementedT
 }
 
 function flattenNeutral(root: any) {
-  const out = []
+  const out: any[] = []
   function walk(n: any) {
     out.push(n)
     if (n.children) for (const c of n.children) walk(c)
@@ -80,7 +80,7 @@ function flattenNeutral(root: any) {
   return out
 }
 function flattenImpl(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       out.push(n)
@@ -95,7 +95,7 @@ function findClosestByName(nodes: any, name: any) {
   return nodes.find((n: any) => (n.name || n.id) === name) || nodes.find((n: any) => (n.name || '').includes(name) || name.includes(n.name || '')) || null
 }
 function collectTexts(root: any) {
-  const out = []
+  const out: any[] = []
   function walk(n: any) {
     if (n.text) out.push(n.text)
     if (n.children) for (const c of n.children) walk(c)
@@ -104,7 +104,7 @@ function collectTexts(root: any) {
   return out
 }
 function collectImplTexts(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       if (n.text) out.push(n.text)
@@ -115,7 +115,7 @@ function collectImplTexts(tree: any) {
   return out
 }
 function scanOverflow(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any, base: any) {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name||n.id}` : (n.name||n.id)
@@ -130,7 +130,7 @@ function scanOverflow(tree: any) {
   return out
 }
 function scanOverlap(tree: any) {
-  const leaves = []
+  const leaves: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       if (!n.children?.length && n.rect) leaves.push(n)
@@ -138,7 +138,7 @@ function scanOverlap(tree: any) {
     }
   }
   walk(Array.isArray(tree)?tree:[tree])
-  const out = []
+  const out: any[] = []
   for (let i = 0; i < leaves.length; i++) {
     for (let j = i + 1; j < leaves.length; j++) {
       const a = leaves[i], b = leaves[j]

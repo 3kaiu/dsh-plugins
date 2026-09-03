@@ -8,7 +8,7 @@ import { scoreReport } from '../compare/score.ts'
 import { verifyNeutral } from '../guard/verify-neutral.ts'
 import { checkA11y } from '../guard/a11y.ts'
 
-export function runIntegrationFixture({ neutral, implementedTree, expectedScore = 0.96 }) {
+export function runIntegrationFixture({ neutral, implementedTree, expectedScore = 0.96 }: any) {
   const blueprint = neutralToBlueprint(neutral)
   const geom = compareGeometry({ referenceTree: blueprint.tree, implementedTree, tolerance: 2 })
   const score = scoreReport({ struct: 0.9, geom: geom.mismatches.length === 0 ? 1 : 0.9, pixel: 0.9, type: 0.9, color: 0.9 })

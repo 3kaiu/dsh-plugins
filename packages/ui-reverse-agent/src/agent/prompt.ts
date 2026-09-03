@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 // 故 persona 相对 dist 上一级（包根）的 preset/ 目录。
 const PROMPT_FILE = join(dirname(fileURLToPath(import.meta.url)), '..', 'preset', 'ui-reverse', 'prompt.md')
 
-export let PROMPT_TEMPLATE
+export let PROMPT_TEMPLATE: any
 try {
   PROMPT_TEMPLATE = readFileSync(PROMPT_FILE, 'utf8')
 } catch (error) {

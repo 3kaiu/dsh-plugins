@@ -161,7 +161,7 @@ async function main() {
     saveProfile(r.profile, out);
     console.log(`Target Profile → ${out}`);
     for (const k of ['framework', 'language', 'styling', 'build']) {
-      const d = r.profile.decisions[k] || {};
+      const d = (r.profile.decisions as any)[k] || {};
       console.log(`  ${k}: ${d.chosen} (${d.because}, conf=${d.confidence})`);
     }
     console.log(`  assetDir: ${r.profile.assetDir} | componentLibraries: ${r.profile.componentLibraries.join(', ') || '(无)'}`);
@@ -217,7 +217,7 @@ async function main() {
     const check = canMerge(projectDir)
     if (!check.ok) console.log(`! 预检: ${check.reasons.join('; ')}`);
     // 收集 srcDir 下所有文件（递归）
-    const files = []
+    const files: any[] = []
     const walk = (dir: any, base='')=>{
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name)
@@ -227,7 +227,7 @@ async function main() {
       }
     }
     walk(srcDir)
-    const res = mergeIntoProject(projectDir, files, { onConflict: flag(args, 'on-conflict') || 'rename' })
+    const res = mergeIntoProject(projectDir, files, { onConflict: (flag(args, 'on-conflict') || 'rename') as any })
     console.log(`merge → ${res.written.length} 文件: ${res.written.map(w=> `${w.path}(${w.action})`).join(', ')}`)
     if(res.conflicts.length) console.log(`! 冲突 ${res.conflicts.length} 处: ${res.conflicts.map(c=> c.path+':'+c.reason).join('; ')}`)
     if(res.entrySuggestion) console.log(res.entrySuggestion)

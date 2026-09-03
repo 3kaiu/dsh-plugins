@@ -6,9 +6,9 @@
 // 现按 getaddrinfo 解析后全保留段校验, file:// 保留 LFI 防护供本地产物渲染。
 import { resolveRenderTarget } from '@3kaiu/dsh-plugin-kit'
 
-let browserInstance = null
-let contextInstance = null
-let pageInstance = null
+let browserInstance: any = null
+let contextInstance: any = null
+let pageInstance: any = null
 
 async function getPlaywright() {
   try {
@@ -65,12 +65,12 @@ export async function browserViewport({ width, height, dpr }: Record<string, any
   return vp
 }
 
-export async function browserNavigate({ url, signal }) {
+export async function browserNavigate({ url, signal }: any) {
   if (!pageInstance) return { error: 'browser not started', url }
   let safe
   try {
     safe = await resolveRenderTarget(url) // 校验失败直接作为 error 返回, 不触达浏览器
-  } catch (e) {
+  } catch (e: any) {
     return { url, ok: false, error: String(e.message || e) }
   }
   try {
@@ -97,12 +97,12 @@ export async function browserScreenshot({ path: outPath, fullPage = true, select
   }
 }
 
-export async function browserDomDump({ selector = 'body', includeComputed = true, signal }: Record<string, any> = {}) {
+export async function browserDomDump({ selector = 'body', includeComputed = true, signal }: any = {}) {
   if (!pageInstance) return { error: 'browser not started', viewport: { width: 1440, height: 900, dpr: 2 }, tree: [], mock: true }
 
   // 在页面内执行结构化 dump
   try {
-    const dump = await raceAbort(pageInstance.evaluate(({ selector, includeComputed }) => {
+    const dump = await raceAbort(pageInstance.evaluate(({ selector, includeComputed }: any) => {
       let uid = 0 // 每次 dump 的确定性序号：同 DOM 两次 dump 的 id 一致（Math.random 会破坏配对）
       function getRect(el: any) {
         const r = el.getBoundingClientRect()
@@ -111,9 +111,9 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
       function getComputed(el: any) {
         if (!includeComputed) return {}
         const cs = getComputedStyle(el)
-        const pick = {}
+        const pick: Record<string, any> = {}
         for (const k of ['display','flexDirection','flexWrap','alignItems','justifyContent','gap','rowGap','columnGap','padding','paddingTop','paddingRight','paddingBottom','paddingLeft','position','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','color','backgroundColor','borderRadius','opacity','transform']) {
-          pick[k] = cs[k]
+          pick[k] = cs[k as any]
         }
         return pick
       }
@@ -124,16 +124,16 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
         if (r.width <= 0 || r.height <= 0) return false
         return true
       }
-      function build(el: any, depth=0) {
+      function build(el: any, depth=0): any {
         if (depth > 12) return null
         if (!visible(el)) return null
         const tag = el.tagName.toLowerCase()
         const rect = getRect(el)
         const computed = getComputed(el)
         const text = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3 ? el.textContent.trim().slice(0,200) : ''
-        const children = []
+        const children: any[] = []
         for (const ch of el.children) {
-          const c = build(ch, depth+1)
+          const c: any = build(ch, depth+1)
           if (c) children.push(c)
         }
         return {

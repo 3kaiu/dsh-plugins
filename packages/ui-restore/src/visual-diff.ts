@@ -9,6 +9,7 @@
 // 与技术栈无关: 任何能产出 {png, textBlocks[]} 的渲染器(Web 截图/Flutter golden/
 // 原生快照)都接同一个内核。
 
+// @ts-ignore
 import { PNG } from "pngjs"
 import pixelmatch from "pixelmatch"
 import { round2 } from "./numeric.ts"

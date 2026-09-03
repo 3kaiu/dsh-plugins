@@ -187,7 +187,7 @@ export function blueprintJsonSchema() {
  * 供产出侧自检与消费侧准入。返回 {ok, errors}。
  */
 export function validateBlueprint(bp: any, opts: Record<string, any> = {}) {
-  const errors = []
+  const errors: any[] = []
   const maxErrors = opts.maxErrors ?? 20
   const push = (path: any, msg: any) => { if (errors.length < maxErrors) errors.push(`${path}: ${msg}`) }
   const isNum = (v: any) => typeof v === 'number' && isFinite(v)

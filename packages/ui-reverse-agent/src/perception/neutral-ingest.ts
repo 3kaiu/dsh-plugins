@@ -94,8 +94,8 @@ export function neutralToBlueprint(neutral: any) {
   // 用中立树的 canvas 背景覆盖
   if (canvas.background) blueprint.canvas.background = canvas.background
   blueprint.meta.source = 'neutral-tree'
-  blueprint.meta.neutralFormat = neutral.format || 'neutral-render-tree-v1'
-  blueprint.meta.diagnostics = diagnostics
+  ;(blueprint.meta as any).neutralFormat = neutral.format || 'neutral-render-tree-v1'
+  ;(blueprint.meta as any).diagnostics = diagnostics
   // 中立树已含精确排版/调色板，补充 blueprint 的提取结果（以中立树为准，blueprint 的提取为兜底）
   return blueprint
 }
@@ -103,7 +103,7 @@ export function neutralToBlueprint(neutral: any) {
 export async function neutralIngest({ neutralTree, neutralPath, outPath }: Record<string, any> = {}) {
   let neutral = neutralTree
   if (!neutral && neutralPath) {
-    try { neutral = JSON.parse(fs.readFileSync(neutralPath, 'utf8')) } catch (e) { throw new Error(`读取中立树失败 ${neutralPath}: ${e.message}`) }
+    try { neutral = JSON.parse(fs.readFileSync(neutralPath, 'utf8')) } catch (e) { throw new Error(`读取中立树失败 ${neutralPath}: ${(e as any).message}`) }
   }
   if (!neutral) throw new Error('neutralIngest 需 neutralTree 或 neutralPath')
   if (!isNeutralTree(neutral)) {

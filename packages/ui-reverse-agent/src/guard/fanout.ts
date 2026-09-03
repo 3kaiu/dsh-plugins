@@ -38,7 +38,7 @@ function findNodeByPath(tree: any, path: any) {
   const segments = path.split('>').map((s: any) => s.trim()).filter(Boolean)
   // 树可能是数组（多根）或单根
   const roots = Array.isArray(tree) ? tree : [tree]
-  function search(nodes: any, segIdx: any) {
+  function search(nodes: any, segIdx: any): any {
     if (segIdx >= segments.length) return null
     const seg = segments[segIdx]
     for (const n of nodes) {
@@ -49,13 +49,13 @@ function findNodeByPath(tree: any, path: any) {
       if (match) {
         if (segIdx === segments.length - 1) return n
         if (n.children?.length) {
-          const deeper = search(n.children, segIdx + 1)
+          const deeper: any = search(n.children, segIdx + 1)
           if (deeper) return deeper
         }
       }
       // 兄弟分支继续，且向子树递归查找（容错：path 可能省略中间层）
       if (n.children?.length) {
-        const deeper = search(n.children, segIdx)
+        const deeper: any = search(n.children, segIdx)
         if (deeper && deeper !== n) return deeper
       }
     }
@@ -124,7 +124,7 @@ export function generateCandidates(mismatch: any, count = 3): FanoutCandidate[] 
  *   不可观测层沿用调用方真实分; 缺省 0.9 占位 —— 占位层不参与真实预测,
  *   排序主信号是 geomBefore/geomAfter/mismatchesAfter（纯几何可测）。
  */
-export function fanoutEvaluate({ mismatch, candidates, referenceTree, implementedTree, tolerance = 2, currentScore = null, currentLayers = null }) {
+export function fanoutEvaluate({ mismatch, candidates, referenceTree, implementedTree, tolerance = 2, currentScore = null, currentLayers = null }: any) {
   if (!mismatch || !referenceTree || !implementedTree) {
     return { error: 'missing mismatch/referenceTree/implementedTree', ranked: [] }
   }
@@ -136,7 +136,7 @@ export function fanoutEvaluate({ mismatch, candidates, referenceTree, implemente
   const baseline = compareGeometry({ referenceTree, implementedTree, tolerance })
   const baselineMismatches = baseline.mismatchedCount ?? baseline.mismatches?.length ?? 0
 
-  const ranked: RankedCandidate[] = cands.map((cand: any) => {
+  const ranked: any[] = cands.map((cand: any) => {
     const { tree: patchedTree, patched } = patchNodeProp(implementedTree, mismatch, cand.value)
     const cmp = compareGeometry({ referenceTree, implementedTree: patchedTree, tolerance })
     const mismatchesAfter = cmp.mismatchedCount ?? cmp.mismatches?.length ?? 0

@@ -7,7 +7,7 @@ export function chunkFiles(files: any, size = 100) {
   return chunks
 }
 
-export function incrementalPlan({ changedFiles, allFiles }) {
+export function incrementalPlan({ changedFiles, allFiles }: any) {
   // 仅处理变更文件及其依赖（简化：变更文件 + 同目录文件）
   const affected = new Set(changedFiles)
   for (const f of changedFiles) {

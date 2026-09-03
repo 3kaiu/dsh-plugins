@@ -139,8 +139,8 @@ async function main() {
     if (!designPath || (!rectFlag && !idsFlag)) { console.error('用法: ui-restore region <design.json> --rect x,y,width,height | --ids id1,id2 [--dir <outDir>]'); process.exit(1); }
     const { bp } = await runBlueprint(designPath);
     const sel: any = rectFlag
-      ? (() => { const [x, y, width, height] = rectFlag.split(',').map(Number); return { x, y, width, height }; })()
-      : { ids: idsFlag.split(',').map((s: any) => s.trim()) };
+      ? (() => { const [x, y, width, height] = (rectFlag as string).split(',').map(Number); return { x, y, width, height }; })()
+      : { ids: (idsFlag as string).split(',').map((s: any) => s.trim()) };
     const region = blueprintRegion(bp, sel);
     if (!region) { console.error('区域下钻失败: 非法参数'); process.exit(1); }
     const outDir = flag(args, '--dir') || path.dirname(designPath);
@@ -157,14 +157,14 @@ async function main() {
     const projectDir = args[0];
     if (!projectDir) { console.error('用法: ui-restore profile <projectDir> [--out profile.json] [--styling x] [--framework x]'); process.exit(1); }
     const { analyzeProject, saveProfile } = await import('../index.ts');
-    const overrides = { framework: flag(args, '--framework'), language: flag(args, '--language'), styling: flag(args, '--styling'), build: flag(args, '--build'), assetDir: flag(args, '--assetDir') };
-    for (const k of Object.keys(overrides)) if (overrides[k] == null) delete overrides[k];
+    const overrides: any = { framework: flag(args, '--framework'), language: flag(args, '--language'), styling: flag(args, '--styling'), build: flag(args, '--build'), assetDir: flag(args, '--assetDir') };
+    for (const k of Object.keys(overrides)) if ((overrides as any)[k] == null) delete (overrides as any)[k];
     const r = analyzeProject(projectDir, { overrides });
     const out = flag(args, '--out') || path.join(projectDir, 'restore.profile.json');
     saveProfile(r.profile, out);
     console.log(`Target Profile → ${out}`);
     for (const k of ['framework','language','styling','build']) {
-      const d = r.profile.decisions[k]||{}; console.log(`  ${k}: ${d.chosen} (${d.because}, conf=${d.confidence})`);
+      const d = (r.profile.decisions as any)[k]||{}; console.log(`  ${k}: ${d.chosen} (${d.because}, conf=${d.confidence})`);
     }
     console.log(`  assetDir: ${r.profile.assetDir} | libs: ${r.profile.componentLibraries.join(', ')||'(无)'}`);
     return;
@@ -209,7 +209,7 @@ async function main() {
     if (!fs.existsSync(srcDir)) { console.error(`生成目录不存在: ${srcDir}`); process.exit(1); }
     const check = canMerge(projectDir);
     if (!check.ok) console.log(`! 预检: ${check.reasons.join('; ')}`);
-    const files = [];
+    const files: any[] = [];
     const walk = (dir: any, base: any='')=>{
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name);
@@ -219,7 +219,7 @@ async function main() {
       }
     };
     walk(srcDir);
-    const res = mergeIntoProject(projectDir, files, { onConflict: flag(args, '--on-conflict') || 'rename' });
+    const res = mergeIntoProject(projectDir, files, { onConflict: (flag(args, '--on-conflict') || 'rename') as any });
     console.log(`merge → ${res.written.length} 文件: ${res.written.map(w=> `${w.path}(${w.action})`).join(', ')}`);
     if(res.entrySuggestion) console.log(res.entrySuggestion);
     return;

@@ -9,7 +9,7 @@ export class Semaphore {
   max;
   errorFactory;
   active = 0;
-  waiters = [];
+  waiters: any[] = [];
 
   constructor(max: any, errorFactory: any = (message: any) => new Error(message)) {
     this.max = max;
@@ -28,7 +28,7 @@ export class Semaphore {
       return;
     }
     return new Promise((resolve, reject) => {
-      const waiter = { resolve, reject, signal, onAbort: null };
+      const waiter: any = { resolve, reject, signal, onAbort: null };
       waiter.onAbort = () => {
         const index = this.waiters.indexOf(waiter);
         if (index >= 0) this.waiters.splice(index, 1);

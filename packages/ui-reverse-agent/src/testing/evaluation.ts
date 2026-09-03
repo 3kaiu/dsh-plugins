@@ -1,7 +1,7 @@
 'use strict'
 // evaluation — 还原质量的量化评估（超越 S 的多维评估）
 
-export function evaluateRestoration({ blueprint, implementedTree, score, verify, a11y, durationMs }) {
+export function evaluateRestoration({ blueprint, implementedTree, score, verify, a11y, durationMs }: any) {
   const dimensions = {
     visual: score?.total ?? 0,
     geometry: score?.layers?.geom ?? 0,

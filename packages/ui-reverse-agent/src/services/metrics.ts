@@ -3,7 +3,7 @@
 // 输入：各工具调用的 start/end 时间，输出：聚合报告与优化建议
 
 export function createMetrics() {
-  const marks = []
+  const marks: any[] = []
   return {
     mark(name: any, start: any, end = Date.now()) {
       marks.push({ name, start, end, dur: end - start })
@@ -29,7 +29,7 @@ export function createMetrics() {
   }
 }
 
-export function estimateLoopCost({ sections, viewports, states, hasBrowser }) {
+export function estimateLoopCost({ sections, viewports, states, hasBrowser }: any) {
   // 经验：每 section 0.5ms 解析，browser_screenshot 800ms，compare 50ms
   const parse = sections * 0.5
   const screenshots = viewports * states * (hasBrowser ? 800 : 0)

@@ -26,9 +26,9 @@ export function checkDslSecurity(dsl: any) {
   const violations = []
   const warnings = []
 
-  const texts = []
-  const urls = []
-  const svgs = []
+  const texts: any[] = []
+  const urls: any[] = []
+  const svgs: any[] = []
   function walk(n: any) {
     if (!n || typeof n !== 'object') return
     if (typeof n.text === 'string') texts.push(n.text)

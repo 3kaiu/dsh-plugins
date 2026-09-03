@@ -11,7 +11,7 @@ export interface DesignConstraints {
   borderRadiusScale?: number[] // 如 [0,4,8,12,16]
 }
 
-export function checkDesignConstraints({ prop, value, path }, constraints: DesignConstraints = {}) {
+export function checkDesignConstraints({ prop, value, path }: any, constraints: DesignConstraints = {}) {
   const violations = []
   const warnings = []
 

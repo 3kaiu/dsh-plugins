@@ -37,7 +37,7 @@ import { systemChromeOf } from './system-chrome.ts'
  * @param {{width:number,height:number}} opts.canvas
  * @param {Array} opts.sections 每项 {id,name,type,x,y,width,height,dsl:{styles,nodes}}
  */
-function normalize({ canvas, sections }) {
+function normalize({ canvas, sections }: { canvas: any; sections: any[] }) {
   const nodes = sections.map((s: any, i: any) => {
     const root = s.dsl && s.dsl.nodes ? s.dsl.nodes[0] : null
     const ls = root && root.layoutStyle ? root.layoutStyle : {}
@@ -420,8 +420,8 @@ export function describeStructure(dsl: any) {
  * @param {object} [opts.rootMeta] 根容器元信息 {name, background}
  * @returns {{meta:object, styles:object, root:object, stats:object, warnings:Array}}
  */
-export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
-  const warnings = []
+export function cleanToStandardDsl({ canvas, sections, rootMeta }: { canvas: any; sections: any[]; rootMeta?: any }) {
+  const warnings: any[] = []
   const { nodes } = normalize({ canvas, sections })
   const stats = { total: nodes.length, offCanvas: 0, background: 0, sticker: 0, container: 0, band: 0 }
 
@@ -615,7 +615,7 @@ export function cleanToStandardDsl({ canvas, sections, rootMeta }) {
     if (n._dsl && n._dsl.styles) {
       for (const [k, v] of Object.entries(n._dsl.styles)) {
         if (k === "__proto__" || k === "constructor" || k === "prototype") continue
-        styles[k] = v
+        (styles as any)[k] = v
       }
     }
   }
@@ -669,7 +669,7 @@ function buildTabBar(band: any, canvas: any) {
   const labels = items.filter((n: any) => n.type === 'TEXT')
 
   // icon/label 按 x 对齐配对
-  const pairs = []
+  const pairs: any[] = []
   const usedLabels = new Set()
   for (const ic of icons) {
     let best = null

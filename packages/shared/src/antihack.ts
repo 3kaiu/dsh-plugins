@@ -18,16 +18,16 @@ function countNodes(tree: any, predicate: any) {
   walk(Array.isArray(tree) ? tree : [tree])
   return c
 }
-function flatten(tree: any) {
-  const out=[]
+function flatten(tree: any): any[] {
+  const out: any[] = []
   const walk=(nodes: any)=>{ for(const n of nodes){ out.push(n); if(n.children) walk(n.children)}}
   walk(Array.isArray(tree)?tree:[tree])
   return out
 }
 
 export function antiHackScan({ domDump, reference, treeStats, codeStats, projectPath }: Record<string, any> = {}) {
-  const violations=[]
-  const warnings=[]
+  const violations: any[] = []
+  const warnings: any[] = []
 
   // 数据源归一：tree 来自 domDump.tree 或直接传入的 treeStats
   const tree = domDump?.tree || domDump || []

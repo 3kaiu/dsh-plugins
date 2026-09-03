@@ -5,7 +5,7 @@
 // 但最通用的输入是两棵树，自动提取文本节点的排版属性后逐对比较
 
 function flatten(tree: any, parentPath: any = '') {
-  const out = []
+  const out: any[] = []
   const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
@@ -57,7 +57,7 @@ function scoreMatch(refNode: any, implNode: any) {
 
 function normalizeWeight(w: any) {
   if (w == null) return null
-  const map = { thin: 100, extralight: 200, light: 300, regular: 400, normal: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800, black: 900 }
+  const map: Record<string, number> = { thin: 100, extralight: 200, light: 300, regular: 400, normal: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800, black: 900 }
   const key = String(w).toLowerCase().trim()
   if (map[key] != null) return map[key]
   const n = parseInt(key, 10)
@@ -70,7 +70,7 @@ function colorDelta(c1: any, c2: any) {
   return 1 // 颜色不等记 1，后续 palette 层用 ΔE 精算
 }
 
-export function compareTypography({ referenceTree, implementedTree, referenceProfile, implementedMetrics }) {
+export function compareTypography({ referenceTree, implementedTree, referenceProfile, implementedMetrics }: any) {
   // 支持两种输入：树 vs 树，或 profile vs metrics
   if (referenceProfile || implementedMetrics) {
     // profile 模式：直接对比档案（简化）
@@ -139,7 +139,7 @@ export function compareTypography({ referenceTree, implementedTree, referencePro
   }
 
   // 实现侧多余文本节点（extra）不算排版错误，仅 extra 提示
-  const extra = []
+  const extra: any[] = []
   implFlat.forEach(({ path }, idx) => { if (!used.has(idx)) extra.push({ path, priority: 'P3' }) })
 
   return { mismatches: mismatches.sort((a,b) => (a.priority||'').localeCompare(b.priority||'')), extra, stats: { referenceTextNodes: refFlat.length, implementedTextNodes: implFlat.length, mismatched: mismatches.length } }

@@ -26,7 +26,7 @@ function safeAssignStyles(target: any, src: any) {
 export function flattenDesignSections(raw: any) {
   const canvas = raw?.meta?.canvas || { width: 375, height: 812 }
   const styles = Object.create(null)
-  const nodes = []
+  const nodes: any[] = []
   const emit = (n: any, ox: any, oy: any, parentObj: any) => {
     if (!n || typeof n !== 'object') return
     const ls = n.layoutStyle || {}
@@ -128,7 +128,7 @@ const LINT_MACHINE_NAME_RE = /(编组|矩形|椭圆|蒙版|路径|组 \d)|^(fram
 export function lintDesignExport(input: any, opts: Record<string, any> = {}) {
   const rawSections = Array.isArray(input) ? input : (input?.sections || [])
   const flat = ingestDesignExport(input)
-  const checks = []
+  const checks: any[] = []
   const push = (level: any, check: any, detail: any) => checks.push({ level, check, detail })
 
   // 1. 重复 id —— 直接破坏几何/样式守恒门禁的逐 id 配对

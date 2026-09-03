@@ -79,7 +79,7 @@ export function checkA11y({ tree, domDump, palette }: Record<string, any> = {}) 
 }
 
 function flatten(tree: any) {
-  const out = []
+  const out: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       out.push(n)

@@ -153,7 +153,7 @@ export function buildElementTree(bp: any, ctx: any) {
     const b = n.bounds || { x: 0, y: 0, width: 0, height: 0 }
     const ly = n.layout || {}
     const style: Record<string, any> = {}
-    const children = []
+    const children: any[] = []
 
     // ---- 定位策略(唯一决策点: contract.layout.strategy) ----
     if (parentFlex) {

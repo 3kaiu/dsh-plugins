@@ -30,8 +30,8 @@ export class QuotaTracker {
   totalReasoningTokens = 0;
   rateLimited = 0;
   quotaExceeded = 0;
-  sessionCooldowns = {};
-  requestTimes = {};
+  sessionCooldowns: Record<string, any> = {};
+  requestTimes: Record<string, any> = {};
   pacing = { enabled: true, maxRequests: 3, windowMs: 20000, maxHoldMs: 15000 };
   projectId = `proj_${randomBytes(12).toString("base64url")}`;
   lastPersistAt = 0;

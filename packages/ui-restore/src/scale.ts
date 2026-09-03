@@ -25,7 +25,7 @@ function scaleLength(v: any, dim: any) {
 function scaleBox(p: any, dim: any) {
   if (typeof p === 'number') return dim(p)
   if (p && typeof p === 'object') {
-    const o = {}
+    const o: Record<string, any> = {}
     for (const k of ['top', 'right', 'bottom', 'left', 'horizontal', 'vertical', 'all']) {
       if (p[k] != null) o[k] = dim(p[k])
     }
@@ -61,8 +61,8 @@ function nearestFactor(ratio: any) {
 }
 
 /** 收集观测字号: 内联 textStyle 优先, 其次 dsl.styles 字体引用表 */
-function collectFontSizes(nodes = [], styles: Record<string, any> = {}) {
-  const sizes = []
+function collectFontSizes(nodes: any[] = [], styles: Record<string, any> = {}) {
+  const sizes: any[] = []
   for (const n of nodes) {
     if (!n || n.type !== 'TEXT') continue
     if (n.textStyle?.fontSize != null) { sizes.push(Number(n.textStyle.fontSize)); continue }
@@ -194,15 +194,15 @@ export function applyDesignScale(nodes = [], styles: Record<string, any> = {}, f
   }
   const scaledNodes = nodes.map(walkNode)
 
-  const scaledStyles = {}
+  const scaledStyles: Record<string, any> = {}
   for (const [key, def] of Object.entries(styles || {})) {
-    const v = def && typeof def === 'object' && def.value ? def.value : def
+    const v = def && typeof def === 'object' && (def as any).value ? (def as any).value : def
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       const sv = { ...v }
       if (sv.size != null) sv.size = dim(sv.size)
       if (sv.lineHeight != null && isFinite(Number(sv.lineHeight))) sv.lineHeight = dim(Number(sv.lineHeight))
       if (sv.letterSpacing != null && isFinite(Number(sv.letterSpacing))) sv.letterSpacing = dim(Number(sv.letterSpacing))
-      scaledStyles[key] = def && typeof def === 'object' && def.value ? { ...def, value: sv } : sv
+      scaledStyles[key] = def && typeof def === 'object' && (def as any).value ? { ...def, value: sv } : sv
     } else {
       scaledStyles[key] = def
     }

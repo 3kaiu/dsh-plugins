@@ -28,7 +28,7 @@ function expandV6(low: any) {
   if (!dc && low === '::') tailStr = ''
   const head = headStr ? headStr.split(':') : []
   let tail = tailStr ? tailStr.split(':') : []
-  let dotted = []
+  let dotted: any[] = []
   if (tail.length && tail[tail.length - 1].includes('.')) {
     const seg = tail.pop().split('.').map(Number)
     if (seg.length !== 4 || seg.some((n: any) => !Number.isInteger(n) || n < 0 || n > 255)) return null

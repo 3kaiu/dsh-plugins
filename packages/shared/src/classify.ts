@@ -360,7 +360,7 @@ export function classifyDsl(dsl: any) {
     flow: 0,
   }
   const assets = { inlineSvg: [], images: [], texts: [] }
-  const unresolved = []
+  const unresolved: any[] = []
   const repeatMap = new Map()
   buildRepeatMap(nodes, repeatMap)
   // 画板宽度: 顶层节点最大宽度(用于切图 _phone/_tablet 命名建议)

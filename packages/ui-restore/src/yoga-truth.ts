@@ -47,8 +47,8 @@ function checkContainer(node: any, kids: any, tolerance: any) {
   root.setWidth(pb.width > 0 ? pb.width : undefined)
   root.setHeight(pb.height > 0 ? pb.height : undefined)
   root.setFlexDirection(ly.role === "row" ? FlexDirection.Row : FlexDirection.Column)
-  root.setJustifyContent(JUSTIFY[ly.justifyContent] ?? Justify.FlexStart)
-  root.setAlignItems(ALIGN[ly.alignItems] ?? Align.FlexStart)
+  root.setJustifyContent((JUSTIFY as any)[ly.justifyContent] ?? Justify.FlexStart)
+  root.setAlignItems((ALIGN as any)[ly.alignItems] ?? Align.FlexStart)
   if (ly.gap > 0) root.setGap(ly.role === "row" ? Gutter.Column : Gutter.Row, ly.gap)
   const pad = Array.isArray(ly.padding) ? ly.padding : [0, 0, 0, 0]
   if (pad.some((v: any) => v > 0)) {
@@ -124,7 +124,7 @@ function checkContainer(node: any, kids: any, tolerance: any) {
 export function verifyLayoutTruth(blueprint: any, opts: Record<string, any> = {}) {
   const tolerance = opts.tolerance != null ? opts.tolerance : 0.04
   if (!blueprint) return null
-  const results = []
+  const results: any[] = []
   const walk = (node: any) => {
     if (!node || typeof node !== "object") return
     const kids = Array.isArray(node.children) ? node.children : []

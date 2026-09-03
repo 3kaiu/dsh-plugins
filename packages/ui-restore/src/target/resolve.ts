@@ -58,7 +58,7 @@ export function resolveProfile(facts: any, opts: Record<string, any> = {}) {
   // overrides 落溯源(谁改的为什么)
   for (const k of Object.keys(o)) {
     if (k === 'assetDir') continue
-    if (profile.decisions[k] && profile[k] === o[k]) profile.decisions[k] = { chosen: o[k], because: '显式指定', confidence: 1 }
+    if ((profile.decisions as any)[k] && (profile as any)[k] === o[k]) (profile.decisions as any)[k] = { chosen: o[k], because: '显式指定', confidence: 1 }
   }
   return profile
 }

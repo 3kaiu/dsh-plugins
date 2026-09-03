@@ -5,12 +5,12 @@ import fs from 'node:fs'
 
 export class DevServer {
   // JS 动态字段风格: 构造器内赋值, 显式声明供 tsc 识别
-  command;
-  cwd;
-  port;
-  env;
-  proc = null;
-  url = null;
+  command: any;
+  cwd: any;
+  port: any;
+  env: any;
+  proc: any = null;
+  url: any = null;
   constructor({ command, cwd, port, env }: Record<string, any> = {}) {
     this.command = command // e.g. "pnpm dev" or "npm run dev"
     this.cwd = cwd || process.cwd()
@@ -31,7 +31,7 @@ export class DevServer {
         if (scripts.dev) this.command = 'pnpm dev'
         else if (scripts.start) this.command = 'pnpm start'
         else throw new Error('no dev/start script')
-      } catch (e) {
+      } catch (e: any) {
         throw new Error(`无法推断 dev 命令: ${e.message}`)
       }
     }

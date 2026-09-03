@@ -18,9 +18,9 @@ const HISTORY_DIR = '.ui-reverse/history'
 const STATE_GLOBAL_SCHEMA = z.looseObject({})
 
 // 宿主 facility 注入点（initStorageBackend 设置）
-let domainFacility = null
-let domainHandle = null
-let domainInitialRef = null // spec.global.initial 引用：facility 在首次 set 前原样返回它，据此判"从未写入"
+let domainFacility: any = null
+let domainHandle: any = null
+let domainInitialRef: any = null // spec.global.initial 引用：facility 在首次 set 前原样返回它，据此判"从未写入"
 const DOMAIN_NAME = 'ui-reverse-state'
 const DOMAIN_VERSION = 1
 
@@ -174,8 +174,8 @@ export function appendHistory(entry: any, { statePath }: Record<string, any> = {
 
 // 辅助：更新剩余差异（按优先级排序）
 export function sortDifferences(diffs: any) {
-  const order = { P0: 0, P1: 1, P2: 2, P3: 3 }
-  return [...diffs].sort((a: any, b: any) => (order[a.priority] ?? 9) - (order[b.priority] ?? 9) || (b.delta||0)-(a.delta||0))
+  const order: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 }
+  return [...diffs].sort((a: any, b: any) => ((order as any)[a.priority] ?? 9) - ((order as any)[b.priority] ?? 9) || (b.delta||0)-(a.delta||0))
 }
 
 // ── Goals / TODO 双写（Preset 增强） ───────────────────────────────

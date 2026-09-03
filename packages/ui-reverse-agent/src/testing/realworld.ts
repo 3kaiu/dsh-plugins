@@ -4,7 +4,7 @@
 import { neutralToBlueprint } from '../perception/neutral-ingest.ts'
 import { runIntegrationFixture } from './integration.ts'
 
-export function validateRealWorld({ neutrals, implementeds }) {
+export function validateRealWorld({ neutrals, implementeds }: any) {
   const results = []
   for (let i = 0; i < Math.min(neutrals.length, implementeds.length); i++) {
     const r = runIntegrationFixture({ neutral: neutrals[i], implementedTree: implementeds[i], expectedScore: 0.9 })

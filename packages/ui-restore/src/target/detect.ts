@@ -24,7 +24,7 @@ function walk(dir: any, depth: any, out: any, maxDepth = 4) {
 
 /** 收集文件(限深, 跳过 node_modules/dist), 返回相对项目根路径 */
 export function listFiles(projectDir: any, maxDepth = 4) {
-  const out = []
+  const out: any[] = []
   walk(projectDir, 0, out, maxDepth)
   return out.map((p: any) => path.relative(projectDir, p).split(path.sep).join('/'))
 }
@@ -83,8 +83,8 @@ export function detectProjectFacts(projectDir: any) {
     // shadcn/ui 仅通过 components.json 声明，属 styling 约定而非 framework，需单独探测
     if (exists(path.join(projectDir, 'components.json'))) {
       const compJson = readJson(path.join(projectDir, 'components.json'))
-      if (compJson && (compJson.style || compJson.tailwind)) push(facts.styling, 'tailwind', 0.88, 'components.json:shadcn')
-      facts.notes.push('components.json 存在，疑似 shadcn/ui')
+      if (compJson && (compJson.style || compJson.tailwind)) push(facts.styling, 'tailwind', 0.88, 'components.json:shadcn');
+      (facts.notes as any).push('components.json 存在，疑似 shadcn/ui')
     }
 
     // build

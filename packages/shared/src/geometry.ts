@@ -4,7 +4,7 @@
 // 输出：{ mismatches: [{path, prop, expected, actual, delta, priority}], stats: {meanDelta, maxDelta, mismatchedCount} }
 
 function flatten(tree: any, parentPath: any = '') {
-  const out = []
+  const out: any[] = []
   const walk = (nodes: any, base: any) => {
     for (const n of nodes) {
       const path = base ? `${base} > ${n.name || n.id}` : (n.name || n.id)
@@ -41,7 +41,7 @@ function scoreMatch(refNode: any, implNode: any) {
   return s
 }
 
-export function compareGeometry({ referenceTree, implementedTree, tolerance = 2 }) {
+export function compareGeometry({ referenceTree, implementedTree, tolerance = 2 }: any) {
   const refFlat = flatten(Array.isArray(referenceTree) ? referenceTree : [referenceTree])
   const implFlat = flatten(Array.isArray(implementedTree) ? implementedTree : [implementedTree])
 

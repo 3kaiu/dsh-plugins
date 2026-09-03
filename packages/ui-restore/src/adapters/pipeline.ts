@@ -28,13 +28,13 @@ export async function buildBlueprint(designPath: any, opts: Record<string, any> 
   const { canvas, styles, nodes } = ingestDesignExport(raw);
   const bp = generateCodeBlueprint({ canvas, nodes, styles, scale: opts.scale ?? declaredScale ?? null });
   // Enhancement ⑲: 语义增强(非必需，启发式低成本，失败不阻断但需留痕)
-  try{ enrichSemanticSync(bp) }catch(e){ console.warn('[pipeline] 语义增强失败(已跳过):', e?.message ?? e) }
+  try{ enrichSemanticSync(bp) }catch(e: any){ console.warn('[pipeline] 语义增强失败(已跳过):', e?.message ?? e) }
   return { bp, v: validateBlueprint(bp), raw, lint };
 }
 
 /** 蓝图全部叶子节点(diffRegions 的候选映射输入)。此前 cli/mcp/pipeline 共四份相同 walk 拷贝, 已收敛于此 */
 export function collectLeaves(bp: any) {
-  const leaves = [];
+  const leaves: any[] = [];
   const walk = (n: any) => {
     if (!n || typeof n !== 'object') return;
     if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n);
@@ -50,7 +50,7 @@ export function collectLeaves(bp: any) {
  */
 export function writeArtifactBundle(bp: any, v: any, lint: any, outDir: any, base: any) {
   fs.mkdirSync(outDir, { recursive: true });
-  const cl = restorationChecklist(bp);
+  const cl: any = restorationChecklist(bp);
   cl.gates.contract = v.ok ? 'PASS' : 'FAIL';  const files: Record<string, any> = {};
   const write = (name: any, data: any) => { const p = path.join(outDir, name); fs.writeFileSync(p, data); return p; };
   files.blueprint = write(`${base}.blueprint.json`, JSON.stringify(bp));
@@ -144,7 +144,7 @@ export function verifyScreenshots(opts: any) {
 
   if (opts.bpPath) {
     const bp = readJson(opts.bpPath);
-    const leaves = [];
+    const leaves: any[] = [];
     const walk = (n: any) => {
       if (!n || typeof n !== 'object') return;
       if (!Array.isArray(n.children) || n.children.length === 0) leaves.push(n);

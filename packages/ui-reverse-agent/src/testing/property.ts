@@ -3,9 +3,9 @@
 
 export function genRandomTree(depth = 2, breadth = 3) {
   const id = () => `n-${Math.random().toString(36).slice(2,6)}`
-  function gen(d: any) {
+  function gen(d: any): any {
     if (d === 0) return { id: id(), name: 'leaf', rect: { x: Math.random()*100, y: Math.random()*100, w: 50+Math.random()*50, h: 20+Math.random()*20 }, children: [] }
-    const children = Array.from({length: 1+Math.floor(Math.random()*breadth)}, () => gen(d-1))
+    const children: any = Array.from({length: 1+Math.floor(Math.random()*breadth)}, () => gen(d-1))
     return { id: id(), name: 'container', rect: { x: 0, y: 0, w: 200, h: 200 }, children }
   }
   return [gen(depth)]
@@ -13,7 +13,7 @@ export function genRandomTree(depth = 2, breadth = 3) {
 
 export function checkInvariant(tree: any) {
   // 不变量：所有节点 w/h >0，x/y 有限
-  const violations = []
+  const violations: any[] = []
   function walk(nodes: any) {
     for (const n of nodes) {
       if (n.rect && (n.rect.w <= 0 || n.rect.h <= 0)) violations.push({ id: n.id, rule: 'positive-size' })

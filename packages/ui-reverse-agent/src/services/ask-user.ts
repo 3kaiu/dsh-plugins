@@ -61,7 +61,7 @@ export async function decideWithAsk(ctx: any, { type, detail, options, fallback,
  * ConversationNode 热图可视化辅助
  * 若宿主提供 conversation / nodes / typert，则构造 diff-heatmap 节点；否则回退到 tool_result 的 PNG 路径
  */
-export function buildHeatmapNode({ diffPath, regionScores, score }) {
+export function buildHeatmapNode({ diffPath, regionScores, score }: any) {
   // 结构化节点（供未来的 dsh-client-ui-tool / typert 消费）
   return {
     kind: 'ui-reverse:diff-heatmap',

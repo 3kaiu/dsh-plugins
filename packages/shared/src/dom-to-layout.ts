@@ -70,8 +70,8 @@ function domNodeToInternal(node: any, parentRect: any, tolerance: any, counter: 
       const gap = parseGap(comp.gap ?? comp.gridGap ?? comp.columnGap)
       const padding = parsePadding(comp.padding)
       // 对齐直读
-      const alignMap = { 'flex-start': 'start', center: 'center', 'flex-end': 'end' }
-      const alignItems = comp.alignItems ? (alignMap[comp.alignItems] ?? comp.alignItems) : null
+      const alignMap: Record<string, any> = { 'flex-start': 'start', center: 'center', 'flex-end': 'end' }
+      const alignItems = comp.alignItems ? ((alignMap as any)[comp.alignItems] ?? comp.alignItems) : null
       const justifyContent = comp.justifyContent ?? null
       layout = {
         position: 'flex',

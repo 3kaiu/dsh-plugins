@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+// @ts-expect-error - ws module lacks types
 import { WebSocket } from 'ws';
 import { fileURLToPath } from 'node:url';
 import { findSystemChrome, toUrl } from './browser-launch.ts';
@@ -129,7 +130,7 @@ async function probeWithCdp(bin: any, target: any, outBlocks: any, opts: any) {
     await cdp.call('Page.navigate', { url });
     await Promise.race([loaded, sleep(8000)]); // loadEventFired 与监听注册的竞态窗口用超时兜底; 本地静态页通常秒级
     await sleep(opts.waitMs ?? 500);
-    const evalRes = await cdp.call('Runtime.evaluate', { expression: EVAL_TEXT_BLOCKS, returnByValue: true, awaitPromise: true });
+    const evalRes: any = await cdp.call('Runtime.evaluate', { expression: EVAL_TEXT_BLOCKS, returnByValue: true, awaitPromise: true });
     if (evalRes.exceptionDetails) throw new Error(`页内脚本异常: ${evalRes.exceptionDetails.text}`);
     const blocks = typeof evalRes.result.value === 'string' ? JSON.parse(evalRes.result.value) : evalRes.result.value;
     let pngPath;
@@ -137,7 +138,7 @@ async function probeWithCdp(bin: any, target: any, outBlocks: any, opts: any) {
       // captureBeyondViewport 显式关断: 新版 headless 截图默认越出视口采整页文档宽度,
       // 会把 scrollWidth 超出画布(绝对定位负 x 元素等)的页面拍成超宽图 —— 与
       // screenshot.mjs(--window-size 视口截图)及基准 truth 的空间语义不一致。
-      const shot = await cdp.call('Page.captureScreenshot', {
+      const shot: any = await cdp.call('Page.captureScreenshot', {
         format: 'png', captureBeyondViewport: false,
         clip: { x: 0, y: 0, width, height, scale: 1 },
       });

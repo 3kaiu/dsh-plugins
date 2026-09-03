@@ -23,7 +23,7 @@ function decodeAll(s: string): string {
   return String(s)
     .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => safeFromCode(parseInt(h, 16)))
     .replace(/&#([0-9]+);/g, (_, d) => safeFromCode(parseInt(d, 10)))
-    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (m, name) => (name.toLowerCase() in NAMED_BYPASS ? NAMED_BYPASS[name.toLowerCase()] : m))
+    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (m, name) => (name.toLowerCase() in NAMED_BYPASS ? (NAMED_BYPASS as any)[name.toLowerCase()] : m))
 }
 
 // 仅映射合法码点，避免产生代理对半截或控制字符注入

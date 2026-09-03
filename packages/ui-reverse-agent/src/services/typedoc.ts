@@ -11,5 +11,5 @@ export function exampleSnippet(toolName: any) {
     compare_geometry: `compareGeometry({ referenceTree, implementedTree, tolerance:2 })`,
     fanout_evaluate: `fanoutEvaluate({ mismatch, candidates:[24,16], referenceTree, implementedTree })`,
   }
-  return examples[toolName] || `// example for ${toolName}`
+  return (examples as any)[toolName] || `// example for ${toolName}`
 }

@@ -19,8 +19,8 @@ export function emitPreviewHtml(bp: any, plan: any, assets: any, profile: any, o
     fontStack: (profile?.fonts?.fallbackStack || ['sans-serif']).map((f: any) => `'${f}'`).join(', '),
   }
   const roots = buildElementTree(bp, ctx)
-  const mapEntries = []
-  const body = []
+  const mapEntries: any[] = []
+  const body: any[] = []
   const render = (el: any, indent: any) => {
     const pad = ' '.repeat(indent)
     const decl = styleToCssDeclarations(el.style)

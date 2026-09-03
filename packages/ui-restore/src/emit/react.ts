@@ -54,9 +54,9 @@ export function emitReact(bp: any, plan: any, assets: any, profile: any, opts: R
   }
   roots.forEach(collectImports)
 
-  const mapEntries = []
-  const decls = []
-  const jsx = []
+  const mapEntries: any[] = []
+  const decls: any[] = []
+  const jsx: any[] = []
 
   const collect = (el: any) => {
     const styleVar = safeIdent(el.nodeId, 's')

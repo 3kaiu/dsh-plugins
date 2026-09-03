@@ -18,7 +18,7 @@ export function mockFetch(status: any, body: any, contentType: any = "applicatio
 
 /** 最小可用的 Cordis ctx: 记录工具注册,logger 静默,可按名取服务 */
 export function mockCtx(overrides: Record<string, any> = {}) {
-  const registered = [];
+  const registered: any[] = [];
   const ctx: any = {
     logger: { info() {}, warn() {}, error() {} },
     tools: {

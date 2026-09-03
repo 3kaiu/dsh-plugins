@@ -10,8 +10,8 @@
 import fs from "node:fs"
 import { round2 } from "./numeric.ts"
 
-let _font = null
-let _fontSource = null
+let _font: any = null
+let _fontSource: any = null
 let _loadAttempted = false
 
 // 常见单文件 CJK 兼容字体探测列表(按优先级；覆盖 macOS/主流 Linux 发行版)
@@ -35,7 +35,8 @@ export async function initTextMetrics(opts: Record<string, any> = {}) {
   if (_loadAttempted && !opts.force) return measurerInfo()
   _loadAttempted = true
   const paths = opts.fontPath ? [opts.fontPath, ...FONT_CANDIDATES] : FONT_CANDIDATES
-  const { parse } = await import("opentype.js")
+  // @ts-expect-error - opentype.js lacks type definitions
+  const { parse } = await import("opentype.js") as any
   for (const p of paths) {
     try {
       if (!fs.existsSync(p)) continue
@@ -83,7 +84,7 @@ export function measureTextWidth(text: any, fontSize: any, letterSpacing = 0) {
  * 贪心逐字符填充(CJK 逐字可断; 连续拉丁串视作一个不可断 token),
  * 返回单行宽与换行后的行数组 —— 校准蓝图的 maxLines / softWrap 判定。
  */
-export function predictTextLayout({ text, fontSize, maxWidth, letterSpacing = 0 }) {
+export function predictTextLayout({ text, fontSize, maxWidth, letterSpacing = 0 }: any) {
   const str = String(text ?? "")
   const singleLineWidth = measureTextWidth(str, fontSize, letterSpacing)
   if (!maxWidth || maxWidth <= 0 || singleLineWidth <= maxWidth) {
