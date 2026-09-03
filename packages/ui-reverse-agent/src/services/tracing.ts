@@ -6,7 +6,7 @@ export function createTracer(traceId = `ui-${Date.now().toString(36)}`) {
   const spans = []
   return {
     traceId,
-    start(name, attrs: Record<string, any> = {}) {
+    start(name: any, attrs: Record<string, any> = {}) {
       const start = Date.now()
       return {
         end(endAttrs: Record<string, any> = {}) {

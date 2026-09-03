@@ -35,7 +35,7 @@ function cloneTree(tree: any) {
 
 function findNodeByPath(tree: any, path: any) {
   // path 如 "main > .card-grid" 按 ">" 切段，按 name/id 模糊匹配
-  const segments = path.split('>').map(s => s.trim()).filter(Boolean)
+  const segments = path.split('>').map((s: any) => s.trim()).filter(Boolean)
   // 树可能是数组（多根）或单根
   const roots = Array.isArray(tree) ? tree : [tree]
   function search(nodes: any, segIdx: any) {
@@ -101,7 +101,7 @@ function patchNodeProp(tree: any, mismatch: any, candidateValue: any) {
  * 生成候选（若调用方未显式提供）
  * 策略：期望值本身 + 期望±1px（容差边界）共 3 个；若 prop 非数值则退化为单候选
  */
-export function generateCandidates(mismatch, count = 3): FanoutCandidate[] {
+export function generateCandidates(mismatch: any, count = 3): FanoutCandidate[] {
   const exp = mismatch.expected
   if (typeof exp !== 'number') return [{ value: exp, label: String(exp) }]
   if (count <= 1) return [{ value: exp, label: `${mismatch.prop} ${exp}（期望值）` }]

@@ -59,7 +59,7 @@ function indexAssets(assetsExport: any) {
  *                       projectDir: 落盘根(缺省只产 storage 计划不写盘)}
  * @returns {{assets, storage, summary}}
  */
-export function resolveAssets(bp, plan, opts: Record<string, any> = {}) {
+export function resolveAssets(bp: any, plan: any, opts: Record<string, any> = {}) {
   const table = typeof opts.assetsExport === 'string'
     ? JSON.parse(fs.readFileSync(opts.assetsExport, 'utf8'))
     : opts.assetsExport

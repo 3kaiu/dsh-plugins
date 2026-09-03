@@ -226,7 +226,7 @@ function scaleTextStyle(ts: any, f: any) {
  * - 'auto': 启发式检测(source='inferred', 低置信不采纳回退 1)
  * - 其余/null: 不归一, 返回 null(蓝图不带 scale 字段)
  */
-export function resolveDesignScale(scale, detectInput: Record<string, any> = {}) {
+export function resolveDesignScale(scale: any, detectInput: Record<string, any> = {}) {
   if (scale == null || scale === '' || scale === 1 || scale === '1') return null
   if (scale === 'auto') {
     const d = detectDesignScale(detectInput)

@@ -2,7 +2,7 @@
 // typedoc — API 文档的自动生成（基于 JSDoc 与工具元数据）
 
 export function generateApiDocs(tools: any) {
-  return tools.map(t => `### ${t.name}\n${t.description}\n`).join('\n')
+  return tools.map((t: any) => `### ${t.name}\n${t.description}\n`).join('\n')
 }
 
 export function exampleSnippet(toolName: any) {

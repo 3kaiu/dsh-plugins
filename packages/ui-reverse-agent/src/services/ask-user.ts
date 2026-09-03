@@ -23,7 +23,7 @@ export function detectAskUser(ctx: any) {
  * @param {type, detail, options, fallback, agent} type: font-missing | asset-missing | sticker | other
  * @returns {decision, source, raw?}
  */
-export async function decideWithAsk(ctx, { type, detail, options, fallback, agent, signal }: Record<string, any> = {}) {
+export async function decideWithAsk(ctx: any, { type, detail, options, fallback, agent, signal }: Record<string, any> = {}) {
   // 已知约束白名单：若 state.json 已有同类约束则直接复用（避免重复打扰用户）
   if (type === 'font-missing' && fallback) {
     return { decision: fallback, source: 'knownConstraints' }

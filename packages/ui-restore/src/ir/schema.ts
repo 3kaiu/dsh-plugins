@@ -186,7 +186,7 @@ export function blueprintJsonSchema() {
  * 覆盖契约的关键不变量(枚举/数组形状/数值性/文字节点完备性),
  * 供产出侧自检与消费侧准入。返回 {ok, errors}。
  */
-export function validateBlueprint(bp, opts: Record<string, any> = {}) {
+export function validateBlueprint(bp: any, opts: Record<string, any> = {}) {
   const errors = []
   const maxErrors = opts.maxErrors ?? 20
   const push = (path: any, msg: any) => { if (errors.length < maxErrors) errors.push(`${path}: ${msg}`) }

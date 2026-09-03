@@ -28,8 +28,8 @@ function raceAbort(promise: any, signal: any) {
     const onAbort = () => reject(new Error('aborted'))
     signal.addEventListener('abort', onAbort, { once: true })
     promise.then(
-      (v) => { signal.removeEventListener('abort', onAbort); resolve(v) },
-      (e) => { signal.removeEventListener('abort', onAbort); reject(e) },
+      (v: any) => { signal.removeEventListener('abort', onAbort); resolve(v) },
+      (e: any) => { signal.removeEventListener('abort', onAbort); reject(e) },
     )
   })
 }
@@ -124,7 +124,7 @@ export async function browserDomDump({ selector = 'body', includeComputed = true
         if (r.width <= 0 || r.height <= 0) return false
         return true
       }
-      function build(el, depth=0) {
+      function build(el: any, depth=0) {
         if (depth > 12) return null
         if (!visible(el)) return null
         const tag = el.tagName.toLowerCase()

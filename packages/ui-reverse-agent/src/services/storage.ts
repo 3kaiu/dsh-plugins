@@ -24,7 +24,7 @@ export function storageKeyForArtifact(kind: any, viewport: any, state: any) {
  * @param ctx DSH ctx（可选）
  * @param {key, filePath, value, domain} 三选一：filePath 为本地文件，value 为 JSON
  */
-export async function persistArtifact(ctx, { key, filePath, value, domain = 'ui-reverse' }) {
+export async function persistArtifact(ctx: any, { key, filePath, value, domain = 'ui-reverse' }) {
   const { available, storage } = detectStorage(ctx)
   // 文件路径：若 storage 可用且文件较大（>64k），走 spill 语义（storage 下的 binary domain）
   if (filePath) {
@@ -65,7 +65,7 @@ export async function persistArtifact(ctx, { key, filePath, value, domain = 'ui-
 /**
  * 读取 artifact
  */
-export async function retrieveArtifact(ctx, key, domain = 'ui-reverse') {
+export async function retrieveArtifact(ctx: any, key: any, domain = 'ui-reverse') {
   const { available, storage } = detectStorage(ctx)
   if (available && storage.get) {
     try { const v = await storage.get(key, domain); if (v !== undefined) return { value: v, via: 'storage' } } catch {}

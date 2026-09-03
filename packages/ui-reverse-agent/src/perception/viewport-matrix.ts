@@ -19,7 +19,7 @@ export const DEFAULT_STATES = ['default', 'hover', 'active', 'disabled']
  * @returns [{viewport, state, key}]
  */
 export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_STATES }: Record<string, any> = {}) {
-  const vps = viewports.map(v => typeof v === 'string' ? { name: v, ...(VIEWPORTS[v] || VIEWPORTS.desktop), nameStr: v } : v)
+  const vps = viewports.map((v: any) => typeof v === 'string' ? { name: v, ...(VIEWPORTS[v] || VIEWPORTS.desktop), nameStr: v } : v)
   const out = []
   for (const vp of vps) {
     for (const st of states) {
@@ -34,7 +34,7 @@ export function expandMatrix({ viewports = DEFAULT_VIEWPORTS, states = DEFAULT_S
  * @param results [{key, viewport, state, score:{total, layers}}]
  * @param opts.weights {desktop:1, tablet:0.8, mobile:0.6} 视口权重
  */
-export function aggregateMatrixScores(results, { weights = { desktop: 1, tablet: 0.8, mobile: 0.6 } }: Record<string, any> = {}) {
+export function aggregateMatrixScores(results: any, { weights = { desktop: 1, tablet: 0.8, mobile: 0.6 } }: Record<string, any> = {}) {
   if (!results.length) return { aggregate: 0, byViewport: {}, worst: null, best: null }
   const byViewport = {}
   let weightedSum = 0, weightSum = 0
@@ -65,7 +65,7 @@ export function aggregateMatrixScores(results, { weights = { desktop: 1, tablet:
  * @param results 同上
  * @param threshold 0.85 低于此视为断裂
  */
-export function checkResponsive(results, threshold = 0.85) {
+export function checkResponsive(results: any, threshold = 0.85) {
   const issues = []
   for (const r of results) {
     const total = r.score?.total ?? r.total ?? 0

@@ -21,6 +21,6 @@ export function checkCustomRules({ prop, value, path }, rules = []) {
 }
 
 export const PRESET_RULES = {
-  noMagicNumbers: defineRule({ id: 'no-magic', prop: '*', test: v => typeof v !== 'number' || v % 4 === 0, message: '数值应为 4 的倍数', severity: 'warning' }),
-  maxWidth: defineRule({ id: 'max-width', prop: 'width', test: v => v <= 1440, message: '宽度不应超画布', severity: 'error' }),
+  noMagicNumbers: defineRule({ id: 'no-magic', prop: '*', test: (v: any) => typeof v !== 'number' || v % 4 === 0, message: '数值应为 4 的倍数', severity: 'warning' }),
+  maxWidth: defineRule({ id: 'max-width', prop: 'width', test: (v: any) => v <= 1440, message: '宽度不应超画布', severity: 'error' }),
 }

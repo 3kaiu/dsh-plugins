@@ -38,7 +38,7 @@ export function mapTypographyTokens(blueprintProfile: Record<string, any>, proje
  * @param projectPalette ['#fff', '#000'] 项目已有色板
  * @param deltaEThreshold 3（doc13 色差阈值）
  */
-export function mapPaletteTokens(blueprintPalette, projectPalette = [], deltaEThreshold = 3) {
+export function mapPaletteTokens(blueprintPalette: any, projectPalette = [], deltaEThreshold = 3) {
   const projHex = projectPalette.map(c => typeof c === 'string' ? c : c.hex)
   const mappings = []
   for (const bp of blueprintPalette) {

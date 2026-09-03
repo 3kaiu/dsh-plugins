@@ -1,7 +1,7 @@
 'use strict'
 // scale — 规模化（1000+ 文件 monorepo 的增量与并行）
 
-export function chunkFiles(files, size = 100) {
+export function chunkFiles(files: any, size = 100) {
   const chunks = []
   for (let i = 0; i < files.length; i += size) chunks.push(files.slice(i, i + size))
   return chunks

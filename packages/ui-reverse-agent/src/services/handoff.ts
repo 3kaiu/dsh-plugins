@@ -14,7 +14,7 @@ export function generateHandoff({ blueprint, state, score }: Record<string, any>
     `- 画布 ${blueprint?.canvas?.width}x${blueprint?.canvas?.height}，背景 ${blueprint?.canvas?.background || '—'}`,
     ``,
     `## 资产清单`,
-    `- 图标 ${blueprint?.assets?.icons?.length ?? 0}：${(blueprint?.assets?.icons || []).slice(0,3).map(i=>i.name).join(', ') || '—'}`,
+    `- 图标 ${blueprint?.assets?.icons?.length ?? 0}：${(blueprint?.assets?.icons || []).slice(0,3).map((i: any)=>i.name).join(', ') || '—'}`,
     `- 图片 ${blueprint?.assets?.images?.length ?? 0}`,
     `- 字体 ${blueprint?.assets?.fonts?.join(', ') || '—'}`,
     ``,
@@ -22,10 +22,10 @@ export function generateHandoff({ blueprint, state, score }: Record<string, any>
     `- 结构 ${score?.layers?.struct ?? '?'} / 几何 ${score?.layers?.geom ?? '?'} / 像素 ${score?.layers?.pixel ?? '?'} / 排版 ${score?.layers?.type ?? '?'} / 色彩 ${score?.layers?.color ?? '?'}`,
     ``,
     `## 剩余差异（按优先级）`,
-    ...((state?.remainingDifferences || []).slice(0,5).map(d => `- [${d.priority}] ${d.path} ${d.prop}: ${d.expected} vs ${d.actual} (Δ${d.delta})`)),
+    ...((state?.remainingDifferences || []).slice(0,5).map((d: any) => `- [${d.priority}] ${d.path} ${d.prop}: ${d.expected} vs ${d.actual} (Δ${d.delta})`)),
     ``,
     `## 已解决`,
-    ...((state?.resolvedDifferences || []).slice(-3).map(d => `- ${d.path} ${d.prop} (iter ${d.iteration})`)),
+    ...((state?.resolvedDifferences || []).slice(-3).map((d: any) => `- ${d.path} ${d.prop} (iter ${d.iteration})`)),
   ]
   return lines.join('\n')
 }

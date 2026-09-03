@@ -14,13 +14,13 @@ const str = (v: any, fallback: any) => JSON.stringify(typeof v === 'string' && v
 
 export function neutralToReact(neutral: any) {
   const root = neutral.root || neutral
-  const children = (root.children || []).map(n => reactNode(n)).join('\n')
+  const children = (root.children || []).map((n: any) => reactNode(n)).join('\n')
   const canvas = neutral.meta?.canvas || root
   return [
     `export default function Page() {`,
     `  return (`,
     `    <div style={{width:${JSON.stringify(num(canvas.width))},height:${JSON.stringify(num(canvas.height))},background:${str(canvas.background, '#fff')}}}>`,
-    children.split('\n').map(l => '      ' + l).join('\n'),
+    children.split('\n').map((l: any) => '      ' + l).join('\n'),
     `    </div>`,
     `  )`,
     `}`,

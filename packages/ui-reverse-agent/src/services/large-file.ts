@@ -3,7 +3,7 @@
 // 输入：sections 数组（拍平稿）或 DSL nodes
 // 输出：过滤后 sections + 分页建议 + 诊断计数
 
-export function filterAbandonedSections(sections, canvas = { width: 1440, height: 900 }) {
+export function filterAbandonedSections(sections: any, canvas = { width: 1440, height: 900 }) {
   const kept = []
   let dropped = 0
   for (const s of sections) {
@@ -16,7 +16,7 @@ export function filterAbandonedSections(sections, canvas = { width: 1440, height
   return { kept, dropped, total: sections.length }
 }
 
-export function paginateSections(sections, pageSize = 10) {
+export function paginateSections(sections: any, pageSize = 10) {
   const pages = []
   for (let i = 0; i < sections.length; i += pageSize) {
     pages.push({ page: Math.floor(i / pageSize), start: i, end: Math.min(i + pageSize, sections.length), sections: sections.slice(i, i + pageSize) })

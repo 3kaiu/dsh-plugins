@@ -147,7 +147,7 @@ export function blueprintToOutline(bp: any, opts: Record<string, any> = {}) {
     lines.push('# 组件组(同构兄弟, 实现为单组件多实例)')
     for (const g of bp.componentGroups) {
       const pos = g.instances.slice(0, 4).map((i: any) => `@${round2(i.x)},${round2(i.y)}`).join(' ')
-      lines.push(`${g.groupId}: ${g.count} 个实例 ${round2(g.itemWidth)}x${round2(g.itemHeight)} ${pos}${g.instances.length > 4 ? ' …' : ''}${g.axis ? ` 排布=${g.axis}${g.gap != null ? ` 间距=${round2(g.gap)}` : ''}` : ''} — ids: ${g.instances.map(i => i.id).join(', ')}`)
+      lines.push(`${g.groupId}: ${g.count} 个实例 ${round2(g.itemWidth)}x${round2(g.itemHeight)} ${pos}${g.instances.length > 4 ? ' …' : ''}${g.axis ? ` 排布=${g.axis}${g.gap != null ? ` 间距=${round2(g.gap)}` : ''}` : ''} — ids: ${g.instances.map((i: any) => i.id).join(', ')}`)
     }
   }
   if (opts.includeGuide !== false) {

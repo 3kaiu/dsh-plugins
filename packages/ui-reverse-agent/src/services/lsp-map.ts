@@ -24,7 +24,7 @@ export function detectLsp(ctx: any) {
  * @param candidates [{file, snippet, score}] 来自 grep/glob 或 LSP 的候选
  * @returns {component, css, asset, confidence, reason}
  */
-export function mapSingleNode(blueprintNode, candidates = []) {
+export function mapSingleNode(blueprintNode: any, candidates = []) {
   if (!candidates.length) {
     return { blueprintNode, component: null, css: null, asset: null, confidence: 0, reason: 'unmapped — 无候选', status: 'unmapped' }
   }
@@ -51,7 +51,7 @@ export function mapSingleNode(blueprintNode, candidates = []) {
  * @param candidatesByNode Map<blueprintNodeId, candidates[]>
  * @returns {mappings, unmapped, summary}
  */
-export function mapBlueprint(blueprint, candidatesByNode = new Map()) {
+export function mapBlueprint(blueprint: any, candidatesByNode = new Map()) {
   const tree = blueprint.tree || blueprint
   const nodes = flattenBlueprint(tree)
   const mappings = []
@@ -95,7 +95,7 @@ export async function collectCandidatesWithLsp(ctx: any, blueprintNode: any) {
     // 约定：lsp 暴露的 search 接口接收 {query, kind}
     if (typeof lsp.search === 'function') {
       const res = await lsp.search({ query: blueprintNode.name, kind: 'component' })
-      const cands = (Array.isArray(res) ? res : res?.results || []).map(r => ({
+      const cands = (Array.isArray(res) ? res : res?.results || []).map((r: any) => ({
         file: r.file || r.uri,
         snippet: r.snippet || '',
         score: r.score ?? 0.9,

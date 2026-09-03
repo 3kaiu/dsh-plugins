@@ -21,7 +21,7 @@ export function classifyByExpert(mismatches: any) {
   return byExpert
 }
 
-export function planParallelExperts(mismatches, { maxPerExpert = 2 }: Record<string, any> = {}) {
+export function planParallelExperts(mismatches: any, { maxPerExpert = 2 }: Record<string, any> = {}) {
   const byExpert = classifyByExpert(mismatches)
   const plans = []
   for (const [expert, list] of Object.entries(byExpert)) {
@@ -36,7 +36,7 @@ export function planParallelExperts(mismatches, { maxPerExpert = 2 }: Record<str
 export function mergeExpertResults(results: any) {
   // results: [{expert, score, changes}]
   const totalScore = results.reduce((a: any, r: any) => a + (r.score?.total ?? 0), 0) / (results.length || 1)
-  const allChanges = results.flatMap(r => r.changes || [])
+  const allChanges = results.flatMap((r: any) => r.changes || [])
   const byExpert = {}
   for (const r of results) byExpert[r.expert] = r
   return { totalScore: Math.round(totalScore*1000)/1000, byExpert, allChanges, summary: `${results.length} experts merged S ${Math.round(totalScore*1000)/1000}` }

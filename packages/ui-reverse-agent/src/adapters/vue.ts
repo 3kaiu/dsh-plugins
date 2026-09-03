@@ -12,13 +12,13 @@ import { num, neutralTag as vueTag, escText, escAttr, cssValue } from './neutral
 
 export function neutralToVue(neutral: any) {
   const root = neutral.root || neutral
-  const children = (root.children || []).map(n => vueNode(n)).join('\n')
+  const children = (root.children || []).map((n: any) => vueNode(n)).join('\n')
   const canvas = neutral.meta?.canvas || root
   const bg = typeof canvas.background === 'string' && canvas.background ? canvas.background : '#fff'
   return [
     `<template>`,
     `  <div class="page" style="width:${num(canvas.width)}px;height:${num(canvas.height)}px;background:${cssValue(bg)}">`,
-    children.split('\n').map(l => '    ' + l).join('\n'),
+    children.split('\n').map((l: any) => '    ' + l).join('\n'),
     `  </div>`,
     `</template>`,
     ``,

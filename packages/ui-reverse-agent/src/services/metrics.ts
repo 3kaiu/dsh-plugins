@@ -5,7 +5,7 @@
 export function createMetrics() {
   const marks = []
   return {
-    mark(name, start, end = Date.now()) {
+    mark(name: any, start: any, end = Date.now()) {
       marks.push({ name, start, end, dur: end - start })
     },
     report() {

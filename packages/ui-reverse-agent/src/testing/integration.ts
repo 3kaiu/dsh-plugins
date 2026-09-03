@@ -27,7 +27,7 @@ export function runIntegrationFixture({ neutral, implementedTree, expectedScore 
 }
 
 export function integrationSuite(fixtures: any) {
-  const results = fixtures.map(f => runIntegrationFixture(f))
-  const passed = results.filter(r => r.passed).length
+  const results = fixtures.map((f: any) => runIntegrationFixture(f))
+  const passed = results.filter((r: any) => r.passed).length
   return { total: fixtures.length, passed, failed: fixtures.length - passed, results, summary: `${passed}/${fixtures.length} pass` }
 }

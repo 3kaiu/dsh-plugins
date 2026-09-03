@@ -92,7 +92,7 @@ function flattenImpl(tree: any) {
 }
 function findClosestByName(nodes: any, name: any) {
   if (!name) return null
-  return nodes.find(n => (n.name || n.id) === name) || nodes.find(n => (n.name || '').includes(name) || name.includes(n.name || '')) || null
+  return nodes.find((n: any) => (n.name || n.id) === name) || nodes.find((n: any) => (n.name || '').includes(name) || name.includes(n.name || '')) || null
 }
 function collectTexts(root: any) {
   const out = []

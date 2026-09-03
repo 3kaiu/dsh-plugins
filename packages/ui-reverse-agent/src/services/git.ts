@@ -5,7 +5,7 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 
-function git(args, cwd = process.cwd()) {
+function git(args: any, cwd = process.cwd()) {
   const res = spawnSync('git', args, { cwd, encoding: 'utf8' })
   return { ok: res.status === 0, stdout: (res.stdout || '').trim(), stderr: (res.stderr || '').trim(), status: res.status }
 }
@@ -40,7 +40,7 @@ export function gitDiffStat(cwd: any) {
   return r.stdout
 }
 
-export function ensureRollbackPoint(state, cwd = process.cwd()) {
+export function ensureRollbackPoint(state: any, cwd = process.cwd()) {
   const status = gitStatus(cwd)
   const head = git(['rev-parse', 'HEAD'], cwd)
   const point = {

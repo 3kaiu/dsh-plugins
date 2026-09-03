@@ -11,7 +11,7 @@ export function buildCiReport({ state, blueprint, artifacts = [] }: Record<strin
   const total = scores.current?.total ?? 0
   const threshold = runtimeConfig.completeThreshold
   const blocked = state?.antiHack?.violations?.length > 0 || false
-  const hasP0 = (state?.remainingDifferences || []).some(d => d.priority === 'P0')
+  const hasP0 = (state?.remainingDifferences || []).some((d: any) => d.priority === 'P0')
   const passed = total >= threshold && !blocked && !hasP0
 
   const report = {
@@ -27,13 +27,13 @@ export function buildCiReport({ state, blueprint, artifacts = [] }: Record<strin
     iteration: state?.iteration ?? 0,
     layers: scores.current || {},
     delta: scores.delta ?? 0,
-    artifacts: artifacts.map(a => typeof a === 'string' ? a : a.path || a.file),
+    artifacts: artifacts.map((a: any) => typeof a === 'string' ? a : a.path || a.file),
     summary: passed ? `CI pass S ${total} ≥ ${threshold}` : `CI fail S ${total} < ${threshold} ${blocked ? 'blocked' : ''} ${hasP0 ? 'has P0' : ''}`.trim(),
   }
   return report
 }
 
-export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' }: Record<string, any> = {}) {
+export function writeCiArtifacts(report: any, { outDir = '.ui-reverse/ci' }: Record<string, any> = {}) {
   try {
     fs.mkdirSync(outDir, { recursive: true })
     const reportPath = path.join(outDir, 'report.json')
@@ -53,7 +53,7 @@ export function writeCiArtifacts(report, { outDir = '.ui-reverse/ci' }: Record<s
   }
 }
 
-export function ciGate(report, { threshold = runtimeConfig.completeThreshold, allowBlocked = false, allowP0 = false }: Record<string, any> = {}) {
+export function ciGate(report: any, { threshold = runtimeConfig.completeThreshold, allowBlocked = false, allowP0 = false }: Record<string, any> = {}) {
   if (!allowBlocked && report.blocked) return { pass: false, reason: 'blocked by anti_hack' }
   if (!allowP0 && report.hasP0) return { pass: false, reason: 'has P0 remaining' }
   if (report.total < threshold) return { pass: false, reason: `S ${report.total} < ${threshold}` }

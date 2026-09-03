@@ -19,7 +19,7 @@ export function classifyError(error: any) {
   return 'unknown'
 }
 
-export function recoveryPlan(error, attempt = 0) {
+export function recoveryPlan(error: any, attempt = 0) {
   const kind = classifyError(error)
   const policy = RECOVERY_POLICY[kind]
   if (!policy) return { kind, retry: false, reason: 'unknown error, no policy' }
@@ -35,7 +35,7 @@ export function recoveryPlan(error, attempt = 0) {
   }
 }
 
-export async function withRetry(fn, { kind = 'network', maxRetries, delayMs }: Record<string, any> = {}) {
+export async function withRetry(fn: any, { kind = 'network', maxRetries, delayMs }: Record<string, any> = {}) {
   const policy = RECOVERY_POLICY[kind] || { retries: 2, delayMs: 800 }
   const retries = maxRetries ?? policy.retries
   const delay = delayMs ?? policy.delayMs

@@ -16,11 +16,11 @@ export function cacheKey({ kind, dslHash, viewport, state, tolerance }) {
   return `${kind}:${dslHash}:${vp}:${state || 'default'}:t${tolerance ?? 2}`
 }
 
-export function cachePathFor(key, base = '.ui-reverse/cache') {
+export function cachePathFor(key: any, base = '.ui-reverse/cache') {
   return path.join(base, `${key}.json`)
 }
 
-export function getCached(key, base = '.ui-reverse/cache') {
+export function getCached(key: any, base = '.ui-reverse/cache') {
   const p = cachePathFor(key, base)
   try {
     if (!fs.existsSync(p)) return null
@@ -30,7 +30,7 @@ export function getCached(key, base = '.ui-reverse/cache') {
   } catch { return null }
 }
 
-export function setCached(key, value, base = '.ui-reverse/cache') {
+export function setCached(key: any, value: any, base = '.ui-reverse/cache') {
   const p = cachePathFor(key, base)
   try {
     fs.mkdirSync(path.dirname(p), { recursive: true })
@@ -39,7 +39,7 @@ export function setCached(key, value, base = '.ui-reverse/cache') {
   } catch { return null }
 }
 
-export function invalidateCache(prefix, base = '.ui-reverse/cache') {
+export function invalidateCache(prefix: any, base = '.ui-reverse/cache') {
   try {
     if (!fs.existsSync(base)) return 0
     let n = 0

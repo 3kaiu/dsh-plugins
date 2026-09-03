@@ -5,7 +5,7 @@
 export function createStream() {
   const events = []
   return {
-    push(event, data) {
+    push(event: any, data: any) {
       events.push({ event, data, at: new Date().toISOString() })
     },
     flush() {
@@ -20,6 +20,6 @@ export function createStream() {
 export function livePreviewHtml({ blueprint, score, iteration }) {
   // 极简增量 HTML（每轮后生成，供 live preview iframe）
   const title = `Iteration ${iteration} — S ${score?.total ?? '?'}/0.96`
-  const regions = (blueprint?.regions || []).map(r => `<div>${r.name} (${r.priority})</div>`).join('')
+  const regions = (blueprint?.regions || []).map((r: any) => `<div>${r.name} (${r.priority})</div>`).join('')
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1>${regions}</body></html>`
 }

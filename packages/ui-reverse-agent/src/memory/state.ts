@@ -161,7 +161,7 @@ export async function stateUpdate(patch = {}, { statePath, historyNote }: Record
   return { state: next, path: p, backend: 'fs' }
 }
 
-export function appendHistory(entry, { statePath }: Record<string, any> = {}) {
+export function appendHistory(entry: any, { statePath }: Record<string, any> = {}) {
   const p = statePath || STATE_PATH
   const hdir = path.dirname(p) + '/history'
   ensureDir(hdir + '/x')
@@ -182,7 +182,7 @@ export function sortDifferences(diffs: any) {
 // DSH 原生无独立 goals/todo 服务（取决于宿主是否挂载 dsh-tool-*），这里同时做两件事：
 // 1) 文件落盘：.ui-reverse/goals.json + todo.json（供 UI 直接读取，无需 ctx）
 // 2) 若 ctx 上存在 goals/todo 服务则尝试同步（duck-typing，不抛异常）
-export function syncGoalsAndTodo(state, { statePath }: Record<string, any> = {}) {
+export function syncGoalsAndTodo(state: any, { statePath }: Record<string, any> = {}) {
   const base = path.dirname(statePath || STATE_PATH)
   const goalsPath = path.join(base, 'goals.json')
   const todoPath = path.join(base, 'todo.json')

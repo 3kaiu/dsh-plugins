@@ -63,7 +63,7 @@ export function measurerInfo() {
 }
 
 /** 单行宽度(px): 字体模式走 advance width(kerning 开启), 否则字宽估算 */
-export function measureTextWidth(text, fontSize, letterSpacing = 0) {
+export function measureTextWidth(text: any, fontSize: any, letterSpacing = 0) {
   const str = String(text ?? "")
   if (!str) return 0
   if (_font) {

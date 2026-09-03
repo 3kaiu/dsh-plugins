@@ -6,9 +6,9 @@ export function createComment({ author, text, path, pos }) {
 }
 
 export function resolveComment(comments: any, id: any) {
-  return comments.map(c => c.id === id ? { ...c, resolved: true } : c)
+  return comments.map((c: any) => c.id === id ? { ...c, resolved: true } : c)
 }
 
 export function threadForPath(comments: any, path: any) {
-  return comments.filter(c => c.path === path)
+  return comments.filter((c: any) => c.path === path)
 }
