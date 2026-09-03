@@ -33,7 +33,7 @@ function push(list: any, name: any, confidence: any, evidence: any) {
   if (confidence <= 0) return
   const cur = list.find((c: any) => c.name === name)
   if (!cur || cur.confidence < confidence) {
-    const i = list.findIndex((c) => c.name === name)
+    const i = list.findIndex((c: any) => c.name === name)
     const item = { name, confidence: Math.min(1, confidence), evidence }
     if (i >= 0) list[i] = item
     else list.push(item)

@@ -69,7 +69,7 @@ function connectCdp(wsUrl: any, deadlineMs: any) {
   let seq = 0;
   const pending = new Map();
   const events = new Map();
-  ws.addEventListener('message', (ev) => {
+  ws.addEventListener('message', (ev: any) => {
     const msg = typeof ev.data === 'string' ? JSON.parse(ev.data) : null;
     if (!msg) return;
     if (msg.id && pending.has(msg.id)) {

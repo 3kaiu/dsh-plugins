@@ -27,7 +27,7 @@ export function flattenDesignSections(raw: any) {
   const canvas = raw?.meta?.canvas || { width: 375, height: 812 }
   const styles = Object.create(null)
   const nodes = []
-  const emit = (n, ox, oy, parentObj) => {
+  const emit = (n: any, ox: any, oy: any, parentObj: any) => {
     if (!n || typeof n !== 'object') return
     const ls = n.layoutStyle || {}
     const x = round2((ls.relativeX ?? 0) + ox)
