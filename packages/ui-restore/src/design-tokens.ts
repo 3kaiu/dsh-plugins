@@ -22,7 +22,7 @@ class Collector {
     this.map.set(value, (this.map.get(value) || 0) + 1)
   }
   // 命名: 频次降序 -> 字典序升序, 稳定确定
-  names(prefix) {
+  names(prefix: any) {
     const entries = [...this.map.entries()].sort((a: any, b: any) => (b[1] - a[1]) || String(a[0]).localeCompare(String(b[0])))
     return entries.map(([v], i) => ({ value: v, token: `${prefix}.${i + 1}` }))
   }

@@ -40,8 +40,8 @@ export class DevServer {
     // detached: shell 进程成为进程组长, stop 时可整组杀死(官方 defensive-patterns:
     // "Dispose must reach quiescence" — 只 SIGTERM shell 会留孤儿 dev server)
     this.proc = spawn(cmd, args, { cwd: this.cwd, env: { ...process.env, ...this.env }, stdio: ['ignore','pipe','pipe'], shell: true, detached: process.platform !== 'win32' })
-    this.proc.stdout?.on('data', d => process.stderr.write(`[devserver] ${d}`))
-    this.proc.stderr?.on('data', d => process.stderr.write(`[devserver:err] ${d}`))
+    this.proc.stdout?.on('data', (d: any) => process.stderr.write(`[devserver] ${d}`))
+    this.proc.stderr?.on('data', (d: any) => process.stderr.write(`[devserver:err] ${d}`))
 
     // 推断 URL
     const port = this.port || await this.detectPort()
@@ -66,14 +66,14 @@ export class DevServer {
     return 3000
   }
 
-  async isPortFree(p) {
+  async isPortFree(p: any) {
     try {
       const res = await fetch(`http://localhost:${p}`, { method: 'HEAD' })
       return false
     } catch { return true }
   }
 
-  async waitForHealth(url, timeoutMs, signal) {
+  async waitForHealth(url: any, timeoutMs: any, signal: any) {
     const start = Date.now()
     while (Date.now() - start < timeoutMs) {
       if (signal?.aborted) return
