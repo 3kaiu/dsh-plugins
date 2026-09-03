@@ -17,7 +17,7 @@ class Collector {
   constructor() {
     this.map = new Map() // value -> count
   }
-  add(value) {
+  add(value: any) {
     if (value == null || value === "") return
     this.map.set(value, (this.map.get(value) || 0) + 1)
   }
@@ -28,7 +28,7 @@ class Collector {
   }
 }
 
-function hexToRgbaStr(color, fallbackAlpha = 1) {
+function hexToRgbaStr(color: any, fallbackAlpha = 1) {
   if (typeof color !== "string") return null
   const c = color.trim()
   // 已是 rgba()/rgb() 串: 保真透传(阴影自带透明度不丢失)
@@ -57,7 +57,7 @@ function hexToRgbaStr(color, fallbackAlpha = 1) {
  *   蓝图内嵌时传 false 防止产物膨胀 —— token 定义本身已含全部信息)
  * @returns {{tokens: object, aliases: Array<{nodeId, property, token}>, stats: object}}
  */
-export function extractDesignTokens(blueprint, opts: Record<string, any> = {}) {
+export function extractDesignTokens(blueprint: any, opts: Record<string, any> = {}) {
   if (!blueprint) return null
   const includeAliases = opts.includeAliases !== false
   const textColor = new Collector(), bgColor = new Collector()

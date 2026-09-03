@@ -218,7 +218,7 @@ async function main() {
     if (!check.ok) console.log(`! 预检: ${check.reasons.join('; ')}`);
     // 收集 srcDir 下所有文件（递归）
     const files = []
-    const walk = (dir, base='')=>{
+    const walk = (dir: any, base='')=>{
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name)
         const abs = path.join(dir, e.name)

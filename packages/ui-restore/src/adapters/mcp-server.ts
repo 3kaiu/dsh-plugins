@@ -350,7 +350,7 @@ server.tool(
     if (!fs.existsSync(srcDir)) return text(`生成目录不存在: ${srcDir}`);
     const check = canMerge(projectAbs);
     const files = [];
-    const walk = (dir, base = '') => {
+    const walk = (dir: any, base = '') => {
       for(const e of fs.readdirSync(dir, {withFileTypes:true})){
         const rel = path.join(base, e.name);
         const abs = path.join(dir, e.name);

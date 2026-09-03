@@ -14,7 +14,7 @@
 
 import { round2 } from './numeric.ts'
 /** 长度字段缩放器(绑定因子; 非数值如 "auto" 原样透传) */
-const dimBy = (f: any) => (v) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
+const dimBy = (f: any) => (v: any) => (typeof v === 'number' && isFinite(v) ? round2(v * f) : v)
 
 /** 长度/数组长度缩放(radius 等单值或四角数组) */
 function scaleLength(v: any, dim: any) {

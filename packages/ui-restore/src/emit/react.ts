@@ -27,7 +27,7 @@ const jsxStyleObject = (style: any) => '{ ' + Object.entries(style)
  * @param {object} [opts] {componentName?, baseName?}
  * @returns {{componentName, files:{path,content}[], map}}
  */
-export function emitReact(bp, plan, assets, profile, opts: Record<string, any> = {}) {
+export function emitReact(bp: any, plan: any, assets: any, profile: any, opts: Record<string, any> = {}) {
   const componentName = opts.componentName || pascal(opts.baseName) || 'Restore'
   const ctx = {
     contractById: plan.byId,

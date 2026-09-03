@@ -11,7 +11,7 @@ import { readJsonTolerant as readJson, readTextTolerant as readText } from '../f
 
 const exists = (p: any) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
-function walk(dir, depth, out, maxDepth = 4) {
+function walk(dir: any, depth: any, out: any, maxDepth = 4) {
   let entries = []
   try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
   for (const e of entries) {
@@ -23,7 +23,7 @@ function walk(dir, depth, out, maxDepth = 4) {
 }
 
 /** 收集文件(限深, 跳过 node_modules/dist), 返回相对项目根路径 */
-export function listFiles(projectDir, maxDepth = 4) {
+export function listFiles(projectDir: any, maxDepth = 4) {
   const out = []
   walk(projectDir, 0, out, maxDepth)
   return out.map((p: any) => path.relative(projectDir, p).split(path.sep).join('/'))

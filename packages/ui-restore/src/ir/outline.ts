@@ -126,7 +126,7 @@ export function blueprintRegion(bp: any, sel: any) {
  * @param {object} [opts] includeGuide: 附消费指南(默认 true); maxDepth: 最大缩进深度
  * @returns {string}
  */
-export function blueprintToOutline(bp, opts: Record<string, any> = {}) {
+export function blueprintToOutline(bp: any, opts: Record<string, any> = {}) {
   if (!bp) return ''
   const maxDepth = opts.maxDepth ?? 12
   const lines = []

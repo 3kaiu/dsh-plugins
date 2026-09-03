@@ -29,6 +29,6 @@ export function makeGuard({ root }: Record<string, any> = {}) {
   const ROOT = root || guardRoot();
   return {
     ROOT,
-    confineUnder: (rel) => confineTo(ROOT, rel),
+    confineUnder: (rel: any) => confineTo(ROOT, rel),
   };
 }

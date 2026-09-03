@@ -84,7 +84,7 @@ export function restorationChecklist(bp: any) {
  * @param {object} cl restorationChecklist 输出
  * @param {object} [opts] contractOk: validateBlueprint 的布尔结果(可选附入)
  */
-export function checklistToText(cl, opts: Record<string, any> = {}) {
+export function checklistToText(cl: any, opts: Record<string, any> = {}) {
   if (!cl) return ''
   const lines = []
   const g = cl.gates || {}

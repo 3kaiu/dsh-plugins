@@ -319,7 +319,7 @@ function imageBackgroundInline(fill: any, bounds: any, file: any) {
 /** camelCase style → CSS 声明串(HTML serializer 用; React 直接用对象) */
 const UNITLESS = new Set(['opacity', 'zIndex', 'fontWeight', 'lineHeight', 'flexGrow', 'flexShrink', 'order', 'WebkitLineClamp'])
 export function styleToCssDeclarations(style: any) {
-  const kebab = (k: any) => k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+  const kebab = (k: any) => k.replace((m: any) =>/[A-Z]/g, (m: any) => `-${m.toLowerCase()}`)
   return Object.entries(style)
     .filter(([, v]) => v != null && v !== '')
     .map(([k, v]) => {
