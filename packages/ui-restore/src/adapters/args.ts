@@ -7,7 +7,7 @@
 const norm = (name: any) => (name.startsWith('--') ? name : `--${name}`)
 
 /** 读 `--name value` 的值; 旗标不存在、缺值或值以 -- 开头(即下一旗标)时返回 dflt。 */
-export function flag(args, name, dflt = null) {
+export function flag(args: any, name: any, dflt = null) {
   const i = args.indexOf(norm(name))
   if (i < 0) return dflt
   const v = args[i + 1]
