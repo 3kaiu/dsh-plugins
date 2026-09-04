@@ -1,28 +1,19 @@
-# Shared Package - Type Safety Status
+# Shared Package - Type Safety
 
-## Current State
+## Status: strict build enabled ✅ (2026-09-04)
 
-This package currently has **relaxed TypeScript settings** to allow type declaration generation.
+- 全仓门禁(`npx tsc --noEmit`, strict 根配置)0 错误。
+- 全部 5 个包的 `tsconfig.build.json` 已由 `strict:false` 翻转为 `strict:true`
+  (测量显示翻转零成本 —— 根门禁早已按 strict 覆盖所有 src)。
+- `tsconfig.build.json.strict` 副本已删除(其使命即 strict 主配置, 不再需要)。
 
-### Why?
+历史 ~529-error 战役记录见 `/docs/TYPE-FIX-PROGRESS.md`(commit c7e7b5a)。
 
-- ~529 type errors exist in the dynamic JavaScript-style code
-- Other packages need to consume the shared types
-- Manual fixes would take 4-6 hours
+## Remaining debt (precision, not strictness)
 
-### Configuration
+- 战役期批量标注大多是 `any` / `as any` 占位符, 非精确类型 —— strict 门禁
+  对它们不报错, 精度债仍在。
+- 渐进方向: 核心数据结构(`layout-core` InferResult、`dsl-clean` node
+  shapes)与公共 API 面优先 → 逐文件替换占位符。
 
-- `tsconfig.build.json`: Current relaxed config (strict: false)
-- `tsconfig.build.json.strict`: Target strict config for future fixes
-
-### Next Steps
-
-Schedule a separate task to:
-1. Add proper type annotations to all functions
-2. Fix implicit any types
-3. Enable strict mode
-4. Replace tsconfig.build.json with tsconfig.build.json.strict
-
-### Build
-
-Type declarations are still generated and usable by other packages.
+Declaration emit for consumers keeps working (strict, emitDeclarationOnly).

@@ -17,7 +17,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-// @ts-expect-error - ws module lacks types
 import { WebSocket } from 'ws';
 import { fileURLToPath } from 'node:url';
 import { findSystemChrome, toUrl } from './browser-launch.ts';

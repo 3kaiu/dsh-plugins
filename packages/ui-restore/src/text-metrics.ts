@@ -35,7 +35,6 @@ export async function initTextMetrics(opts: Record<string, any> = {}) {
   if (_loadAttempted && !opts.force) return measurerInfo()
   _loadAttempted = true
   const paths = opts.fontPath ? [opts.fontPath, ...FONT_CANDIDATES] : FONT_CANDIDATES
-  // @ts-expect-error - opentype.js lacks type definitions
   const { parse } = await import("opentype.js") as any
   for (const p of paths) {
     try {
