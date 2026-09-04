@@ -1,2 +1,3 @@
 2026-08-16|pass
 2026-09-04|pass (run-restore-agent.mjs: 干净 iter1 PASS / --inject iter2 PASS / --max 1 exhausted exit 1; benchmark 3/3, tsc 0 错误, 全仓测试通过)
+2026-09-04|pass (E期 --repair llm 真 LLM 受限修复: mimo-v2.5-free --inject 一轮收敛 iter2 PASS exit 0; 三处修正留痕 —— ① max_tokens 2048→8192(mimo 为推理模型, 思维链走 reasoning_content, 2048 预算下 content 为空) ② parseEdits 改锚点+字符串感知括号平衡(兼容 nemotron 类思维链混排 content 的模型) ③ 蓝图真值喂父相对 offset 而非绝对 bounds(绝对坐标诱导模型改写 left/top, 首跑 exhausted 实锤); snapshot exit 0 / llm-dry exit 1(预期) / llm exit 0; deepseek-v4-flash-free 上游 400 弃用, 默认模型 mimo + RESTORE_AGENT_MODEL 覆盖; benchmark 3/3, tsc 0 错, 全仓测试通过)

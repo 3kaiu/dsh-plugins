@@ -19,7 +19,7 @@ pnpm build                 # 全仓构建(esbuild 压缩产物; ui-restore 为�
 pnpm test                  # 全仓测试 + scripts/check-fork-parity.mjs 哨兵
 npx tsc --noEmit           # 类型门禁(CI 阻塞, 必须 0 错误 —— 新代码必须过)
 node scripts/run-benchmarks.mjs            # benchmark 3 案例回归(好例收敛 + 坏例必检出)
-node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--max 8]   # 无头还原 Agent 自环: analyze→generate→渲染→收敛→CI 报告(exit code 即门禁)
+node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--max 8] [--repair snapshot|llm|llm-dry]   # 无头还原 Agent 自环: analyze→generate→渲染→收敛→CI 报告(exit code 即门禁); --repair llm = Zen 免费 LLM 受限修复(edits 有界协议, 默认 mimo-v2.5-free)
 node scripts/install-local.mjs             # 装进本地 dsh web profile(dsh CLI 优先)
 DSH_HOME=$(mktemp -d) node scripts/install-local.mjs   # 隔离验证(不碰真实 profile)
 ```

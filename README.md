@@ -21,10 +21,16 @@
 设计稿 → 1:1 还原 → 验证的全自动闭环(编排器见 [scripts/run-restore-agent.mjs](./scripts/run-restore-agent.mjs),引擎能力全部来自 `@ui-restore/core` / `ui-reverse-agent` 的 dist 导出):
 
 ```sh
-node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--truth png] [--max 8]
+node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--truth png] [--max 8] [--repair snapshot|llm|llm-dry] [--model <id>]
 ```
 
-链路:`analyze`(四闸蓝图)→ `generate`(受限代码生成)→ truth 截图(含确定性回声校验)→ 收敛自环(渲染 → verifyOnce → 门禁 → 修复)→ `ui-reverse-agent` CI 报告(`S ≥ 0.96` + 四闸摘要),退出码即门禁结果。`--inject` 注入实现偏差(色值/位移)以验证检出-修复回路:iter1 检出 FAIL → 快照恢复 → iter2 PASS。修复通过 `runConvergeLoop` 的 `repairFn` 注入点接入,V1 为确定性快照恢复,LLM 真修可替换该闭包。
+链路:`analyze`(四闸蓝图)→ `generate`(受限代码生成)→ truth 截图(含确定性回声校验)→ 收敛自环(渲染 → verifyOnce → 门禁 → 修复)→ `ui-reverse-agent` CI 报告(`S ≥ 0.96` + 四闸摘要),退出码即门禁结果。`--inject` 注入实现偏差(色值/位移)以验证检出-修复回路:iter1 检出 FAIL → 修复 → iter2 PASS。
+
+修复通过 `runConvergeLoop` 的 `repairFn` 注入点接入,`--repair` 三模式:
+
+- `snapshot`(默认, 确定性)—— 允许文件整体回滚 pristine 快照;`--inject` 场景撤销扰动即真修复
+- `llm` —— 真 LLM 受限修复(OpenCode Zen 免费层, 默认 `mimo-v2.5-free`, `--model`/`RESTORE_AGENT_MODEL` 可覆盖):loop 受限 prompt + allowedNodes 开标签 + 蓝图真值(父相对 offset 坐标)→ 模型输出有界 `{edits:[{find,replace}]}` → 本地精确应用(find 必须逐字唯一命中, 解析器容错思维链混排/代码围栏)→ 交 loop validator(变更限值 + 回归回滚兜底)
+- `llm-dry` —— llm 全链路但不出网(验证 prompt 构造/响应归一/validator 管道)
 
 每个插件是独立 npm 包,自带 `dsh.bundle` manifest,可单独发布/安装/升级。
 
