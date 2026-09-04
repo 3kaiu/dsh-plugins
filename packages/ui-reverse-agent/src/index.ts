@@ -5,7 +5,7 @@
 type AnyJson = any;
 
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { compareGeometry, compareTypography, comparePalette, compareScreenshots, scoreReport, antiHackScan, cleanToStandardDsl } from "@3kaiu/dsh-plugin-kit";
+import { compareGeometry, compareTypography, comparePalette, compareScreenshots, scoreReport, antiHackScan } from "@3kaiu/dsh-plugin-kit";
 import { referenceIngest } from "./perception/reference.ts";
 import * as browser from "./perception/browser.ts";
 import { DevServer } from "./services/devserver.ts";
@@ -25,29 +25,8 @@ import { classifyError, recoveryPlan, withRetry } from "./guard/recovery.ts";
 import { buildCiReport, writeCiArtifacts, ciGate } from "./services/ci.ts";
 import { checkDslSecurity, sanitizeDsl, sanitizeText, isAllowedUrl } from "./guard/security.ts";
 import { gitStatus, ensureRollbackPoint } from "./services/git.ts";
-import { createMetrics, estimateLoopCost } from "./services/metrics.ts";
-import { captureFeedback, loadFeedback, replayFeedback } from "./services/feedback.ts";
-import { MARKETPLACE_META, describeComposition } from "./services/marketplace.ts";
-import { runIntegrationFixture, integrationSuite } from "./testing/integration.ts";
-import { neutralToVue } from "./adapters/vue.ts";
-import { neutralToReact } from "./adapters/react.ts";
-import { toPercySnapshot, toChromaticSnapshot } from "./services/visual-regression.ts";
-import { critiqueDesign } from "./services/design-critique.ts";
-import { generateDesignSystem } from "./services/design-system.ts";
-import { classifyByExpert, planParallelExperts, mergeExpertResults } from "./orchestration/multi-agent.ts";
-import { generateHandoff } from "./services/handoff.ts";
 import { isCjk, cjkFontFallback, cjkLineBreak, cjkPunctWidth } from "./services/cjk.ts";
 import { extractAnimations, compareAnimations } from "./services/animation.ts";
-import { createTracer } from "./services/tracing.ts";
-import { defineRule, checkCustomRules, PRESET_RULES } from "./services/custom-rules.ts";
-import { generateToolDocs, generateHelperDocs } from "./services/docs.ts";
-import { genRandomTree, checkInvariant } from "./testing/property.ts";
-import { analyzeBundle, strictReport } from "./services/bundle-analysis.ts";
-import { createStream, livePreviewHtml } from "./services/streaming.ts";
-import { chunkFiles, incrementalPlan } from "./services/scale.ts";
-import { createComment, resolveComment, threadForPath } from "./services/collab.ts";
-import { evaluateRestoration } from "./testing/evaluation.ts";
-import { generateApiDocs, exampleSnippet } from "./services/typedoc.ts";
 
 const name = "dsh-ui-reverse-agent";
 const renderJson = (_args: any, value: any) => [{ type: "text" as const, text: JSON.stringify(value, null, 2) }];
@@ -126,7 +105,7 @@ function apply(ctx: any, config: any) {
       outPath: { type: "string", description: "blueprint 输出路径，默认 .ui-reverse/blueprint.json" },
     },
     output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args, exec) => referenceIngest(args, { cleanToStandardDsl, signal: exec?.signal }) as any,
+    execute: async (args, exec) => referenceIngest(args, { browserDomDump: browser.browserDomDump, signal: exec?.signal }) as any,
   }));
 
   // ── Perception: browser_* ────────────────────────────────────────
@@ -498,15 +477,16 @@ function apply(ctx: any, config: any) {
 
   ctx.tools.register(defineTool({
     name: "ci_report",
-    description: "CI 报告：基于 state 的阈值门禁（S≥0.96 无 P0/ blocked）与 artifacts 归档，输出 report.json/md 供 CI 门禁。",
+    description: "CI 报告：基于 state 的阈值门禁（S≥0.96 无 P0/blocked）+ core 蓝图四闸（meta.gates 任一 FAIL 直接不通过）与 artifacts 归档，输出 report.json/md 供 CI 门禁。",
     parameters: {
       state: { type: "json", required: true, description: "UI Reconstruction State（state.json 内容）" },
+      blueprint: { type: "json", description: "core 蓝图（blueprint.json 内容）——读取 meta.gates 四闸并入 CI 门禁，任一 FAIL 即判不通过" },
       artifacts: { type: "json", description: "artifacts 路径数组" },
       outDir: { type: "string", description: "输出目录，默认 .ui-reverse/ci" },
     },
     output: { schema: { type: "json" }, render: renderJson },
     execute: async (args: any) => {
-      const report = buildCiReport({ state: args.state, artifacts: args.artifacts || [] })
+      const report = buildCiReport({ state: args.state, blueprint: args.blueprint, artifacts: args.artifacts || [] })
       const files = writeCiArtifacts(report, { outDir: args.outDir || '.ui-reverse/ci' })
       const gate = ciGate(report)
       return { report, files, gate } as any
@@ -533,80 +513,6 @@ function apply(ctx: any, config: any) {
     },
     output: { schema: { type: "json" }, render: renderJson },
     execute: async (args: any) => ensureRollbackPoint({ iteration: args.iteration ?? 0 }, args.cwd || process.cwd()),
-  }));
-
-  // ── Metrics / Feedback ─────────────────────────────────────────────
-  ctx.tools.register(defineTool({
-    name: "estimate_cost",
-    description: "成本估算：按 sections×viewports×states 估算 loop 每轮/30 轮的解析/截图/对比耗时，供性能剖析。",
-    parameters: {
-      sections: { type: "number", required: true, description: "section 数量" },
-      viewports: { type: "number", description: "视口数，默认 3" },
-      states: { type: "number", description: "状态数，默认 1" },
-      hasBrowser: { type: "boolean", description: "是否含浏览器截图" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => estimateLoopCost({ sections: args.sections, viewports: args.viewports || 3, states: args.states || 1, hasBrowser: args.hasBrowser !== false }),
-  }));
-
-  ctx.tools.register(defineTool({
-    name: "capture_feedback",
-    description: "捕获人工校正：用户对某差异的纠正（userCorrection），写入 .ui-reverse/feedback.json 供回放为约束。",
-    parameters: {
-      path: { type: "string", required: true, description: "节点路径" },
-      prop: { type: "string", required: true, description: "属性" },
-      expected: { type: "json", description: "期望值" },
-      actual: { type: "json", description: "实际值" },
-      userCorrection: { type: "json", required: true, description: "用户纠正值" },
-      reason: { type: "string", description: "原因" },
-      iteration: { type: "number", description: "轮次" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => captureFeedback(args) as any,
-  }));
-
-  // ── Design Critique / System ───────────────────────────────────────
-  ctx.tools.register(defineTool({
-    name: "critique_design",
-    description: "设计批判：检测间距离散/主色过多/字体族过多等一致性问题，给出收敛建议（超越像素的设计质量）。",
-    parameters: {
-      blueprint: { type: "json", required: true, description: "blueprint 对象" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => critiqueDesign(args) as any,
-  }));
-
-  ctx.tools.register(defineTool({
-    name: "generate_design_system",
-    description: "设计系统生成：从 blueprint 抽取 tokens（colors/typography/spacing）与 components（按 role 聚类），供 Phase2 复用。",
-    parameters: {
-      blueprint: { type: "json", required: true, description: "blueprint 对象" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => generateDesignSystem(args.blueprint),
-  }));
-
-  // ── Orchestration / Handoff ─────────────────────────────────────────
-  ctx.tools.register(defineTool({
-    name: "plan_experts",
-    description: "多智能体协作：按 layout/style/content 三专家分解 mismatches，输出并行计划（Phase4 专家分工，Phase5 合并）。",
-    parameters: {
-      mismatches: { type: "json", required: true, description: "mismatches 数组，来自 compare_geometry/compare_layouts" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => planParallelExperts(args.mismatches),
-  }));
-
-  ctx.tools.register(defineTool({
-    name: "generate_handoff",
-    description: "交付文档：基于 blueprint/state/score 生成 handoff markdown（供设计师/开发者验收）。",
-    parameters: {
-      blueprint: { type: "json", required: true, description: "blueprint 对象" },
-      state: { type: "json", required: true, description: "state.json 内容" },
-      score: { type: "json", description: "score_report 输出" },
-    },
-    output: { schema: { type: "json" }, render: renderJson },
-    execute: async (args: any) => ({ markdown: generateHandoff(args) }),
   }));
 
   // ── 生命周期：浏览器 / dev server 随插件 fiber 走 ──
@@ -640,23 +546,8 @@ export * from "./services/cache.ts";
 export * from "./services/large-file.ts";
 export * from "./services/ci.ts";
 export * from "./services/git.ts";
-export * from "./services/metrics.ts";
-export * from "./services/feedback.ts";
-export * from "./services/marketplace.ts";
-export * from "./services/visual-regression.ts";
-export * from "./services/design-critique.ts";
-export * from "./services/design-system.ts";
 export * from "./services/cjk.ts";
 export * from "./services/animation.ts";
-export * from "./services/tracing.ts";
-export * from "./services/custom-rules.ts";
-export * from "./services/docs.ts";
-export * from "./services/bundle-analysis.ts";
-export * from "./services/streaming.ts";
-export * from "./services/scale.ts";
-export * from "./services/collab.ts";
-export * from "./services/typedoc.ts";
-export * from "./services/handoff.ts";
 export * from "./services/ask-user.ts";
 export * from "./memory/state.ts";
 export * from "./guard/fanout.ts";
@@ -665,9 +556,3 @@ export * from "./guard/design-constraints.ts";
 export * from "./guard/a11y.ts";
 export * from "./guard/recovery.ts";
 export * from "./guard/security.ts";
-export * from "./testing/integration.ts";
-export * from "./testing/property.ts";
-export * from "./testing/evaluation.ts";
-export * from "./adapters/vue.ts";
-export * from "./adapters/react.ts";
-export * from "./orchestration/multi-agent.ts";

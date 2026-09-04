@@ -18,22 +18,22 @@ function flatten(tree: any, parentPath: any = '') {
 }
 
 function getTypography(n: any) {
-  // 优先 computed，其次 font / textColor 等 DSL 字段
+  // 优先 computed，其次 font / textColor 等 DSL 字段；末位回退 core 蓝图顶层词汇(fontSize/fontFamily/color…)
   const comp = n.computed || {}
   const font = n.font || {}
   // 参考侧可能存放在 node.font / node.textColor / node._color / n.text 等
-  const family = comp.fontFamily || font.family || font.fontFamily || null
-  const sizeRaw = comp.fontSize ?? font.size ?? font.fontSize ?? null
+  const family = comp.fontFamily || font.family || font.fontFamily || n.fontFamily || null
+  const sizeRaw = comp.fontSize ?? font.size ?? font.fontSize ?? n.fontSize ?? null
   const size = sizeRaw != null ? parseFloat(String(sizeRaw)) : null
-  const weightRaw = comp.fontWeight ?? font.weight ?? null
+  const weightRaw = comp.fontWeight ?? font.weight ?? n.fontWeight ?? null
   const weight = weightRaw != null ? String(weightRaw) : null
-  const lhRaw = comp.lineHeight ?? font.lineHeight ?? null
+  const lhRaw = comp.lineHeight ?? font.lineHeight ?? n.lineHeight ?? null
   const lineHeight = lhRaw != null ? parseFloat(String(lhRaw)) : null
-  const lsRaw = comp.letterSpacing ?? font.letterSpacing ?? null
+  const lsRaw = comp.letterSpacing ?? font.letterSpacing ?? n.letterSpacing ?? null
   const letterSpacing = lsRaw != null ? parseFloat(String(lsRaw)) : null
-  const color = comp.color || n.textColor || n._color || null
+  const color = comp.color || n.textColor || n._color || n.color || null
   const text = (n.text || (Array.isArray(n.rowTexts) ? n.rowTexts.map((t: any) => typeof t === 'string' ? t : t.text).join('') : '') || '').trim()
-  return { family, size, weight, lineHeight, letterSpacing, color, text }
+  return { family, size, weight, lineHeight: lineHeight != null && lineHeight < 0 ? null : lineHeight, letterSpacing, color, text }
 }
 
 function isTextNode(n: any) {

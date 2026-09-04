@@ -22,7 +22,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFil
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { fetchBuf, parseSums, reconcileProfile, resolveProfileDir, sha256Guard } from "./install-shared.mjs";
+import { fetchBuf, parseSums, pnpmAdd, reconcileProfile, resolveProfileDir, sha256Guard } from "./install-shared.mjs";
 
 const LOG = "[install-local]";
 const PLUGINS = [

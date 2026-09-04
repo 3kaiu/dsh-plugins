@@ -22,5 +22,6 @@ export * from "./pixel.ts";
 export * from "./score.ts";
 export * from "./antihack.ts";
 export * from "./selfcorrect.ts";
-export * from "./blueprint.ts";
+// blueprint.ts 弱轨已退役：蓝图正典在 @ui-restore/core（generateCodeBlueprint 组合管线），
+// ura 经 perception/blueprint-compat 投影消费；kit 不再持有蓝图构建实现。
 export * from "./test-utils.ts";

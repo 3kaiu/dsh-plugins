@@ -112,6 +112,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
+      '@ui-restore/core':
+        specifier: workspace:*
+        version: link:../ui-restore
       playwright:
         specifier: ^1.48.0
         version: 1.62.1

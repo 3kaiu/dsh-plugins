@@ -10,11 +10,21 @@
 | `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推** — 裸坐标反推 flex 语义 + 还原决策分类,6 个 dsh 工具:`infer_layout` / `annotate_layout` / `clean_layout` / `classify_design` / `page_layout_tree` / `compare_layouts`(算法文档见 [docs/architecture/12-ui-restore-algorithm.md](./docs/architecture/12-ui-restore-algorithm.md)) |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 布局内核(坐标反推 flex/层级重建/清洗)、配额跟踪、并发信号量、测试助手;构建时被各插件 bundle 进各自 dist,零运行时依赖 |
 | `packages/ui-restore` | [@ui-restore/core](./packages/ui-restore) | **UI 还原核心(零宿主依赖)** — 设计稿 DSL → 中立蓝图 → 多重门禁(契约/几何/样式/Yoga 真值) → 受限代码生成(React/Vue/Flutter/小程序/Tailwind);附 CLI、MCP Server 与收敛循环适配器 |
-| `packages/ui-reverse-agent` | [@3kaiu/dsh-ui-reverse-agent](./packages/ui-reverse-agent) | **视觉逆向还原 Agent 插件** — 34 个 dsh 工具(参考摄取、浏览器闭环、五层对比/评分、反 hack、状态记忆、扇出择优、CI 门禁)+ persona/preset/skill |
+| `packages/ui-reverse-agent` | [@3kaiu/dsh-ui-reverse-agent](./packages/ui-reverse-agent) | **视觉逆向还原 Agent 插件** — 28 个 dsh 工具(参考摄取、浏览器闭环、五层对比/评分、反 hack、状态记忆、扇出择优、CI 门禁)+ persona/preset/skill;摄取/对比/CI 管线以 `@ui-restore/core` 正典蓝图为验证内核 |
 
-> 注:`packages/shared` 中仍保留一份旧 UI 内核(供 `layout-infer` 消费),与
-> `packages/ui-restore` 的核心是两套并存实现 —— 演进以 `ui-restore` 为准,
-> 详见 [docs/architecture/16-generic-ui-restore-architecture.md](./docs/architecture/16-generic-ui-restore-architecture.md) §1/§6。
+> 注:`packages/shared` 中仍保留一份旧 UI 内核(供 `layout-infer` 消费),但**蓝图构建弱轨已退役** ——
+> 蓝图正典在 `packages/ui-restore`(generateCodeBlueprint 组合管线),`ui-reverse-agent` 等消费方
+> 一律 import 其 dist 导出;详见 [docs/architecture/16-generic-ui-restore-architecture.md](./docs/architecture/16-generic-ui-restore-architecture.md) §1/§6。
+
+## 无头还原 Agent
+
+设计稿 → 1:1 还原 → 验证的全自动闭环(编排器见 [scripts/run-restore-agent.mjs](./scripts/run-restore-agent.mjs),引擎能力全部来自 `@ui-restore/core` / `ui-reverse-agent` 的 dist 导出):
+
+```sh
+node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--truth png] [--max 8]
+```
+
+链路:`analyze`(四闸蓝图)→ `generate`(受限代码生成)→ truth 截图(含确定性回声校验)→ 收敛自环(渲染 → verifyOnce → 门禁 → 修复)→ `ui-reverse-agent` CI 报告(`S ≥ 0.96` + 四闸摘要),退出码即门禁结果。`--inject` 注入实现偏差(色值/位移)以验证检出-修复回路:iter1 检出 FAIL → 快照恢复 → iter2 PASS。修复通过 `runConvergeLoop` 的 `repairFn` 注入点接入,V1 为确定性快照恢复,LLM 真修可替换该闭包。
 
 每个插件是独立 npm 包,自带 `dsh.bundle` manifest,可单独发布/安装/升级。
 
@@ -72,9 +82,12 @@ node scripts/install-local.mjs   # pnpm build → dsh plugin add(回退 pnpm add
 
 ```sh
 pnpm build   # 各包 esbuild minify -> dist/
-pnpm test    # 各包 build + 全部测试套件(离线,mock fetch)
+pnpm test    # 各包 build + 全部测试套件(离线,mock fetch) + fork-parity 哨兵
+npx tsc --noEmit    # 类型门禁(CI 阻塞, 必须 0 错误)
+node scripts/run-benchmarks.mjs   # benchmark 3 案例回归(好例 diffRatio<0.02+区域归零, 坏例注入必检出)
 ```
 
+- **fork-parity 哨兵**(`scripts/check-fork-parity.mjs`) — 引擎归一后校验 kit 与 ui-restore 对同一输入产出完全一致(inferLayout 双侧可调用/输出形状超集兼容/clean 行为一致),防止两处引擎漂移
 - `layout-infer` — 布局内核边界、30 个真实设计稿 section 回归、还原决策分类(含真实 MasterGo DSL fixture)、工具注册冒烟
 - `llm-opencode-zen` — 配额(402/429)与 reasoning_content 回传回归、动态免费模型目录(交集过滤/缓存/回降)
 

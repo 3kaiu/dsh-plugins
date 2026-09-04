@@ -17,7 +17,7 @@
   name: '@3kaiu/dsh-layout-infer'
   # 提供：infer_layout / annotate_layout / clean_layout / classify_design / page_layout_tree / compare_layouts
 
-# ── 3. 视觉还原 Agent 工具集（34 工具）+ 浏览器/守卫/记忆服务 ──
+# ── 3. 视觉还原 Agent 工具集（28 工具）+ 浏览器/守卫/记忆服务 ──
 # 含 Playwright 单例与 DevServer 子进程 — 需 per-agent 隔离，避免多 Session 串扰
 - id: dsh-ui-reverse-agent
   name: '@3kaiu/dsh-ui-reverse-agent'

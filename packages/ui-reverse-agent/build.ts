@@ -2,7 +2,8 @@
 import { buildBundle, DSH_EXTERNALS } from "../../scripts/esbuild-common.mjs";
 import { execSync } from "node:child_process";
 // zod 由宿主 profile 提供（storage-domain 等同实例消费），保持 external 避免 bundle 膨胀与双实例
-const externals: string[] = [...DSH_EXTERNALS.filter((n: string) => n === "@deepseek-ai/dsh-tools"), "zod", "playwright", "playwright-core"];
+// @ui-restore/core 运行时解析: 其传递依赖(opentype/pixelmatch/pngjs/yoga/ws/mcp-sdk)随 core 安装, 避免 wasm 风险与双实例
+const externals: string[] = [...DSH_EXTERNALS.filter((n: string) => n === "@deepseek-ai/dsh-tools"), "zod", "playwright", "playwright-core", "@ui-restore/core"];
 await buildBundle("src/index.ts", "dist/index.js", externals);
 
 // 生成类型定义

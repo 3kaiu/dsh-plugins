@@ -8,7 +8,7 @@ apply(ctx);
 const registered=ctx.__registeredTools;
 const names=registered.map(t=>t.name);
 console.log('registered',names.join(', '));
-const must=['reference_ingest','neutral_ingest','browser_start','browser_viewport','browser_navigate','browser_screenshot','browser_dom_dump','browser_state_trigger','browser_console','browser_stop','compare_geometry','compare_typography','compare_palette','compare_screenshots','score_report','fanout_evaluate','verify_neutral','viewport_matrix','token_map','check_design_constraints','check_a11y','recovery_plan','ci_report','check_dsl_security','git_rollback_point','estimate_cost','capture_feedback','critique_design','generate_design_system','plan_experts','generate_handoff','anti_hack_scan','state_read','state_update'];
+const must=['reference_ingest','neutral_ingest','browser_start','browser_viewport','browser_navigate','browser_screenshot','browser_dom_dump','browser_state_trigger','browser_console','browser_stop','compare_geometry','compare_typography','compare_palette','compare_screenshots','score_report','fanout_evaluate','verify_neutral','viewport_matrix','token_map','check_design_constraints','check_a11y','recovery_plan','ci_report','check_dsl_security','git_rollback_point','anti_hack_scan','state_read','state_update'];
 for(const n of must){ if(!names.includes(n)) throw new Error(`缺少 ${n}`);}
 console.log('all required tools present ✓');
 // systemPrompt.variable 契约：variable(name, provider) 形式注册且返回可用的阈值字符串

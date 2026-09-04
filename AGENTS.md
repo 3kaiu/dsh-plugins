@@ -10,7 +10,7 @@ DeepSeek Harness 插件 monorepo: OpenCode Zen LLM 适配器、布局推断、UI
 | `packages/layout-infer` (@3kaiu/dsh-layout-infer) | 布局推断壳包(classify 自 kit 再导出) | dist/index.js |
 | `packages/llm-opencode-zen` (@3kaiu/dsh-llm-opencode-zen) | OpenCode Zen LLM 适配器(node+browser 双半) | dist/index.js + dist/client.js |
 | `packages/ui-restore` (@ui-restore/core) | UI 1:1 还原核心: 设计稿 → 中立蓝图 → 验证 → 受限生成 | dist/ 多入口(cli/mcp-server/pipeline/restore/loop/screenshot/dom-blocks) |
-| `packages/ui-reverse-agent` (@3kaiu/dsh-ui-reverse-agent) | 视觉逆向 Agent(34 工具面) | dist/index.js |
+| `packages/ui-reverse-agent` (@3kaiu/dsh-ui-reverse-agent) | 视觉逆向 Agent(28 工具面): 摄取/对比/CI 管线已切 @ui-restore/core 正典蓝图, kit 不再持有蓝图构建(弱轨退役) | dist/index.js |
 
 ## 命令(全部从仓库根)
 
@@ -19,6 +19,7 @@ pnpm build                 # 全仓构建(esbuild 压缩产物; ui-restore 为�
 pnpm test                  # 全仓测试 + scripts/check-fork-parity.mjs 哨兵
 npx tsc --noEmit           # 类型门禁(CI 阻塞, 必须 0 错误 —— 新代码必须过)
 node scripts/run-benchmarks.mjs            # benchmark 3 案例回归(好例收敛 + 坏例必检出)
+node scripts/run-restore-agent.mjs <design.json> [--dir out] [--inject] [--max 8]   # 无头还原 Agent 自环: analyze→generate→渲染→收敛→CI 报告(exit code 即门禁)
 node scripts/install-local.mjs             # 装进本地 dsh web profile(dsh CLI 优先)
 DSH_HOME=$(mktemp -d) node scripts/install-local.mjs   # 隔离验证(不碰真实 profile)
 ```
@@ -35,7 +36,7 @@ DSH_HOME=$(mktemp -d) node scripts/install-local.mjs   # 隔离验证(不碰真�
 
 - **Design Truth > LLM Assumption**: 蓝图数值是设计稿测量事实, 禁止取整/"合理化"
 - **消费压缩产物**: 一切按 `dist/*.js` 使用(源码仅开发); 改源码后必须 `pnpm build`
-- **单一来源纪律**: 引擎/聚类/round1/url-guard 等正典在 kit —— 不要在别处重写同名函数; 新公共能力进 kit 并导出
+- **单一来源纪律**: 引擎/聚类/round1/url-guard 等正典在 kit —— 不要在别处重写同名函数; 新公共能力进 kit 并导出; **蓝图正典在 @ui-restore/core**(kit 弱轨已退役) —— ura 等消费方一律 import 其 dist 导出, 禁止重写管线逻辑
 - **角色词表是几何语义**(doc19 批3): status-bar/nav-bar/grid-row/card-deck/segmented-bar/feature-card/sticker-card 等; 语言绑定的 learn-card/content-tabs 已退役
 - **供应链**: 新插件进入 harness 必须在 `scripts/install-shared.mjs` 的 TRUSTED_BUNDLES 显式登记; 第三方 action 一律 SHA 钉死
 

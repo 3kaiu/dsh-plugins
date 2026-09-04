@@ -19,7 +19,8 @@ function flatten(tree: any, parentPath: any = ''): any[] {
 function layoutProps(layout: any) {
   if (!layout) return {}
   return {
-    flexDirection: layout.flexDirection ?? null,
+    // core 蓝图无 flexDirection, 用 role 折叠(row/column); 其余 role 词汇(stack/box)不映射
+    flexDirection: layout.flexDirection ?? (layout.role === 'row' ? 'row' : layout.role === 'column' ? 'column' : null) ?? null,
     gap: layout.gap ?? null,
     padding: layout.padding ?? null,
     alignItems: layout.alignItems ?? null,
@@ -50,8 +51,8 @@ function scoreMatch(refNode: any, implNode: any) {
   if (refNode.type && implNode.type && refNode.type === implNode.type) s += 2
   if (refNode.role && implNode.role && refNode.role === implNode.role) s += 5
   // bbox 距离惩罚
-  const rb = refNode.rect || refNode.bbox || null
-  const ib = implNode.rect || implNode.bbox || null
+  const rb = refNode.rect || refNode.bbox || refNode.bounds || null
+  const ib = implNode.rect || implNode.bbox || implNode.bounds || null
   if (rb && ib) {
     const dx = Math.abs((rb.x ?? 0) - (ib.x ?? 0))
     const dy = Math.abs((rb.y ?? 0) - (ib.y ?? 0))

@@ -114,6 +114,12 @@ function collectColorsFromNode(n: any, out: any) {
   if (n.effect && typeof n.effect === 'string') {
     // shadow 可能含色值，忽略
   }
+  // core 蓝图词汇: 顶层 color(文本色) / stroke / fill{stops[]} 渐变 stop
+  if (n.color) candidates.push(n.color)
+  if (n.stroke) candidates.push(n.stroke)
+  if (n.fill && typeof n.fill === 'object' && Array.isArray(n.fill.stops)) {
+    for (const st of n.fill.stops) { if (st && typeof st.color === 'string') candidates.push(st.color) }
+  }
   if (n.computed) {
     const c = n.computed
     if (c.color) candidates.push(c.color)

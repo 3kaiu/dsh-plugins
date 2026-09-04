@@ -17,9 +17,10 @@ function flatten(tree: any, parentPath: any = '') {
 }
 
 function getBbox(n: any) {
-  // 支持多种来源：rect / bbox / layoutStyle
+  // 支持多种来源：rect / bbox / bounds(core 蓝图) / layoutStyle
   if (n.rect) return { x: n.rect.x ?? 0, y: n.rect.y ?? 0, w: n.rect.w ?? n.rect.width ?? 0, h: n.rect.h ?? n.rect.height ?? 0 }
   if (n.bbox) return { x: n.bbox.x ?? 0, y: n.bbox.y ?? 0, w: n.bbox.width ?? n.bbox.w ?? 0, h: n.bbox.height ?? n.bbox.h ?? 0 }
+  if (n.bounds) return { x: n.bounds.x ?? 0, y: n.bounds.y ?? 0, w: n.bounds.width ?? 0, h: n.bounds.height ?? 0 }
   const ls = n.layoutStyle
   if (ls) return { x: ls.relativeX ?? 0, y: ls.relativeY ?? 0, w: ls.width ?? 0, h: ls.height ?? 0 }
   return null

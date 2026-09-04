@@ -16,18 +16,21 @@ const neutral = {
   }
 };
 
-let bp = neutralToBlueprint(neutral);
+let bp = await neutralToBlueprint(neutral);
 if (bp.canvas.width !== 1440 || bp.canvas.background !== '#F3F4F8') throw new Error('canvas');
-if (bp.tree.length !== 3) throw new Error(`tree 3 got ${bp.tree.length}`);
+const bpRoots = bp.tree.length === 1 && bp.tree[0]?.isSyntheticGroup ? bp.tree[0].children : bp.tree;
+if (bpRoots.length !== 3) throw new Error(`tree 3 got ${bpRoots.length}`);
 if (bp.assets.icons.length !== 1 || bp.assets.images.length !== 1) throw new Error('assets');
-if (bp.regions.length === 0) throw new Error('regions');
-console.log('neutralToBlueprint', bp.canvas, bp.tree.map(t=>t.name).join(','));
+if (!bp.assets.icons[0]?.svg || !String(bp.assets.icons[0].svg).includes('<svg')) throw new Error('icon svg markup missing');
+if (bp.regions.length !== 3) throw new Error(`regions 3 got ${bp.regions.length}`);
+if (bp.meta?.source !== 'neutral-tree') throw new Error('meta source');
+console.log('neutralToBlueprint', bp.canvas, bpRoots.map(t=>t.name).join(','));
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'neutral-'));
 const out = path.join(dir, 'blueprint.json');
 let res = await neutralIngest({ neutralTree: neutral, outPath: out });
 if (!fs.existsSync(out)) throw new Error('ingest out missing');
-if (res.summary.regions !== 3) throw new Error('summary regions');
+if (res.summary.regions !== 3) throw new Error(`summary regions got ${res.summary.regions}`);
 console.log('neutralIngest', res.summary);
 
 // verify-neutral：实现侧完全对齐应 clean

@@ -38,6 +38,7 @@ Phase0 环境发现 → Phase1 reference_ingest→blueprint.json → Phase2 仓�
 ```
 
 - 蓝图一次构建全程复用（`.ui-reverse/blueprint.json`）
+- 蓝图由 core 组合管线产出，四闸（契约/几何/样式/Yoga 真值）任一 FAIL 摄取即抛错 —— 摄取报错先修参考输入，严禁绕闸手工造蓝图
 - 每轮必 `state_read → state_update`（append-only，同步写 `history/` 与 goals/todo）
 - 验证顺序：`anti_hack_scan` → `browser_screenshot/dom_dump` → `compare_*` → `score_report`
 
@@ -111,22 +112,12 @@ Phase0 环境发现 → Phase1 reference_ingest→blueprint.json → Phase2 仓�
 ## 容错与 CI
 
 - `recovery_plan` 按 `devServer/browser/network/file` 分类给出 `retry/delay/fallback`（与 `selfcorrect` 视觉回滚互补，`withRetry` 供调用方包裹 `fetch/spawn`）
-- `ci_report` 基于 `state` 的 `S≥0.96 无 P0/!blocked` 门禁，`buildCiReport/writeCiArtifacts/ciGate` 产 `report.json/md` 供 CI 归档
+- `ci_report` 门禁 = `state` 的 `S≥0.96 无 P0/!blocked` + core 蓝图四闸（传 `blueprint` 读 `meta.gates`，contract/geometry/style/truth 任一 FAIL 直接不通过，无豁免口），`buildCiReport/writeCiArtifacts/ciGate` 产 `report.json/md` 供 CI 归档
 
 ## 安全与 Git
 
 - `check_dsl_security` 检 `XSS 文本/URL allowlist/SVG 脚本`（输入侧，与 `anti_hack` 输出侧互补），`sanitizeDsl/sanitizeText` 去控制字符截断 10k
 - `git_rollback_point` 读 `HEAD/dirty` 生成 `rollbackPoints` 条目（Phase5 改前锚点，回滚用 `git checkout <sha> -- .`）
-
-## 性能与反馈
-
-- `estimate_cost` 按 `sections×viewports×states` 估 `parse/screenshots/compares` 耗时（`hasBrowser 800ms/shot`），`createMetrics` 采集各阶段 `mark/report` 定位瓶颈
-- `capture_feedback` 捕获 `userCorrection` 写 `feedback.json`，`replayFeedback` 回放为 `spacingScale/colorPalette` 约束供下次 `fanout` 优先
-
-## 批判与系统
-
-- `critique_design` 检 `gap 离散>6/主色>8/字体族>3` 等一致性，给出收敛建议（超越像素的设计质量）
-- `generate_design_system` 从 `palette/typographyProfile/tree` 抽 `tokens{colors/typography/spacing}+components{按 role 聚类}` 供 `Phase2` 复用
 
 ## 反面示例
 

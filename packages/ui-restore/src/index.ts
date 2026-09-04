@@ -71,3 +71,6 @@ export * from "./target/merge.ts";
 // target 受限 Patch 契约与校验(⑨⑪)
 export * from "./target/patch.ts";
 export * from "./target/svg-sanitize.ts";
+// 组合管线(adapters/pipeline): buildBlueprint/verifyScreenshots/analyzeDesign/evaluateVerify
+// 等"读文件→蓝图→验证→循环"编排面, 供 agent 包组合消费
+export * from "./adapters/pipeline.ts";
