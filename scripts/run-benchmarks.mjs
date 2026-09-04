@@ -5,11 +5,12 @@
 //
 // 每个案例(case-*/)的完整回归闭环:
 //   1. analyze   design.json → UI Truth 产物包 + 四闸门禁(契约/几何守恒/样式守恒/Yoga真值)
-//   2. 真值块清单 ← 蓝图 TEXT 叶子派生(visual-diff 契约: "设计侧清单来自蓝图 bounds")
+//   2. 真值块清单 ← 蓝图 TEXT 叶子派生(visual-diff 契约: "设计侧清单来自蓝图 bounds";
+//      meta.restoreSubtree 子树还原案例限定口径, 与像素基准 truth.png 同范围)
 //   3. 探针      restore.html → 同会话 {render.png + render.blocks.json}(ui-restore dist/dom-blocks.js)
 //   4. 好例断言  truth.png vs 渲染图 → 收敛语义
 //        HARD: 区域归零(clusterCount===0) + diffRatio<0.02(亚像素/AA 噪声级)
-//        WARN: blockMatchRate<0.95(清单粒度尚未对齐蓝图的富文本切分 —— V2 typography 校准项)
+//        WARN: blockMatchRate<0.95(同范围内文本仍未对齐 —— 字形/粒度, V2 typography 校准项)
 //   5. 坏例断言  restore-bad.html 注入偏差必须被检出(corrections 非空或区域>0) —— 封堵假阴性出口
 //   6. session   记账到 .dsh/bench/<case>/session.json(.dsh 已被 gitignore, 产物不污染仓库)
 //
@@ -55,9 +56,25 @@ for (const d of fs.readdirSync(benchDir).sort()) {
 }
 if (!cases.length) { console.error('无可用案例(benchmarks/case-*: design.json+truth.png+restore.html)'); process.exit(1); }
 
-/** 从蓝图叶子派生设计侧块清单(TEXT 叶子, 画布绝对坐标) */
-function truthBlocksFromBlueprint(bpFiles) {
+/** 从蓝图叶子派生设计侧块清单(TEXT 叶子, 画布绝对坐标)。
+ *  subtreeId = 案例 meta.restoreSubtree: 卡片子树实现的案例(restore.html 只还原部分蓝图),
+ *  其像素基准 truth.png 就是该 restore.html 的截图 —— 块清单必须同口径取同一子树, 否则整页
+ *  其余 TEXT 叶子全落 unmatchedD, 把 BMR 拉成假 WARN(实证: 408-card 0.34→1)。子树找不到
+ *  即报错, 不静默回退整页 —— 防口径失真悄悄发生。 */
+function truthBlocksFromBlueprint(bpFiles, subtreeId) {
   const bp = JSON.parse(fs.readFileSync(bpFiles, 'utf8'));
+  let roots = [...(bp.tree || []), ...(bp.floatings || [])];
+  if (subtreeId != null) {
+    let sub = null;
+    const find = (n) => {
+      if (!n || typeof n !== 'object' || sub) return;
+      if (n.id === subtreeId) { sub = n; return; }
+      for (const c of Array.isArray(n.children) ? n.children : []) find(c);
+    };
+    for (const r of roots) find(r);
+    if (!sub) throw new Error(`meta.restoreSubtree=${subtreeId} 在蓝图 tree/floatings 中未找到(案例声明与 design.json 不符)`);
+    roots = [sub];
+  }
   const out = [];
   const walk = (n) => {
     if (!n || typeof n !== 'object') return;
@@ -66,7 +83,7 @@ function truthBlocksFromBlueprint(bpFiles) {
     }
     for (const c of Array.isArray(n.children) ? n.children : []) walk(c);
   };
-  for (const r of [...(bp.tree || []), ...(bp.floatings || [])]) walk(r);
+  for (const r of roots) walk(r);
   return { list: out, canvas: bp.canvas };
 }
 
@@ -103,8 +120,11 @@ for (const c of cases) {
     row.lintWarn = a.lint.checks.filter((x) => x.level !== 'PASS').map((x) => `${x.level}:${x.check}`).join(' ') || null;
     if (row.lintWarn) console.log(`  ! [体检] ${c.name}: ${row.lintWarn}(详见 lint 设计, 不阻断回归)`);
 
-    // 2+3) 真值块清单(蓝图派生) + 渲染探针(好例)
-    const tb = truthBlocksFromBlueprint(a.files.blueprint);
+    // 2+3) 真值块清单(蓝图派生, meta.restoreSubtree 限定口径) + 渲染探针(好例)
+    const meta = fs.existsSync(path.join(c.dir, 'meta.json'))
+      ? JSON.parse(fs.readFileSync(path.join(c.dir, 'meta.json'), 'utf8')) : {};
+    const tb = truthBlocksFromBlueprint(a.files.blueprint, meta.restoreSubtree);
+    if (meta.restoreSubtree) console.log(`  · [BMR 口径] ${c.name}: 真值块限定子树 ${meta.restoreSubtree}(${tb.list.length} 块)`);
     // 视口对齐权威 = 基准 truth.png 的真实像素, 而非蓝图 canvas —— ingest 对含越界内容
     // (绝对定位负坐标段)的稿会按内容外接盒推导画布(实证: live-course-card 蓝图画布=688x812,
     // 库内基准图=375x812)。空间推导口径属 V2-1 UI Truth 专项; benchmark 以基准图为锚保证可回归。
@@ -118,8 +138,6 @@ for (const c of cases) {
     //    像素级断言的权威性 = 制作时 Chrome === 运行时 Chrome(case meta.json 记录):
     //    跨 Chrome 版本的字形/AA 差异会打穿 <2%/区域归零 断言 —— 版本不匹配时降级为
     //    「四闸 + BMR 报告 + 坏例检出」(全部确定性), 像素断言仅在基线浏览器权威时执行。
-    const meta = fs.existsSync(path.join(c.dir, 'meta.json'))
-      ? JSON.parse(fs.readFileSync(path.join(c.dir, 'meta.json'), 'utf8')) : {};
     const pixelAuthoritative = meta.chromeMajor != null && meta.chromeMajor === RUNNER_CHROME;
     const good = verifyScreenshots({
       truthPng: path.join(c.dir, 'truth.png'), renderPng: path.join(art, 'good.render.png'),
@@ -135,7 +153,7 @@ for (const c of cases) {
     if (!row.ok && !row.pixelSkip) row.reasons.push(`好例未收敛: ${[`diffRatio=${good.pixel.diffRatio}`, `clusters=${good.regions}`].join(' / ')}`);
     if (row.warnBmr) {
       row.bmrNote = `${row.warnBmr}(unmatchedD=${row.unmatchedD}, unmatchedR=${row.unmatchedR})`;
-      console.log(`  ! [WARN] ${c.name}: ${row.bmrNote} —— 清单粒度 vs 蓝图富文本切分, V2 typography 校准项`);
+      console.log(`  ! [WARN] ${c.name}: ${row.bmrNote} —— 同口径内文本仍未对齐(字形/粒度), V2 typography 校准项`);
     }
 
     // 5) 坏例断言: 注入偏差必须被检出(假阴性出口封堵)
@@ -154,7 +172,7 @@ for (const c of cases) {
 
     // 6) session 记账(形态对齐 restore.mjs, 便于人工排查)
     fs.writeFileSync(path.join(art, 'session.json'), JSON.stringify({
-      case: c.name, createdAt: new Date().toISOString(),
+      case: c.name, createdAt: new Date().toISOString(), restoreSubtree: meta.restoreSubtree ?? null,
       gates: row.gates, lint: row.lintWarn,
       good: { diffRatio: good.pixel.diffRatio, regions: good.regions, bmr: good.blocks?.blockMatchRate ?? null,
         matchedPairs: good.blocks?.matchedPairs ?? null, posSim: good.blocks?.positionSimilarity ?? null,
@@ -185,4 +203,8 @@ console.log(failed.length === 0 ? `\n全部通过(${results.length} 案例)` : `
 // BMR 语义边界(诚实声明): BMR 度量「真文本节点」的对齐度。设计稿中文本以矢量字形(svgKey)
 // 呈现的部分不会成为 DOM 文本节点, 此类稿 BMR 天然 <1 且不算回归失败 —— 故仅 WARN 不入硬门禁。
 // 达成 BMR=1 的验收只在「文本全部落为真文本节点」的渲染体上成立(V2 typography/字形判定专项)。
+// 口径对齐留痕(2026-09): 卡片子树实现案例(restore.html 只还原部分蓝图)必须经 meta.restoreSubtree
+// 声明子树 id —— 真值块清单与像素基准 truth.png(=restore.html 截图)同范围。此前 408-card/
+// live-course-card 未声明, 整页蓝图 32 叶对卡片渲染记分, 29 块越界 unmatched 把 BMR 压到 0.34/0.28
+// (matchedPairs posSim 全 1、像素 diff=0、区域归零)—— 属基准编排口径错误, 非渲染或匹配器缺陷。
 process.exit(failed.length ? 1 : 0);

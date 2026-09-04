@@ -11,6 +11,7 @@
 | `restore.html` | 正确实现 —— blueprint 子树逐字段还原(bounds 差值定位) |
 | `restore-bad.html` | 注入 2 处已知偏差: chip1 left +8px, 按钮宽 -10px |
 | `truth.png` / `render.png` / `session.json` | 运行时产物 |
+| `meta.json` | 案例声明: `chromeMajor`=像素基线浏览器; `restoreSubtree`=还原的蓝图子树 id(真值块清单口径与 truth.png 同范围) |
 | `generated/` | 盲还原迭代产物(v15-blind, w4-*)与轮次质量报告 w4-report.md |
 
 ## 复现

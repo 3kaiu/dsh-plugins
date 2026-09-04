@@ -8,6 +8,7 @@
 |------|------|
 | `restore.html` | 正确实现 —— 按 blueprint 子树逐字段手写(bounds 唯一真值, stack 差值定位, softWrap=false) |
 | `restore-bad.html` | 注入 2 处已知偏差的"LLM 第一版": 标题 top +6px(geometry), 副标题 12→10px(typography) |
+| `meta.json` | 案例声明: `chromeMajor`=像素基线浏览器; `restoreSubtree`=408:8797(真值块清单口径与 truth.png 同范围) |
 | `truth.png` / `render.png` / `session.json` | 运行时产物(可删, 由下列命令再生) |
 
 ## 复现闭环(analyze → 实现 → 截图 → verify → fix)
