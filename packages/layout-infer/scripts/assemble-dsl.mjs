@@ -18,8 +18,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-gaiban2", import.meta.url));
 const FULL = path.join(DIR, "dsl-full.json");
 const SVGJSON = path.join(DIR, "svgs-official.json");
 const OUT = path.join(DIR, "stacked-draft.json");

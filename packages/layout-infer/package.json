@@ -1,7 +1,7 @@
 {
   "name": "@3kaiu/dsh-layout-infer",
   "version": "0.2.0",
-  "description": "DeepSeek Harness plugin: UI layout inference tools (infer_layout / annotate_layout) that reverse flex semantics from absolute design coordinates.",
+  "description": "DeepSeek Harness plugin: UI layout inference tools (infer_layout / annotate_layout / clean_layout / classify_design / page_layout_tree / compare_layouts) that reverse flex semantics from absolute design coordinates.",
   "type": "module",
   "main": "dist/index.js",
   "exports": {

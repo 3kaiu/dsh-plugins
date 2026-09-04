@@ -10,9 +10,10 @@
 //
 // 用法:node render-dsl.mjs [fixtureDir] → tree.json
 import fs from "node:fs";
-import { simulateFlex } from "/Users/seeu/dev/dsh-opencode-zen/packages/shared/dist/index.js";
+import { fileURLToPath } from "node:url";
+import { simulateFlex } from "../../shared/dist/index.js";
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-demo-2025", import.meta.url));
 const DRAFT = `${DIR}/stacked-draft.json`;
 const FULL = `${DIR}/dsl-full.json`;
 const OUT = `${DIR}/tree.json`;

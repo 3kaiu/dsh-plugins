@@ -7,7 +7,7 @@
 | 包 | 版本 | 职责 |
 | --- | --- | --- |
 | `packages/llm-opencode-zen` | [@3kaiu/dsh-llm-opencode-zen](./packages/llm-opencode-zen) | **LLM 适配器** — OpenCode Zen 免费模型(动态目录 + 设置页一键获取,默认不锁定单一模型 id):429/402 感知、per-session 冷却隔离、主动 pacing、用量遥测、tool-call JSON 修复、reasoning_content 回传 |
-| `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推** — 裸坐标反推 flex 语义 + 还原决策分类,4 个 dsh 工具:`infer_layout` / `annotate_layout` / `clean_layout` / `classify_design`(算法文档见 [docs/architecture/12-ui-restore-algorithm.md](./docs/architecture/12-ui-restore-algorithm.md)) |
+| `packages/layout-infer` | [@3kaiu/dsh-layout-infer](./packages/layout-infer) | **布局反推** — 裸坐标反推 flex 语义 + 还原决策分类,6 个 dsh 工具:`infer_layout` / `annotate_layout` / `clean_layout` / `classify_design` / `page_layout_tree` / `compare_layouts`(算法文档见 [docs/architecture/12-ui-restore-algorithm.md](./docs/architecture/12-ui-restore-algorithm.md)) |
 | `packages/shared` | [@3kaiu/dsh-plugin-kit](./packages/shared) | **公共能力(源码包)** — 布局内核(坐标反推 flex/层级重建/清洗)、配额跟踪、并发信号量、测试助手;构建时被各插件 bundle 进各自 dist,零运行时依赖 |
 | `packages/ui-restore` | [@ui-restore/core](./packages/ui-restore) | **UI 还原核心(零宿主依赖)** — 设计稿 DSL → 中立蓝图 → 多重门禁(契约/几何/样式/Yoga 真值) → 受限代码生成(React/Vue/Flutter/小程序/Tailwind);附 CLI、MCP Server 与收敛循环适配器 |
 | `packages/ui-reverse-agent` | [@3kaiu/dsh-ui-reverse-agent](./packages/ui-reverse-agent) | **视觉逆向还原 Agent 插件** — 34 个 dsh 工具(参考摄取、浏览器闭环、五层对比/评分、反 hack、状态记忆、扇出择优、CI 门禁)+ persona/preset/skill |

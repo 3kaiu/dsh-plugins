@@ -1,9 +1,11 @@
 // 《改版·课程》稿(819×1178)验证:几何/状态栏/位图/组件 —— 期望值全部来自 sections 列表坐标链
 // 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛)
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { launchProbe } from "./verify-lib.mjs";
 
-const URL = "file:///Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo.html";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-gaiban2", import.meta.url));
+const PAGE_URL = `file://${DIR}/demo.html`;
 const checks = [
   ["标题 课程", "课程", 34, 53, 0, 0],
   ["课程学习成果", "课程学习成果", 355.5, 196, 0, 0],
@@ -22,7 +24,7 @@ const checks = [
   ["tab 学习", "学习", 498, 1125, 28, 47],
   ["tab 我的", "我的", 701, 1125, 28, 47],
 ];
-const { page, origin, screenshotTo, close } = await launchProbe({ url: URL, viewport: { width: 900, height: 1300 }, deviceScaleFactor: 1, waitMs: 2500 });
+const { page, origin, screenshotTo, close } = await launchProbe({ url: PAGE_URL, viewport: { width: 900, height: 1300 }, deviceScaleFactor: 1, waitMs: 2500 });
 let pass = 0;
 for (const [name, needle, ex, ey] of checks) {
   const hit = await page.evaluate(({ needle, ex, ey, ox, oy }) => {
@@ -74,7 +76,7 @@ const tpl = await page.evaluate(() => ({
 console.log(`模板: ${tpl.templates}, dupIds: ${tpl.dupIds}`);
 
 // DOM 结构:冗余 wrapper
-const html = readFileSync("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo.html", "utf8");
+const html = readFileSync(`${DIR}/demo.html`, "utf8");
 const wrappers = (html.match(/<div style="position:absolute;left:[\d.]+px;top:[\d.]+px;"><div/g) || []).length;
 console.log(`纯定位 wrapper: ${wrappers}`);
 
@@ -93,6 +95,6 @@ if (slice && Math.abs(slice.x - 140) <= 2 && Math.abs(slice.y - 237.76) <= 2 && 
   console.log(`统计区切图: 0/1 通过`);
 }
 
-await screenshotTo("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban2/demo-full.png");
+await screenshotTo(`${DIR}/demo-full.png`);
 console.log("截图: demo-full.png");
 await close();

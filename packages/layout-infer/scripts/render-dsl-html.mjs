@@ -6,12 +6,13 @@
 //   3. 多段 textColor → 语法高亮 span
 //   4. 渐变文字 → background-clip:text;hairline(0/缺失高)→ 1px
 import fs from "node:fs";
-import { simulateFlex } from "/Users/seeu/dev/dsh-opencode-zen/packages/shared/dist/index.js";
+import { fileURLToPath } from "node:url";
+import { simulateFlex } from "../../shared/dist/index.js";
 
 // 用法:node render-dsl-html.mjs [fixtureDir]
 // 输入:fixtureDir/{stacked-draft.json, dsl-full.json, svgs-official.json?}
 // 输出:fixtureDir/demo.html
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-demo-2025", import.meta.url));
 const DRAFT = `${DIR}/stacked-draft.json`;
 const FULL = `${DIR}/dsl-full.json`;
 const OUT = `${DIR}/demo.html`;

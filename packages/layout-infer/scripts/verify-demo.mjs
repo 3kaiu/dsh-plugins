@@ -3,9 +3,10 @@
 // 断言项:section 几何 ±2px、内部关键节点几何 ±3px、文本溢出、真实重叠、字体加载、样式探针
 // 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛); playwright-core 仍在 /tmp/pw
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { launchProbe } from "./verify-lib.mjs";
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-demo-2025";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-demo-2025", import.meta.url));
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 const htmlPath = `${DIR}/demo.html`;
 

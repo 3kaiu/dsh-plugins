@@ -2,9 +2,10 @@
 // 用法:node verify-gaiban.mjs [fixtureDir]
 // 探针样板(启动/原点/截图/关会话)自 verify-lib 单源消费(批4 收敛)
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { launchProbe } from "./verify-lib.mjs";
 
-const DIR = process.argv[2] || "/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban";
+const DIR = process.argv[2] || fileURLToPath(new URL("../fixtures/mg-gaiban", import.meta.url));
 const draft = JSON.parse(fs.readFileSync(`${DIR}/stacked-draft.json`, "utf8"));
 
 const { page, origin, screenshotTo, close } = await launchProbe({
@@ -122,7 +123,7 @@ console.log(`6. 状态栏区文本: ${chrome.top.length ? chrome.top.join("|") :
 
 // 7) 头部图标组件平移校验:html 源码中 40:0188 的 svg 小图形 translate(12,7)(已位图化,从源码断言)
 import { readFileSync } from "node:fs";
-const htmlSrc = readFileSync("/Users/seeu/dev/dsh-opencode-zen/packages/layout-infer/fixtures/mg-gaiban/demo.html", "utf8");
+const htmlSrc = readFileSync(`${DIR}/demo.html`, "utf8");
 const aligned = htmlSrc.includes("translate(12.00,7.00)");
 console.log(`7. 头部图标 svg 平移(源码): ${aligned ? "translate(12.00,7.00) ✓" : "缺失 ✗"}`);
 
