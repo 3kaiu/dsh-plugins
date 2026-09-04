@@ -27,7 +27,7 @@ jobs:
       - name: pack 插件 tarball
         run: |
           mkdir -p dist-tgz
-          for p in layout-infer llm-opencode-zen; do
+          for p in layout-infer llm-opencode-zen ui-restore ui-reverse-agent; do
             (cd packages/$p && pnpm pack --pack-destination ../../dist-tgz/)
           done
       - name: 校验和
@@ -35,12 +35,16 @@ jobs:
       - name: 创建/更新 Release
         env:
           GH_TOKEN: ${{ github.token }}
-        # tag 同时编码两个插件的版本(v<llm>+li<layout>),避免单独升级
-        # layout-infer 时 Release 命名与内容脱节;安装器只按 API 解析 latest,
-        # 不依赖 tag 命名格式。
+        # tag 同时编码四个插件的版本(v<llm>+li<layout>+uir<core>+ura<agent>),
+        # 避免单独升级某包时 Release 命名与内容脱节;安装器只按 API 解析
+        # latest, 不依赖 tag 命名格式。@ui-restore/core 随 Release 发行
+        # (ura 的 optionalDependencies, registry 不存在该包, 安装器先行
+        # 装入 profile 根), 但不进 harness bundle 层。
         run: |
           LLM_VER=$(node -e "console.log(require('./packages/llm-opencode-zen/package.json').version)")
           LI_VER=$(node -e "console.log(require('./packages/layout-infer/package.json').version)")
-          TAG="v${LLM_VER}+li${LI_VER}"
-          gh release create "$TAG" dist-tgz/*.tgz SHA256SUMS --title "DSH Plugins $TAG" --notes "llm-opencode-zen@${LLM_VER} + layout-infer@${LI_VER}。tarball 安装见 README(安装脚本会做 SHA-256 校验)" || gh release upload "$TAG" dist-tgz/*.tgz SHA256SUMS --clobber
+          UIR_VER=$(node -e "console.log(require('./packages/ui-restore/package.json').version)")
+          URA_VER=$(node -e "console.log(require('./packages/ui-reverse-agent/package.json').version)")
+          TAG="v${LLM_VER}+li${LI_VER}+uir${UIR_VER}+ura${URA_VER}"
+          gh release create "$TAG" dist-tgz/*.tgz SHA256SUMS --title "DSH Plugins $TAG" --notes "llm-opencode-zen@${LLM_VER} + layout-infer@${LI_VER} + ui-restore(core)@${UIR_VER} + ui-reverse-agent@${URA_VER}。tarball 安装见 README(安装脚本会做 SHA-256 校验)" || gh release upload "$TAG" dist-tgz/*.tgz SHA256SUMS --clobber
 

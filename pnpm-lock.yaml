@@ -112,15 +112,16 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.1
         version: 3.18.1
-      '@ui-restore/core':
-        specifier: workspace:*
-        version: link:../ui-restore
       playwright:
         specifier: ^1.48.0
         version: 1.62.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
+    optionalDependencies:
+      '@ui-restore/core':
+        specifier: workspace:*
+        version: link:../ui-restore
     devDependencies:
       '@3kaiu/dsh-plugin-kit':
         specifier: workspace:*

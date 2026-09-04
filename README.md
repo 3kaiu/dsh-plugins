@@ -50,6 +50,8 @@ curl -fsSL https://raw.githubusercontent.com/3kaiu/dsh-plugins/main/scripts/inst
 #   只装部分: ... | bash -s -- --only layout-infer,llm-opencode-zen
 ```
 
+`@ui-restore/core` 是 `ui-reverse-agent` 的 optionalDependencies(registry 不存在),安装器从 Release 连带下载并先行装入 profile 根;旧 Release 缺该资产时自动跳过 ura 并告警(llm / layout 不受影响)。
+
 ### 源码开发
 
 ```sh
@@ -58,7 +60,7 @@ pnpm install
 node scripts/install-local.mjs   # pnpm build → dsh plugin add(回退 pnpm add file:)→ reconcile bundles
 ```
 
-发布(可选):打任意 `v*` tag 并推送即触发 Actions → 自动 build + pack 2 个 tarball → Release(tag 名自动编码两包版本:`v<llm>+li<layout>`)。
+发布(可选):打任意 `v*` tag 并推送即触发 Actions → 自动 build + pack 4 个 tarball(layout-infer / llm-opencode-zen / ui-restore(core) / ui-reverse-agent)→ Release(tag 名编码四包版本:`v<llm>+li<layout>+uir<core>+ura<ura>`)。
 
 ## 配置
 

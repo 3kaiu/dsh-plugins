@@ -17,7 +17,15 @@ export const TRUSTED_BUNDLES = new Set([
   "@3kaiu/dsh-llm-opencode-zen",
   "@3kaiu/dsh-layout-infer",
   "@3kaiu/dsh-plugin-kit",
+  "@3kaiu/dsh-ui-reverse-agent",
 ]);
+
+// @ui-restore/core: 纯库(无 dsh.bundle, 不进 harness bundle 层)。随 Release 发行
+// 仅为满足 ui-reverse-agent 的传递依赖(其 build.ts 把 core 列为 esbuild external,
+// dist 运行时 import)。core 在 ura manifest 中是 optionalDependencies —— registry
+// 上不存在该包, pnpm 容忍 optional 缺失(两版 pnpm 沙盒已验证), 安装器先把 core
+// tarball 装进 profile 根, Node 从 ura 包内向上解析即可见。
+export const UI_RESTORE_CORE = "@ui-restore/core";
 
 // 历史 install.mjs 写入的无 scope 依赖条目(现统一清理)
 export const STALE_DEPS = ["dsh-llm-opencode-zen", "dsh-harness-updater", "dsh-layout-infer"];
@@ -44,7 +52,7 @@ export function pnpmAdd(profileDir, spec, label, log = "[install]") {
 
 /**
  * reconcile 收尾(两安装路径共用的完整尾巴):
- * 1) 清理 stale 无 scope 依赖; 2) file:/https: 依赖中声明 dsh.bundle.patch 的,
+ * 1) 清理 stale 无 scope 依赖; 2) file:/link:/https: 依赖中声明 dsh.bundle.patch 的,
  *    仅 TRUSTED_BUNDLES 内的注入 dsh.profile.bundles; 3) cordis.patch.yml
  *    按 patchIds(或调用方派生的候选 id)移除旧插件条目。
  */
@@ -57,14 +65,15 @@ export function reconcileProfile(profileDir, { patchIds, log = "[install]" }) {
 
   const bundles = pkg.dsh?.profile?.bundles ?? [];
   for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
-    // file:(本地源码)或 https?:(Release tarball)都算可 reconcile 的 bundle 来源
-    if (!/^(file:|https?:)/.test(spec)) continue;
-    const local = spec.startsWith("file:");
-    // file: 可能是相对路径(pnpm 按 profile 目录解析),统一 resolve 成绝对路径。
+    // file:/link:(本地源码; pnpm 对目录依赖写 link: 前缀)或 https?:(Release
+    // tarball)都算可 reconcile 的 bundle 来源
+    if (!/^(file:|link:|https?:)/.test(spec)) continue;
+    const local = /^(file:|link:)/.test(spec);
+    // file:/link: 可能是相对路径(pnpm 按 profile 目录解析),统一 resolve 成绝对路径。
     // 注意: file: 指向 Release tarball 时是【文件】而非目录 —— 包已被 pnpm 装进
     // node_modules, 必须回退到那里读 manifest(修复前 tarball 路径恒被跳过,
     // 纯 remote 安装的 bundles 恒为空, 插件从未真正进入 harness)。
-    let abs = local ? resolve(spec.slice("file:".length)) : join(profileDir, "node_modules", name);
+    let abs = local ? resolve(spec.replace(/^(file:|link:)/, "")) : join(profileDir, "node_modules", name);
     if (!existsSync(join(abs, "package.json")) && existsSync(join(profileDir, "node_modules", name, "package.json"))) {
       abs = join(profileDir, "node_modules", name);
     }
@@ -105,6 +114,22 @@ export function parseSums(text) {
     const [sum, ...rest] = l.split(/\s+/);
     return [rest.join(" ").replace(/^\*/, ""), sum];
   }));
+}
+
+/** 读取 tarball 内 package/package.json(pnpm pack 布局); 不可读返回 null */
+export function peekTarballManifest(tgzPath) {
+  const r = spawnSync("tar", ["-xzf", tgzPath, "-O", "package/package.json"], { encoding: "utf8", maxBuffer: 1 << 20 });
+  if (r.status !== 0 || !r.stdout) return null;
+  try {
+    return JSON.parse(r.stdout);
+  } catch {
+    return null;
+  }
+}
+
+/** Release 资产命名约定: manifest.name@version → scope-name-version.tgz */
+export function tgzAssetName(manifest) {
+  return `${manifest.name.replace("@", "").replace("/", "-")}-${manifest.version}.tgz`;
 }
 
 /** 单文件 SHA-256 校验(fail closed): 摘要不匹配或无条目即中止进程 */

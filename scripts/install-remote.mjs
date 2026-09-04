@@ -15,10 +15,11 @@
 //
 // 环境变量: DSH_HOME(默认 ~/.dsh)、DSH_PROFILE(默认 web)、
 //          DSH_PLUGIN_REPO(默认 3kaiu/dsh-plugins)
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { downloadTo, fetchText, parseSums, pnpmAdd, reconcileProfile, resolveProfileDir, sha256Guard } from "./install-shared.mjs";
+import { downloadTo, fetchText, parseSums, pnpmAdd, peekTarballManifest, reconcileProfile, resolveProfileDir, sha256Guard, tgzAssetName } from "./install-shared.mjs";
 
 const LOG = "[install-remote]";
 const REPO = process.env.DSH_PLUGIN_REPO ?? "3kaiu/dsh-plugins";
@@ -62,9 +63,7 @@ const tmpRoot = mkdtempSync(join(tmpdir(), "dsh-tgz-"));
 const sumsTxt = await fetchText(`${downloadBase}/SHA256SUMS`, UA);
 const sums = parseSums(sumsTxt);
 if (!tgzNames) tgzNames = [...sums.keys()].filter((n) => n.endsWith(".tgz"));
-if (ONLY.length > 0) {
-  tgzNames = tgzNames.filter((n) => ONLY.some((o) => n.includes(o.replace(/^@[^/]+\//, "")) || n.includes(o)));
-}
+if (ONLY.length > 0) tgzNames = tgzNames.filter((n) => ONLY.some((o) => n.includes(o.replace(/^@[^/]+\//, "")) || n.includes(o)));
 const isValidName = (n) => /^[A-Za-z0-9._-]+$/.test(n);
 const verified = [];
 for (const name of tgzNames) {
@@ -79,16 +78,55 @@ for (const name of tgzNames) {
   // 记录本地已校验路径: 安装即装此文件, 而非重新从网络拉取(避免校验/安装不一致 TOCTOU)
   verified.push({ name, local: tmp });
 }
+// optionalDependencies 补齐(fixpoint, 真源 = 已下载 tarball 自身 manifest):
+// 任一插件声明可选依赖(如 ura 对 @ui-restore/core),Release 里有对应资产就
+// 连带下载安装 —— --only 装 ura 后运行时 import @ui-restore/core 才不会
+// MODULE_NOT_FOUND。缺资产则降级跳过声明者插件(与 install-local --release
+// 旧 Release 行为对齐: 硬装也会因运行时 import 失败)。
+const skipIdx = new Set();
+for (let i = 0; i < verified.length; i++) {
+  if (skipIdx.has(i)) continue;
+  const optDeps = peekTarballManifest(verified[i].local)?.optionalDependencies ?? {};
+  for (const [depName, depSpec] of Object.entries(optDeps)) {
+    if (!/^[\w@/.-]+$/.test(depSpec)) continue; // 非 registry 语义(如 workspace:*)不入资产名
+    const asset = tgzAssetName({ name: depName, version: depSpec });
+    if (verified.some((v) => v.name === asset)) continue;
+    if (!sums.has(asset)) {
+      console.warn(`${LOG} Release 缺少 ${asset}(旧版 Release?): 跳过 ${verified[i].name} —— 其运行时依赖 ${depName} 无法满足`);
+      skipIdx.add(i);
+      break;
+    }
+    const tmp = join(tmpRoot, asset);
+    await downloadTo(`${downloadBase}/${asset}`, tmp, UA);
+    sha256Guard(tmp, sums.get(asset), asset, LOG);
+    verified.push({ name: asset, local: tmp });
+  }
+}
+const installable = verified.filter((_, i) => !skipIdx.has(i));
 
-// 3. 安装(装已校验的本地文件; --ignore-scripts 防 tarball install 脚本执行)
-for (const { name, local } of verified) pnpmAdd(profileDir, `file:${local}`, name, LOG);
+// 3. 安装(装已校验的本地文件; --ignore-scripts 防 tarball install 脚本执行)。
+// 被声明为 optionalDependencies 的包(如 @ui-restore/core, registry 不存在)先行
+// 安装: 装进 profile 根后, 运行时 Node 从插件包内向上解析即可见。声明关系以
+// tarball manifest 为真源, 与包从初始资产还是 fixpoint 补齐进入无关。
+const depFirst = new Set();
+for (const v of verified) {
+  for (const [depName, depSpec] of Object.entries(peekTarballManifest(v.local)?.optionalDependencies ?? {})) {
+    if (!/^[\w@/.-]+$/.test(depSpec)) continue; // 非 registry 语义(如 workspace:*)
+    const asset = tgzAssetName({ name: depName, version: depSpec });
+    if (verified.some((x) => x.name === asset)) depFirst.add(asset);
+  }
+}
+const first = installable.filter((v) => depFirst.has(v.name));
+const rest = installable.filter((v) => !depFirst.has(v.name));
+for (const { name, local } of [...first, ...rest]) pnpmAdd(profileDir, `file:${local}`, name, LOG);
 
-// 4. reconcile 收尾(公共核)。patch 候选 id 从已安装 https: 依赖的 manifest 派生:
+// 4. reconcile 收尾(公共核)。patch 候选 id 从已安装依赖(同 reconcile 的可信
+//    来源: file:/link:/https:)的 manifest 派生:
 //    无 scope 全名 + 去 dsh- 前缀短名(llm-opencode-zen 注册 id 无前缀,其余有)
 const patchIds = new Set();
 const pkg = JSON.parse(readFileSync(join(profileDir, "package.json"), "utf8"));
 for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
-  if (!/^https?:/.test(spec)) continue;
+  if (!/^(file:|link:|https?:)/.test(spec)) continue;
   try {
     const manifest = JSON.parse(readFileSync(join(profileDir, "node_modules", name, "package.json"), "utf8"));
     const base = manifest.name.replace(/^@[^/]+\//, "");

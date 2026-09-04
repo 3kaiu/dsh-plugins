@@ -22,12 +22,16 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFil
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { fetchBuf, parseSums, pnpmAdd, reconcileProfile, resolveProfileDir, sha256Guard } from "./install-shared.mjs";
+import { fetchBuf, parseSums, pnpmAdd, reconcileProfile, resolveProfileDir, sha256Guard, UI_RESTORE_CORE } from "./install-shared.mjs";
 
 const LOG = "[install-local]";
 const PLUGINS = [
   { dir: "llm-opencode-zen", patchIds: ["llm-opencode-zen"], pkg: "@3kaiu/dsh-llm-opencode-zen" },
   { dir: "layout-infer", patchIds: ["dsh-layout-infer"], pkg: "@3kaiu/dsh-layout-infer" },
+  // coreDep: 依赖 @ui-restore/core(纯库, registry 上不存在, 随 Release 发行 tarball)。
+  // core 在 ura manifest 的 optionalDependencies 里 —— registry 404 被 pnpm 容忍,
+  // 安装前先把 core 本体装进 profile 根即可(运行时从 ura 包内向上解析)。
+  { dir: "ui-reverse-agent", patchIds: ["dsh-ui-reverse-agent"], pkg: "@3kaiu/dsh-ui-reverse-agent", coreDep: true },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -64,21 +68,67 @@ const installSpec = (spec, label) => {
   pnpmAdd(profileDir, spec, label, LOG);
   return false;
 };
+// pnpm pack 目录 → tgz 路径(临时目录随机后缀, 防 TOCTOU 符号链接预建)
+const packTarball = (dir, label) => {
+  const out = mkdtempSync(join(tmpdir(), "dsh-tgz-"));
+  const r = spawnSync("pnpm", ["pack", "--pack-destination", out], { cwd: dir, stdio: "pipe", encoding: "utf8" });
+  if (r.status !== 0) {
+    console.error(`${LOG} pnpm pack 失败: ${label}\n${r.stderr}`);
+    process.exit(1);
+  }
+  const tgzName = readdirSync(out).find((n) => n.endsWith(".tgz"));
+  if (!tgzName) {
+    console.error(`${LOG} pnpm pack 未产出 tarball: ${label}`);
+    process.exit(1);
+  }
+  return join(out, tgzName);
+};
+// Release 模式: SHA256SUMS 只拉一次, 供全部插件与 core 校验复用
+const releaseSums = FROM_RELEASE
+  ? parseSums((await fetchBuf(RELEASE_BASE + "/SHA256SUMS", "dsh-install-local")).toString("utf8"))
+  : null;
 for (const plugin of PLUGINS) {
   if (FROM_RELEASE) {
     const manifest = JSON.parse(readFileSync(join(root, "packages", plugin.dir, "package.json"), "utf8"));
     const tgz = manifest.name.replace("@", "").replace("/", "-") + "-" + manifest.version + ".tgz";
     const url = RELEASE_BASE + "/" + tgz;
     console.log(`\n${LOG} add ${plugin.pkg} <- ${url}`);
+    if (plugin.coreDep) {
+      // core 本体先行: 下载+校验+安装进 profile 根(运行时 Node 从 ura 包内向上
+      // 解析 @ui-restore/core)。core 在 ura manifest 的 optionalDependencies 里,
+      // registry 404 被 pnpm 容忍, 无需 overrides。旧 Release 无 core tarball
+      // 资产时跳过 ura —— 硬装也会因运行时 import 失败。
+      const coreManifest = JSON.parse(readFileSync(join(root, "packages", "ui-restore", "package.json"), "utf8"));
+      const coreTgz = coreManifest.name.replace("@", "").replace("/", "-") + "-" + coreManifest.version + ".tgz";
+      if (!releaseSums.has(coreTgz)) {
+        console.warn(`${LOG} Release 缺少 ${coreTgz}(旧版 Release?)跳过 ${plugin.pkg} —— 其运行时依赖 ${UI_RESTORE_CORE} 无法满足`);
+        continue;
+      }
+      const coreUrl = RELEASE_BASE + "/" + coreTgz;
+      const coreTmp = join(mkdtempSync(join(tmpdir(), "dsh-tgz-")), coreTgz);
+      writeFileSync(coreTmp, await fetchBuf(coreUrl, "dsh-install-local"));
+      sha256Guard(coreTmp, releaseSums.get(coreTgz), coreTgz, LOG);
+      pnpmAdd(profileDir, `file:${coreTmp}`, UI_RESTORE_CORE, LOG);
+    }
     // 随机后缀临时目录: 防止已知固定路径被本地攻击者预建为符号链接(TOCTOU/任意写)
     const tmpRoot = mkdtempSync(join(tmpdir(), "dsh-tgz-"));
     const tmpTgz = join(tmpRoot, tgz);
     writeFileSync(tmpTgz, await fetchBuf(url, "dsh-install-local"));
-    const sumsTxt = (await fetchBuf(RELEASE_BASE + "/SHA256SUMS", "dsh-install-local")).toString("utf8");
     // 安装已校验的本地文件(而非重新从网络拉取 URL, 避免校验/安装不一致 TOCTOU)
-    sha256Guard(tmpTgz, parseSums(sumsTxt).get(tgz), tgz, LOG);
+    sha256Guard(tmpTgz, releaseSums.get(tgz), tgz, LOG);
     installSpec(`file:${tmpTgz}`, plugin.pkg);
     continue;
+  }
+  if (plugin.coreDep) {
+    // 本地源码模式: 与 Release 路径同构 —— pnpm pack core 源码目录成 tarball 再装。
+    // (不直接 file: 源码目录: 那会把 devDependencies 的 workspace 链接一并解析进
+    // profile; pack 后只含 files:["dist"] 与 registry 依赖。)
+    const coreDir = join(root, "packages", "ui-restore");
+    if (!existsSync(join(coreDir, "dist")) || readdirSync(join(coreDir, "dist")).length === 0) {
+      console.error(`dist missing for ${UI_RESTORE_CORE}; run pnpm build first`);
+      process.exit(1);
+    }
+    pnpmAdd(profileDir, `file:${packTarball(coreDir, UI_RESTORE_CORE)}`, UI_RESTORE_CORE, LOG);
   }
   const abs = join(root, "packages", plugin.dir);
   if (!existsSync(abs) || !existsSync(join(abs, "dist")) || readdirSync(join(abs, "dist")).length === 0) {
